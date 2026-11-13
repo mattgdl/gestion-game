@@ -1,0 +1,12 @@
+{
+  "_doc": "Temps. 1 an = secondesParAn secondes en vitesse x1. La simulation avance par ticks fixes. La barrière annuelle tombe à la fin de l'automne, juste avant l'hiver.",
+  "secondesParAn": 180,
+  "ticksParSeconde": 10,
+  "joursParSaison": 30,
+  "saisons": [
+    { "id": "printemps", "nom": "Printemps" },
+    { "id": "ete", "nom": "Été" },
+    { "id": "automne", "nom": "Automne" },
+    { "id": "hiver", "nom": "Hiver" }
+  ]
+}

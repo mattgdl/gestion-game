@@ -1,0 +1,709 @@
+/**
+ * Interface (DOM) posée au-dessus de la carte : ressources, date, vitesse, outils,
+ * panneau du domaine, journal, sauvegardes, étiquettes des fiefs.
+ * Elle lit l'état et envoie des commandes ; elle ne contient aucune règle de jeu.
+ */
+import { DOMINANTS, RESOURCE_IDS, RESOURCE_NAMES, TERRAIN_NAMES } from "@jeu/shared";
+import { BUILDINGS, BUILDING_IDS, dateOf, type Building } from "@jeu/sim-fief";
+import { PLAYER_ID, fiefById, lordById, type FiefMeta } from "@jeu/sim-monde";
+import { TILE } from "../camera/InputController";
+import type { CameraController } from "../camera/CameraController";
+import type { Game, Tool } from "../game/Game";
+import type { Speed } from "../game/Session";
+import { lordColor } from "../render/palette";
+import { parseSave, serializeSave, SaveError, type SaveGame } from "../save/save";
+import { readSlot, slotInfo, writeSlot, type SlotId } from "../save/storage";
+import { escapeHtml, formatCost, formatRealDate } from "./format";
+
+export interface HudActions {
+  newGame(seedText: string): void;
+  load(save: SaveGame): void;
+  focusFief(fiefId: string): void;
+  focusHome(): void;
+  worldView(): void;
+}
+
+interface ToolDef {
+  id: string;
+  label: string;
+  key: string;
+  tool: Tool;
+  hint: string;
+}
+
+const TOOL_DEFS: ToolDef[] = [
+  { id: "inspect", label: "Inspecter", key: "Échap", tool: { kind: "inspect" }, hint: "Glisser pour se déplacer, cliquer pour sélectionner." },
+  { id: "road", label: "Route", key: "R", tool: { kind: "road" }, hint: "Glisser pour tracer. Les routes relient les bâtiments au manoir." },
+  { id: "field", label: "Champ", key: "C", tool: { kind: "field" }, hint: "Glisser pour peindre des champs autour d'une ferme." },
+  { id: "demolish", label: "Démolir", key: "X", tool: { kind: "demolish" }, hint: "Rembourse la moitié du coût." },
+];
+
+const BUILD_KEYS: Record<string, string> = {
+  maison: "H",
+  ferme: "F",
+  bucheron: "B",
+  carriere: "P",
+  entrepot: "E",
+  marche: "N",
+  eglise: "G",
+};
+
+function toolId(tool: Tool): string {
+  return tool.kind === "build" ? `build:${tool.building}` : tool.kind;
+}
+
+function seasonClass(index: number): string {
+  return ["printemps", "ete", "automne", "hiver"][index] ?? "printemps";
+}
+
+export class Hud {
+  private el: Record<string, HTMLElement> = {};
+  private fiefLabels = new Map<string, HTMLElement>();
+  private lastLogLength = -1;
+  private lastLogTick = -1;
+  private lastSeason = -1;
+  private confirmNewGame = false;
+
+  constructor(
+    private readonly root: HTMLElement,
+    private readonly game: Game,
+    private readonly camera: CameraController,
+    private readonly actions: HudActions,
+  ) {
+    this.render();
+    this.bind();
+    game.on("tool", () => this.renderTools());
+    game.on("selection", () => this.renderSelection());
+    game.on("toast", () => this.renderToasts());
+    game.on("view", () => this.renderView());
+    game.on("session", () => {
+      this.buildFiefLabels();
+      this.renderDomain();
+      this.renderSelection();
+      this.renderSaves();
+      this.lastLogLength = -1;
+    });
+    this.buildFiefLabels();
+    this.renderDomain();
+    this.renderTools();
+    this.renderSelection();
+    this.renderSaves();
+    this.renderView();
+    if (window.innerWidth < 900) this.root.classList.add("panel-closed");
+
+    // Les hauteurs du bandeau et de la barre d'outils varient (retour à la ligne sur petit écran) :
+    // on les mesure pour placer le reste.
+    const topbar = this.root.querySelector<HTMLElement>(".topbar")!;
+    const toolbar = this.root.querySelector<HTMLElement>(".toolbar")!;
+    const measure = () => {
+      this.root.style.setProperty("--topbar-h", `${topbar.offsetHeight}px`);
+      this.root.style.setProperty("--toolbar-h", `${toolbar.offsetHeight}px`);
+    };
+    measure();
+    if ("ResizeObserver" in window) {
+      const ro = new ResizeObserver(measure);
+      ro.observe(topbar);
+      ro.observe(toolbar);
+    }
+  }
+
+  /** Zones de l'écran couvertes par l'interface, pour cadrer la caméra sur ce qui reste visible. */
+  insets(): { top: number; right: number; bottom: number; left: number } {
+    const topbar = this.root.querySelector<HTMLElement>(".topbar")!;
+    const toolbar = this.root.querySelector<HTMLElement>(".toolbar")!;
+    const panel = this.el.panel!;
+    const panelOpen = !this.root.classList.contains("panel-closed") && panel.offsetWidth > 0;
+    const panelCoversSide = panelOpen && panel.offsetWidth < window.innerWidth * 0.6;
+    return {
+      top: topbar.offsetHeight + 10,
+      bottom: toolbar.offsetHeight + 10,
+      right: panelCoversSide ? window.innerWidth - panel.getBoundingClientRect().left + 10 : 0,
+      left: 0,
+    };
+  }
+
+  // ------------------------------------------------------------ structure
+
+  private render(): void {
+    const resources = RESOURCE_IDS.map(
+      (id) => `<div class="res res-${id}" title="${RESOURCE_NAMES[id]}">
+          <span class="res-label">${RESOURCE_NAMES[id]}</span>
+          <span class="res-value" data-res="${id}">0</span>
+        </div>`,
+    ).join("");
+
+    const tools = TOOL_DEFS.map(
+      (t) => `<button class="tool" type="button" data-tool="${t.id}" title="${escapeHtml(t.hint)}">
+          <span class="tool-top"><span class="tool-name">${t.label}</span><span class="tool-key">${t.key}</span></span>
+        </button>`,
+    ).join("");
+
+    const builds = BUILDING_IDS.filter((id) => BUILDINGS[id]?.constructible)
+      .map((id) => {
+        const def = BUILDINGS[id]!;
+        return `<button class="tool tool-build" type="button" data-tool="build:${id}" title="${escapeHtml(def.description)}">
+          <span class="tool-top">
+            <span class="swatch" style="background:${def.couleur}"></span>
+            <span class="tool-name">${def.nom}</span>
+            <span class="tool-key">${BUILD_KEYS[id] ?? ""}</span>
+          </span>
+          <span class="tool-cost">${formatCost(def.cout)}</span>
+        </button>`;
+      })
+      .join("");
+
+    this.root.innerHTML = `
+      <header class="topbar">
+        <div class="realm">
+          <span class="realm-name" data-el="realmName"></span>
+          <span class="realm-sub" data-el="realmSub"></span>
+        </div>
+        <div class="resources">${resources}</div>
+        <div class="clock">
+          <div class="date" data-el="date"></div>
+          <div class="season-track" aria-hidden="true"><span data-el="seasonFill"></span></div>
+          <div class="speed" role="group" aria-label="Vitesse">
+            <button type="button" class="speed-btn" data-speed="0" title="Pause (Espace)">❚❚</button>
+            <button type="button" class="speed-btn" data-speed="1" title="Vitesse normale (1)">×1</button>
+            <button type="button" class="speed-btn" data-speed="2" title="Vitesse ×2 (2)">×2</button>
+            <button type="button" class="speed-btn" data-speed="3" title="Vitesse ×3 (3)">×3</button>
+          </div>
+        </div>
+        <button type="button" class="panel-toggle" data-el="panelToggle" aria-label="Afficher ou masquer le panneau">Domaine</button>
+      </header>
+
+      <div class="fief-labels" data-el="fiefLabels"></div>
+
+      <div class="view-controls">
+        <span class="view-level" data-el="viewLevel"></span>
+        <button type="button" data-act="home" title="Revenir au manoir (O)">Mon fief</button>
+        <button type="button" data-act="world" title="Vue Monde (M)">Vue Monde</button>
+        <button type="button" data-act="zoomin" aria-label="Zoomer" title="Zoomer (+)">+</button>
+        <button type="button" data-act="zoomout" aria-label="Dézoomer" title="Dézoomer (−)">−</button>
+      </div>
+
+      <div class="hover-card" data-el="hoverCard" hidden></div>
+      <div class="toasts" data-el="toasts" aria-live="polite"></div>
+
+      <aside class="panel" data-el="panel">
+        <section class="panel-section">
+          <h2>Sélection</h2>
+          <div data-el="selection"></div>
+        </section>
+        <section class="panel-section">
+          <h2>Domaine et voisins</h2>
+          <ul class="fief-list" data-el="fiefList"></ul>
+        </section>
+        <section class="panel-section">
+          <h2>Chronique</h2>
+          <ol class="log" data-el="log"></ol>
+        </section>
+        <section class="panel-section">
+          <h2>Partie</h2>
+          <div data-el="saves"></div>
+        </section>
+      </aside>
+
+      <nav class="toolbar" aria-label="Outils">
+        <div class="toolbar-inner">
+          <div class="tool-group">${tools}</div>
+          <div class="tool-group tool-group-build">${builds}</div>
+        </div>
+      </nav>
+
+      <div class="modal" data-el="modal" hidden>
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+          <h2 id="modal-title" data-el="modalTitle"></h2>
+          <div data-el="modalBody"></div>
+        </div>
+      </div>
+    `;
+    this.root.querySelectorAll<HTMLElement>("[data-el]").forEach((n) => {
+      this.el[n.dataset.el as string] = n;
+    });
+  }
+
+  private bind(): void {
+    this.root.querySelectorAll<HTMLButtonElement>("[data-tool]").forEach((b) => {
+      b.addEventListener("click", () => this.selectToolById(b.dataset.tool as string));
+    });
+    this.root.querySelectorAll<HTMLButtonElement>("[data-speed]").forEach((b) => {
+      b.addEventListener("click", () => this.setSpeed(Number(b.dataset.speed)));
+    });
+    this.root.querySelector('[data-act="home"]')?.addEventListener("click", () => this.actions.focusHome());
+    this.root.querySelector('[data-act="world"]')?.addEventListener("click", () => this.actions.worldView());
+    this.root.querySelector('[data-act="zoomin"]')?.addEventListener("click", () => this.zoomCenter(1.4));
+    this.root.querySelector('[data-act="zoomout"]')?.addEventListener("click", () => this.zoomCenter(1 / 1.4));
+    this.el.panelToggle!.addEventListener("click", () => this.root.classList.toggle("panel-closed"));
+    this.el.modal!.addEventListener("click", (e) => {
+      if (e.target === this.el.modal) this.closeModal();
+    });
+    window.addEventListener("keydown", this.onKeyDown);
+    window.addEventListener("keyup", this.onKeyUp);
+    window.addEventListener("blur", () => this.camera.keys.clear());
+  }
+
+  private zoomCenter(factor: number): void {
+    this.camera.zoomAt(this.camera.viewW / 2, this.camera.viewH / 2, factor);
+  }
+
+  private selectToolById(id: string): void {
+    if (id.startsWith("build:")) this.game.setTool({ kind: "build", building: id.slice(6) });
+    else {
+      const def = TOOL_DEFS.find((t) => t.id === id);
+      if (def) this.game.setTool(def.tool);
+    }
+  }
+
+  private setSpeed(speed: number): void {
+    const s = this.game.session;
+    if (speed === 0) s.paused = !s.paused;
+    else {
+      s.paused = false;
+      s.speed = speed as Speed;
+    }
+  }
+
+  // ------------------------------------------------------------ clavier
+
+  private onKeyDown = (e: KeyboardEvent): void => {
+    const target = e.target as HTMLElement | null;
+    if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
+    if (!this.el.modal!.hidden) {
+      if (e.key === "Escape") this.closeModal();
+      return;
+    }
+    const pan: Record<string, string> = {
+      ArrowLeft: "left",
+      ArrowRight: "right",
+      ArrowUp: "up",
+      ArrowDown: "down",
+      KeyA: "left",
+      KeyD: "right",
+      KeyW: "up",
+      KeyS: "down",
+    };
+    const dir = pan[e.code];
+    if (dir) {
+      this.camera.keys.add(dir);
+      e.preventDefault();
+      return;
+    }
+    if (e.code === "Space") {
+      this.setSpeed(0);
+      e.preventDefault();
+      return;
+    }
+    if (e.code === "Digit1" || e.code === "Numpad1") return this.setSpeed(1);
+    if (e.code === "Digit2" || e.code === "Numpad2") return this.setSpeed(2);
+    if (e.code === "Digit3" || e.code === "Numpad3") return this.setSpeed(3);
+    const key = e.key.toLowerCase();
+    if (e.key === "Escape") return this.game.setTool({ kind: "inspect" });
+    if (key === "r") return this.selectToolById("road");
+    if (key === "c") return this.selectToolById("field");
+    if (key === "x" || e.key === "Delete") return this.selectToolById("demolish");
+    if (key === "m") return this.actions.worldView();
+    if (key === "o" || e.key === "Home") return this.actions.focusHome();
+    if (e.key === "+" || e.code === "NumpadAdd") return this.zoomCenter(1.4);
+    if (e.key === "-" || e.code === "NumpadSubtract") return this.zoomCenter(1 / 1.4);
+    for (const [id, k] of Object.entries(BUILD_KEYS)) {
+      if (key === k.toLowerCase()) return this.selectToolById(`build:${id}`);
+    }
+  };
+
+  private onKeyUp = (e: KeyboardEvent): void => {
+    const map: Record<string, string> = {
+      ArrowLeft: "left",
+      ArrowRight: "right",
+      ArrowUp: "up",
+      ArrowDown: "down",
+      KeyA: "left",
+      KeyD: "right",
+      KeyW: "up",
+      KeyS: "down",
+    };
+    const dir = map[e.code];
+    if (dir) this.camera.keys.delete(dir);
+  };
+
+  // ------------------------------------------------------------ rendus ponctuels
+
+  private renderTools(): void {
+    const active = toolId(this.game.tool);
+    this.root.querySelectorAll<HTMLButtonElement>("[data-tool]").forEach((b) => {
+      const on = b.dataset.tool === active;
+      b.classList.toggle("is-active", on);
+      b.setAttribute("aria-pressed", String(on));
+    });
+    this.root.classList.toggle("tool-active", this.game.tool.kind !== "inspect");
+  }
+
+  private renderView(): void {
+    const names = { proche: "Vue proche", moyenne: "Vue des fiefs", monde: "Vue Monde" };
+    this.el.viewLevel!.textContent = names[this.game.viewLevel];
+    this.root.dataset.view = this.game.viewLevel;
+  }
+
+  private renderToasts(): void {
+    this.el.toasts!.innerHTML = this.game.toasts
+      .map((t) => `<div class="toast toast-${t.tone}">${escapeHtml(t.text)}</div>`)
+      .join("");
+  }
+
+  private renderSelection(): void {
+    const sim = this.game.session.sim;
+    const id = this.game.selectedBuildingId;
+    const b = id !== null ? sim.building(id) : undefined;
+    const box = this.el.selection!;
+    if (!b) {
+      box.innerHTML = `<p class="muted">Cliquez sur un bâtiment avec l'outil Inspecter pour voir son état.</p>`;
+      return;
+    }
+    const def = BUILDINGS[b.type]!;
+    const connected = sim.isConnected(b.id);
+    const fief = fiefById(this.game.session.world, b.fiefId);
+    const refund = sim.check({ type: "demolish", x: b.x, y: b.y });
+    box.innerHTML = `
+      <div class="sel-head"><span class="swatch" style="background:${def.couleur}"></span><strong>${def.nom}</strong></div>
+      <p>${escapeHtml(def.description)}</p>
+      <dl class="facts">
+        <div><dt>Taille</dt><dd>${def.taille[0]} × ${def.taille[1]} cases</dd></div>
+        <div><dt>Fief</dt><dd>${escapeHtml(fief?.name ?? b.fiefId)}</dd></div>
+        <div><dt>Route</dt><dd class="${connected ? "ok" : "bad"}">${connected ? "Relié au manoir" : "Non relié : tracez une route jusqu'au manoir"}</dd></div>
+      </dl>
+      ${
+        b.type !== "manoir"
+          ? `<button type="button" class="btn btn-danger" data-act="demolish-selected">Démolir (rend ${formatCost(refund.refund)})</button>`
+          : ""
+      }`;
+    box.querySelector('[data-act="demolish-selected"]')?.addEventListener("click", () => this.demolish(b));
+  }
+
+  private demolish(b: Building): void {
+    const r = this.game.command({ type: "demolish", x: b.x, y: b.y });
+    if (r.ok) this.game.select(null);
+  }
+
+  private renderDomain(): void {
+    const world = this.game.session.world;
+    const playerFiefs = world.fiefs.filter((f) => f.ownerId === PLAYER_ID);
+    const home = playerFiefs[0];
+    this.el.realmName!.textContent = home ? `Fief de ${home.name}` : "Votre lignée";
+    this.el.realmSub!.textContent = `Graine « ${world.seedText} »`;
+
+    const items = [...world.fiefs].sort((a, b) => Number(b.ownerId === PLAYER_ID) - Number(a.ownerId === PLAYER_ID));
+    this.el.fiefList!.innerHTML = items
+      .map((f) => {
+        const lord = lordById(world, f.ownerId);
+        const mine = f.ownerId === PLAYER_ID;
+        return `<li>
+          <button type="button" class="fief-item" data-fief="${f.id}">
+            <span class="blazon" style="background:${lordColor(lord?.colorIndex)}"></span>
+            <span class="fief-text">
+              <span class="fief-name">${escapeHtml(f.name)}${mine ? ' <span class="tag">à vous</span>' : ""}</span>
+              <span class="fief-meta">${escapeHtml(DOMINANTS[f.dominant].nom)} · ${escapeHtml(lord?.name ?? "Sans seigneur")}</span>
+            </span>
+          </button>
+        </li>`;
+      })
+      .join("");
+    this.el.fiefList!.querySelectorAll<HTMLButtonElement>("[data-fief]").forEach((b) =>
+      b.addEventListener("click", () => this.actions.focusFief(b.dataset.fief as string)),
+    );
+  }
+
+  private buildFiefLabels(): void {
+    const layer = this.el.fiefLabels!;
+    layer.innerHTML = "";
+    this.fiefLabels.clear();
+    const world = this.game.session.world;
+    for (const f of world.fiefs) {
+      const lord = lordById(world, f.ownerId);
+      const label = document.createElement("button");
+      label.type = "button";
+      label.className = "fief-label";
+      label.style.setProperty("--lord", lordColor(lord?.colorIndex));
+      label.innerHTML = `<span class="fl-name">${escapeHtml(f.name)}</span>
+        <span class="fl-owner">${escapeHtml(lord?.name ?? "Sans seigneur")}</span>
+        <span class="fl-terrain">${escapeHtml(DOMINANTS[f.dominant].nom)}</span>`;
+      label.addEventListener("click", () => this.actions.focusFief(f.id));
+      layer.appendChild(label);
+      this.fiefLabels.set(f.id, label);
+    }
+  }
+
+  // ------------------------------------------------------------ sauvegardes
+
+  private renderSaves(): void {
+    const box = this.el.saves!;
+    const manual = slotInfo("manuelle");
+    const auto = slotInfo("auto");
+    const slotLine = (label: string, info: ReturnType<typeof slotInfo>, slot: SlotId) =>
+      info
+        ? `<button type="button" class="btn" data-load="${slot}">Charger ${label}</button>
+           <span class="muted small">An ${info.year} · « ${escapeHtml(info.seedText)} » · ${formatRealDate(info.savedAt)}</span>`
+        : `<span class="muted small">Aucune sauvegarde ${label}.</span>`;
+    box.innerHTML = `
+      <div class="save-row">
+        <button type="button" class="btn btn-primary" data-act="save">Sauvegarder</button>
+        <button type="button" class="btn" data-act="export">Exporter</button>
+        <button type="button" class="btn" data-act="import">Importer</button>
+      </div>
+      <div class="save-slot">${slotLine("manuelle", manual, "manuelle")}</div>
+      <div class="save-slot">${slotLine("automatique", auto, "auto")}</div>
+      <p class="muted small">Sauvegarde automatique à chaque bilan d'automne.</p>
+      <form class="new-game" data-el="newGameForm">
+        <label for="seed-input">Nouvelle partie, graine</label>
+        <div class="new-game-row">
+          <input id="seed-input" name="seed" type="text" autocomplete="off" spellcheck="false" />
+          <button type="submit" class="btn">${this.confirmNewGame ? "Confirmer" : "Lancer"}</button>
+        </div>
+        ${this.confirmNewGame ? `<p class="warn small">La partie en cours sera perdue si elle n'est pas sauvegardée. Cliquez sur Confirmer.</p>` : ""}
+      </form>`;
+    const input = box.querySelector<HTMLInputElement>("#seed-input")!;
+    input.value = randomSeed();
+    box.querySelector('[data-act="save"]')?.addEventListener("click", () => {
+      const ok = writeSlot("manuelle", this.game.session.toSave());
+      this.game.toast(ok ? "Partie sauvegardée dans ce navigateur." : "Sauvegarde impossible ici : utilisez Exporter.", ok ? "info" : "error");
+      this.renderSaves();
+    });
+    box.querySelector('[data-act="export"]')?.addEventListener("click", () => this.openExport());
+    box.querySelector('[data-act="import"]')?.addEventListener("click", () => this.openImport());
+    box.querySelectorAll<HTMLButtonElement>("[data-load]").forEach((b) =>
+      b.addEventListener("click", () => {
+        const save = readSlot(b.dataset.load as SlotId);
+        if (save) this.actions.load(save);
+        else this.game.toast("Cette sauvegarde est illisible.", "error");
+      }),
+    );
+    box.querySelector("form")?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const seed = input.value.trim() || randomSeed();
+      if (!this.confirmNewGame) {
+        this.confirmNewGame = true;
+        this.renderSaves();
+        const again = this.el.saves!.querySelector<HTMLInputElement>("#seed-input");
+        if (again) again.value = seed;
+        return;
+      }
+      this.confirmNewGame = false;
+      this.actions.newGame(seed);
+    });
+  }
+
+  refreshSaves(): void {
+    this.renderSaves();
+  }
+
+  private openModal(title: string, body: string): HTMLElement {
+    this.el.modalTitle!.textContent = title;
+    this.el.modalBody!.innerHTML = body;
+    this.el.modal!.hidden = false;
+    this.el.modalBody!.querySelector('[data-act="close"]')?.addEventListener("click", () => this.closeModal());
+    return this.el.modalBody!;
+  }
+
+  private closeModal(): void {
+    this.el.modal!.hidden = true;
+  }
+
+  private openExport(): void {
+    const text = serializeSave(this.game.session.toSave());
+    const body = this.openModal(
+      "Exporter la partie",
+      `<p>Copiez ce texte et gardez-le dans un fichier : il contient toute la partie.</p>
+       <textarea id="export-text" readonly rows="8">${escapeHtml(text)}</textarea>
+       <div class="modal-actions">
+         <button type="button" class="btn btn-primary" data-act="copy">Copier</button>
+         <button type="button" class="btn" data-act="close">Fermer</button>
+       </div>`,
+    );
+    const area = body.querySelector<HTMLTextAreaElement>("#export-text")!;
+    body.querySelector('[data-act="copy"]')?.addEventListener("click", () => {
+      navigator.clipboard
+        .writeText(text)
+        .then(() => this.game.toast("Sauvegarde copiée."))
+        .catch(() => {
+          area.focus();
+          area.select();
+          this.game.toast("Texte sélectionné : copiez-le avec Ctrl+C.");
+        });
+    });
+  }
+
+  private openImport(): void {
+    const body = this.openModal(
+      "Importer une partie",
+      `<p>Collez le texte d'une sauvegarde exportée, ou choisissez le fichier.</p>
+       <textarea id="import-text" rows="8" placeholder="Collez la sauvegarde ici"></textarea>
+       <input id="import-file" type="file" accept=".json,.txt,application/json,text/plain" />
+       <p class="warn small" data-el="importError" hidden></p>
+       <div class="modal-actions">
+         <button type="button" class="btn btn-primary" data-act="do-import">Charger cette partie</button>
+         <button type="button" class="btn" data-act="close">Annuler</button>
+       </div>`,
+    );
+    const area = body.querySelector<HTMLTextAreaElement>("#import-text")!;
+    const error = body.querySelector<HTMLElement>('[data-el="importError"]')!;
+    body.querySelector<HTMLInputElement>("#import-file")?.addEventListener("change", (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        area.value = String(reader.result ?? "");
+      };
+      reader.readAsText(file);
+    });
+    body.querySelector('[data-act="do-import"]')?.addEventListener("click", () => {
+      try {
+        const save = parseSave(area.value.trim());
+        this.closeModal();
+        this.actions.load(save);
+      } catch (err) {
+        error.hidden = false;
+        error.textContent = err instanceof SaveError ? err.message : "Sauvegarde illisible.";
+      }
+    });
+  }
+
+  // ------------------------------------------------------------ à chaque image
+
+  update(): void {
+    const session = this.game.session;
+    const sim = session.sim;
+    const state = sim.state;
+
+    for (const id of RESOURCE_IDS) {
+      const node = this.root.querySelector<HTMLElement>(`[data-res="${id}"]`);
+      const value = String(Math.floor(state.resources[id]));
+      if (node && node.textContent !== value) node.textContent = value;
+    }
+
+    const date = sim.date;
+    const dateText = `${date.seasonName}, an ${date.year} · jour ${date.day}`;
+    if (this.el.date!.textContent !== dateText) this.el.date!.textContent = dateText;
+    this.el.seasonFill!.style.width = `${(date.seasonProgress * 100).toFixed(1)}%`;
+    if (date.seasonIndex !== this.lastSeason) {
+      this.lastSeason = date.seasonIndex;
+      this.root.dataset.season = seasonClass(date.seasonIndex);
+    }
+    const activeSpeed = session.paused ? 0 : session.speed;
+    this.root.querySelectorAll<HTMLButtonElement>("[data-speed]").forEach((b) => {
+      const on = Number(b.dataset.speed) === activeSpeed;
+      b.classList.toggle("is-active", on);
+      b.setAttribute("aria-pressed", String(on));
+    });
+    this.root.classList.toggle("is-paused", session.paused);
+
+    const lastEntry = state.log[state.log.length - 1];
+    if (state.log.length !== this.lastLogLength || (lastEntry?.tick ?? -1) !== this.lastLogTick) {
+      this.lastLogLength = state.log.length;
+      this.lastLogTick = lastEntry?.tick ?? -1;
+      this.el.log!.innerHTML = [...state.log]
+        .reverse()
+        .slice(0, 14)
+        .map((l) => {
+          const d = dateOf(l.tick);
+          return `<li><span class="log-date">${d.seasonName} ${d.year}</span><span>${escapeHtml(l.text)}</span></li>`;
+        })
+        .join("");
+    }
+
+    this.updateHoverCard();
+    this.updateFiefLabels();
+  }
+
+  private updateHoverCard(): void {
+    const card = this.el.hoverCard!;
+    const hover = this.game.hover;
+    const session = this.game.session;
+    const sim = session.sim;
+    if (!hover || this.game.viewLevel === "monde") {
+      card.hidden = true;
+      return;
+    }
+    const world = session.world;
+    const S = world.dims.fiefSize;
+    const meta: FiefMeta | undefined = world.fiefs.find(
+      (f) => f.col === Math.floor(hover.x / S) && f.row === Math.floor(hover.y / S),
+    );
+    if (!meta) {
+      card.hidden = true;
+      return;
+    }
+    const lord = lordById(world, meta.ownerId);
+    const lines: string[] = [`<div class="hc-title">${escapeHtml(meta.name)} <span class="muted">· ${escapeHtml(lord?.name ?? "Sans seigneur")}</span></div>`];
+    const terrain = sim.terrainAt(hover.x, hover.y);
+    if (terrain !== undefined) {
+      const fert = sim.fertilityAt(hover.x, hover.y) ?? 0;
+      const occ = sim.occupantAt(hover.x, hover.y);
+      let what = TERRAIN_NAMES[terrain];
+      if (terrain === 0) what += ` · fertilité ${fert} %`;
+      if (occ?.kind === "road") what = `Route${sim.connectedRoads().has(sim.key(hover.x, hover.y)) ? " reliée" : " non reliée"}`;
+      if (occ?.kind === "field") what = `Champ · fertilité ${fert} %`;
+      if (occ?.kind === "building") what = BUILDINGS[sim.building(occ.id)?.type ?? ""]?.nom ?? what;
+      lines.push(`<div>${what}</div>`);
+    } else {
+      lines.push(`<div class="muted">Hors de votre domaine</div>`);
+    }
+
+    const tool = this.game.tool;
+    if (tool.kind !== "inspect") {
+      let check;
+      let label = "";
+      if (tool.kind === "build") {
+        const a = this.game.buildAnchor(tool.building, hover.x, hover.y);
+        check = sim.check({ type: "build", building: tool.building, x: a.x, y: a.y });
+        label = BUILDINGS[tool.building]?.nom ?? "";
+      } else if (tool.kind === "road") {
+        check = sim.check({ type: "road", x: hover.x, y: hover.y });
+        label = "Route";
+      } else if (tool.kind === "field") {
+        check = sim.check({ type: "field", x: hover.x, y: hover.y });
+        label = "Champ";
+      } else {
+        check = sim.check({ type: "demolish", x: hover.x, y: hover.y });
+        label = "Démolir";
+      }
+      const detail = check.ok
+        ? tool.kind === "demolish"
+          ? `rend ${formatCost(check.refund)}`
+          : formatCost(check.cost)
+        : (check.reason ?? "Impossible ici.");
+      lines.push(`<div class="hc-tool ${check.ok ? "ok" : "bad"}"><strong>${label}</strong> · ${escapeHtml(detail)}</div>`);
+    }
+    card.innerHTML = lines.join("");
+    card.hidden = false;
+  }
+
+  private updateFiefLabels(): void {
+    const level = this.game.viewLevel;
+    const world = this.game.session.world;
+    const S = world.dims.fiefSize * TILE;
+    const topLimit = level === "moyenne" ? this.insets().top + 70 : 0;
+    for (const f of world.fiefs) {
+      const label = this.fiefLabels.get(f.id);
+      if (!label) continue;
+      if (level === "proche") {
+        if (!label.hidden) label.hidden = true;
+        continue;
+      }
+      label.hidden = false;
+      const center = this.camera.worldToScreen((f.col + 0.5) * S, (f.row + 0.5) * S);
+      let y = center.y;
+      if (level === "moyenne") {
+        // Vue des fiefs : l'étiquette se cale en haut de la partie visible du fief, sans masquer la ville.
+        const top = this.camera.worldToScreen(0, f.row * S).y;
+        const bottom = this.camera.worldToScreen(0, (f.row + 1) * S).y;
+        y = Math.min(bottom - 40, Math.max(top + 40, topLimit));
+      }
+      label.style.transform = `translate(${Math.round(center.x)}px, ${Math.round(y)}px) translate(-50%, -50%)`;
+    }
+  }
+}
+
+const SEED_WORDS = ["blé", "chêne", "orge", "seigle", "lin", "houblon", "tilleul", "aulne", "frêne", "saule", "noyer", "avoine"];
+function randomSeed(): string {
+  const w = SEED_WORDS[Math.floor(Math.random() * SEED_WORDS.length)] ?? "blé";
+  return `${w}-${Math.floor(Math.random() * 900 + 100)}`;
+}

@@ -1,0 +1,72 @@
+{
+  "_doc": "Bâtiments. taille = [largeur, hauteur] en tuiles. cout en ressources. procheDe = terrain requis à moins de 'rayon' tuiles. Les effets (production, logement) arrivent en J2.",
+  "manoir": {
+    "nom": "Manoir",
+    "taille": [3, 3],
+    "cout": {},
+    "constructible": false,
+    "unique": true,
+    "couleur": "#8a5a3c",
+    "description": "Siège de votre lignée. Toutes les routes partent de lui."
+  },
+  "maison": {
+    "nom": "Maison",
+    "taille": [1, 1],
+    "cout": { "bois": 8 },
+    "constructible": true,
+    "couleur": "#c9a26b",
+    "description": "Logera une famille de villageois (J2b)."
+  },
+  "ferme": {
+    "nom": "Ferme",
+    "taille": [2, 2],
+    "cout": { "bois": 20, "or": 10 },
+    "constructible": true,
+    "couleur": "#b8863b",
+    "rayonChamps": 4,
+    "description": "Cultive les champs peints autour d'elle (rayon de 4 tuiles)."
+  },
+  "bucheron": {
+    "nom": "Bûcheron",
+    "taille": [2, 2],
+    "cout": { "bois": 15, "pierre": 5 },
+    "constructible": true,
+    "couleur": "#6b4a2a",
+    "procheDe": { "terrain": "foret", "rayon": 4 },
+    "description": "Coupera le bois des forêts voisines (J2a)."
+  },
+  "carriere": {
+    "nom": "Carrière",
+    "taille": [2, 2],
+    "cout": { "bois": 25 },
+    "constructible": true,
+    "couleur": "#8c8c8c",
+    "procheDe": { "terrain": "roche", "rayon": 3 },
+    "description": "Extraira la pierre des roches voisines (J2a)."
+  },
+  "entrepot": {
+    "nom": "Entrepôt",
+    "taille": [2, 2],
+    "cout": { "bois": 30, "pierre": 10 },
+    "constructible": true,
+    "couleur": "#a0703c",
+    "description": "Stockera les marchandises au plus près des producteurs (J2a)."
+  },
+  "marche": {
+    "nom": "Marché",
+    "taille": [3, 2],
+    "cout": { "bois": 30, "pierre": 20, "or": 20 },
+    "constructible": true,
+    "couleur": "#c0603c",
+    "description": "Distribuera nourriture et bois aux foyers (J2b)."
+  },
+  "eglise": {
+    "nom": "Église",
+    "taille": [3, 3],
+    "cout": { "bois": 40, "pierre": 60, "or": 40 },
+    "constructible": true,
+    "unique": true,
+    "couleur": "#d8d0c0",
+    "description": "Soutiendra le moral et marquera mariages et successions (J2b-J3)."
+  }
+}

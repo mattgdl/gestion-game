@@ -1,0 +1,8 @@
+{
+  "_doc": "Noms de fiefs (inventés). Tirés au hasard selon la graine.",
+  "fiefs": [
+    "Valbrune", "Montaigle", "Rochebrune", "Beaulieu", "Hautemarche", "Boisrenard",
+    "Clairfonds", "Pierrefeu", "Mesnil-Doré", "Gué-Saint-Aubin", "Fontbelle", "Combelande",
+    "Aigremont", "Brisecœur", "Froidmantel", "Vaulgrand", "Orvilliers", "Saint-Amarin"
+  ]
+}

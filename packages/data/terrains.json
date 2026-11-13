@@ -1,0 +1,15 @@
+{
+  "_doc": "Terrains des tuiles et terrains dominants des fiefs. foret / roche = part approximative des tuiles. fertiliteBonus s'ajoute à la fertilité (0 à 1).",
+  "tuiles": {
+    "herbe": { "id": 0, "nom": "Herbe", "constructible": true },
+    "foret": { "id": 1, "nom": "Forêt", "constructible": false },
+    "roche": { "id": 2, "nom": "Roche", "constructible": false },
+    "eau": { "id": 3, "nom": "Eau", "constructible": false }
+  },
+  "dominants": {
+    "plaines": { "nom": "Plaines fertiles", "foret": 0.16, "roche": 0.03, "fertiliteBonus": 0.15, "riviere": false },
+    "foret": { "nom": "Forêt profonde", "foret": 0.55, "roche": 0.04, "fertiliteBonus": -0.05, "riviere": false },
+    "pierre": { "nom": "Gisement de pierre", "foret": 0.14, "roche": 0.26, "fertiliteBonus": -0.15, "riviere": false },
+    "riviere": { "nom": "Vallée de rivière", "foret": 0.2, "roche": 0.03, "fertiliteBonus": 0.1, "riviere": true }
+  }
+}

@@ -1,0 +1,353 @@
+# DESIGN.md — Jeu de gestion médiéval à dynastie
+
+> **Titre provisoire :** « Seigneurie » (nom de travail, à remplacer) · **Version du document :** 0.3 · **Dernière mise à jour :** 12/11/2026
+> **Statut :** J1 livré (le terrain et le temps). Prochain jalon : J2a (l'économie circule).
+> Ce document est la référence du projet. En cas de doute, c'est lui qui tranche, et chaque décision y est consignée avec sa raison (section 11).
+
+## Sommaire
+
+1. Pitch
+2. Piliers de design
+3. Décisions actées
+4. Ce que J1 a fixé en plus
+5. Systèmes clés
+6. Risques identifiés
+7. Architecture : couches Fief et Monde
+8. Arborescence du projet
+9. Questions reportées
+10. Glossaire
+11. Journal des décisions
+
+---
+
+## 1. Pitch
+
+Le joueur incarne une lignée de seigneurs locaux, en vue « divine ». Il bâtit sa ville sur son fief, saison après saison, puis génération après génération. Quand la place manque, il regarde de l'autre côté de la frontière : acheter, épouser, hériter ou conquérir les fiefs voisins.
+
+La partie se termine quand la lignée s'éteint ou quand le domaine se vide. Le jeu se joue seul, puis entre amis : chaque joueur est alors un seigneur voisin.
+
+---
+
+## 2. Piliers de design
+
+| Pilier | Ce que le joueur ressent | Question à poser pour toute nouvelle fonctionnalité |
+|---|---|---|
+| **Bâtir** | Sa ville grandit sous ses yeux | Est-ce que ça rend la ville plus vivante ou plus satisfaisante à construire ? |
+| **Transmettre** | Ses choix pèsent sur ses descendants | Est-ce que ça crée une conséquence qui survit au seigneur ? |
+| **S'étendre** | Le manque d'espace pousse vers les voisins | Est-ce que ça rend l'acquisition de terres désirable ou disputée ? |
+
+Une fonctionnalité qui ne sert aucun pilier va dans la ROADMAP, rubrique « peut-être », et pas dans le code.
+
+---
+
+## 3. Décisions actées
+
+| Sujet | Décision | Raison |
+|---|---|---|
+| Point de vue | Vue divine. Le seigneur est une présence abstraite, pas un avatar contrôlé. | Rester un city-builder pur. |
+| Plateforme | Navigateur. TypeScript + Vite + Phaser 4. | Itération rapide, testable, multijoueur web naturel. |
+| Temps (Q1) | 4 saisons par an. **1 an = 3 min** en vitesse normale, soit environ 45 s par saison. Pause et x2/x3 en solo uniquement. Valeur réglable dans la config. | Environ 1 h 30 par génération : le pilier Transmettre se ressent, même en multi. |
+| Carte (Q2) | Une seule carte continue, découpée en fiefs, avec zoom à plusieurs niveaux jusqu'à une vue Monde. Chaque fief a un terrain dominant. | L'expansion se voit physiquement ; la vue Monde sert la diplomatie. |
+| Fin de partie (Q3) | Solo : bac à sable jusqu'à la défaite, avec des titres à débloquer. Multi : durée choisie au lancement + classement au prestige, salle sauvegardable. | Donner un objectif de long terme en solo, une fin claire en multi. |
+| Joueur éliminé (Q3) | Son domaine devient terre libre. Option de partie : repartir avec une branche cadette. | Entretenir la rivalité sans exclure personne. |
+| Joueurs (Q4) | Plafond technique : 8. Conception et équilibrage : 2 à 4. Le mode 8 joueurs est validé après la V2. | 8 coûte peu côté serveur, mais beaucoup en tests et en équilibrage. |
+| Villageois (Q5) | Individus « fiches » + **logistique par flux** (marchandises transportées sur les routes avec temps de trajet, sans simulation tuile par tuile). | Se rapprocher de l'option A (Banished, Manor Lords) sans son coût. |
+| Placement (Q6) | Routes obligatoires, bâtiments de tailles variables, champs peints autour des fermes, fertilité par tuile, pas de rotation en V1. | Casse-tête spatial au service du pilier Bâtir. |
+| Perspective (Q7) | Vue de dessus « 3/4 » sur grille carrée : les bâtiments montrent leur façade. | Beau rendu pour un coût de développement et de dessin raisonnable. |
+| Saisons (Q8) | Option C : calendrier agricole et chauffage dès J2, événements saisonniers en V2. | L'hiver rend la famine prévisible ; les événements apportent de la variété. |
+| Défaite 1 | Extinction de la lignée : plus aucun descendant vivant et éligible du fondateur. | La défaite découle d'une suite de choix, pas d'un tirage. |
+| Défaite 2 | Population du **domaine entier** sous 5 habitants. Perdre ou vider un fief ne fait pas perdre la partie. | Avec plusieurs fiefs, seul le domaine compte. |
+| Défaite prévisible | Indicateurs visibles et alertes avant le point de non-retour. Jamais de défaite par un seul tirage aléatoire. | Une défaite doit sembler juste. |
+| Chronique | Écran « Chronique de la dynastie » en fin de partie. | Pilier Transmettre. |
+| Multijoueur | Sessions synchrones, Cloudflare Workers + Durable Objects, barrière annuelle. | Évite la synchronisation complète des simulations. |
+| Architecture | Couches Fief et Monde séparées, simulation en TypeScript pur, état en JSON, commandes, ticks à pas fixe, aléatoire à graine. | Permet le multi et les tests sans réécriture. |
+| Graphismes | Formes simples (placeholders) jusqu'à J6. | Valider le fun avant de dessiner. |
+
+---
+
+## 4. Ce que J1 a fixé en plus
+
+Règles décidées en codant J1, à contester si elles ne te conviennent pas :
+
+| Sujet | Règle | Raison |
+|---|---|---|
+| Bâtiments et frontières | Un bâtiment doit tenir entièrement dans un seul fief. Les routes, elles, traversent les frontières. | Un fief cédé (achat, héritage) part avec ses bâtiments entiers. |
+| Bâtiment « relié » | Relié si une route reliée au manoir touche un de ses côtés. Un bâtiment non relié porte un « ! » rouge. | Prépare J2a : un bâtiment non relié ne fonctionnera pas. |
+| Routes en biais | Un tracé en biais devient un escalier de cases (jamais de diagonale). | Les routes ne se relient que par les côtés. |
+| Défrichage | Une route peut passer sur la forêt : la case devient de l'herbe. Pas de route sur la roche ni sur l'eau. | Les ponts viendront plus tard. |
+| Champs | Peints à moins de 4 cases d'une ferme ; démolir la ferme abandonne ses champs. | Règle Q6. |
+| Démolition | Rend la moitié du coût. Le manoir ne se démolit pas. | Éviter les erreurs coûteuses sans rendre la construction gratuite. |
+| Bâtiments uniques | Manoir et église : un seul exemplaire. | L'église sera liée aux mariages et successions (J3). |
+| Exigences de terrain | Bûcheron à moins de 4 cases d'une forêt, carrière à moins de 3 cases d'une roche. | Lisibilité : le terrain dicte l'emplacement. |
+| Départ | Manoir au centre du fief, 5 routes, 100 nourriture, 150 bois, 60 pierre, 200 or. Centre dégagé, forêt et roche garanties dans le fief de départ. | Un départ jouable quelle que soit la graine. |
+| Sauvegarde | Emplacement manuel + sauvegarde automatique à chaque bilan d'automne, export et import en texte. | Les fichiers à télécharger ne fonctionnent pas dans la version publiée. |
+| Interface | Une seule ambiance sombre ; couleurs des seigneurs tirées des émaux héraldiques (azur pour le joueur). | Placeholder cohérent jusqu'à J6. |
+
+---
+
+## 5. Systèmes clés
+
+### 5.1 Carte et caméra
+
+- **Une seule carte continue**, découpée en fiefs (par exemple des carrés de 48 × 48 tuiles ; taille dans la config). V1 : ton fief + 2 voisins. La génération accepte n'importe quelle grille de fiefs (environ 5 × 5 pour une grande partie à 8).
+- **Zoom à trois niveaux, qui change ce qui est affiché :**
+  - **Proche :** tuiles, bâtiments, routes, porteurs.
+  - **Moyen :** bâtiments simplifiés, frontières des fiefs bien marquées.
+  - **Lointain = vue Monde :** chaque fief devient une zone colorée selon son propriétaire, avec son nom, son terrain dominant et des icônes (population, à vendre, plus tard alliances). C'est là que se font la diplomatie et les achats.
+- **Navigation :** une liste de tes fiefs permet de sauter directement sur l'un d'eux (utile quand le domaine n'est plus d'un seul tenant, par exemple après un héritage lointain en V2). Un double-clic sur un fief en vue Monde zoome dessus.
+- **Terrains dominants :** plaines fertiles, forêt, gisement de pierre, rivière. Chaque fief a un terrain dominant et un mélange secondaire, générés par la graine. Acheter devient un choix stratégique, pas seulement « + de surface ».
+- **Construction :** uniquement sur ses propres fiefs. Les fiefs voisins sont visibles.
+- **En multi :** les fiefs des autres joueurs sont affichés à partir d'un **instantané visuel** (bâtiments, routes, champs) envoyé à chaque barrière. On voit la ville des voisins grandir avec un an de décalage, sans simuler leurs fiefs chez soi.
+
+### 5.2 Logistique par flux
+
+Principe : les marchandises circulent vraiment sur les routes, avec un temps de trajet, mais aucun villageois ne « réfléchit » à chaque instant.
+
+- **Le réseau de routes est un graphe.** Les itinéraires (bâtiment ↔ entrepôt, maison ↔ lieu de travail) sont calculés une fois, puis recalculés seulement quand une route est construite ou détruite.
+- **Une livraison est un trajet planifié** : départ, durée (selon la longueur de l'itinéraire), quantité, capacité du porteur ou de la charrette. La simulation sait où en est chaque livraison sans la faire avancer tuile par tuile.
+- **Ce que tu vois est ce qui est simulé.** L'affichage anime les porteurs le long des itinéraires à partir de ces trajets : de simples points en J2, de vrais porteurs et charrettes en J6.
+- **Trajet domicile-travail :** temps de marche calculé de la même façon, qui réduit le temps de travail effectif. Une maison éloignée de la ferme rend la ferme moins productive.
+- **Effets de gameplay :** l'emplacement des entrepôts et des routes compte vraiment ; un village étalé est moins efficace ; les goulots d'étranglement se voient.
+- **Commerce (V2) :** même principe à l'échelle du Monde, avec des convois entre fiefs (temps de trajet, capacité) et des accords commerciaux récurrents résolus à la barrière.
+- **Ce que ce modèle ne fait pas :** pas d'embouteillages ni de collisions entre porteurs, pas de vie individuelle (aller à la taverne, flâner).
+- **Outils de débogage prévus :** affichage des itinéraires, panneau des livraisons en cours. Sans eux, « pourquoi personne ne livre ? » devient impossible à diagnostiquer.
+
+### 5.3 Saisons et agriculture
+
+- **1 an = 3 min**, donc environ 45 s par saison.
+- **Le joueur ne gère pas les récoltes à la main.** Les fermes sèment, cultivent et récoltent seules selon la saison. Son rôle est stratégique : combien de champs, où, combien de stock pour l'hiver.
+- **Calendrier :** semailles au printemps, croissance en été, récolte en fin d'été et en automne, aucune production agricole en hiver. Le bois de chauffage est consommé en hiver ; un foyer sans bois perd du moral et voit sa mortalité augmenter.
+- **Lisibilité :** indicateurs permanents « réserves pour l'hiver : X jours » et « récolte prévue : Y ». Une alerte se déclenche dès l'été si la récolte prévue ne couvrira pas l'hiver : il reste alors une saison et demie pour réagir.
+- **Bilan d'automne :** la barrière annuelle tombe à la fin de l'automne. C'est une pause naturelle chaque année pour planifier la suivante. En solo, une pause automatique au bilan est activée par défaut (désactivable).
+- **Événements (V2) :** rares (environ un tous les 2 à 3 ans), annoncés une saison à l'avance quand c'est crédible (« un été sec s'annonce »). Les choix associés se font pendant le bilan d'automne : aucune décision ne se joue en temps réel, ce qui règle aussi le cas du multi, où il n'y a pas de pause.
+
+### 5.4 Fin de partie, prestige et titres
+
+- **Prestige :** score calculé à partir du domaine, de la population, de la richesse, de l'ancienneté de la lignée et des titres. Affiché en permanence et repris dans la chronique.
+- **Titres (solo et multi) :** débloqués par la taille du domaine, par exemple seigneur → baron → comte. Seuils dans la config.
+- **Durées de partie multi** (à 3 min par an) : 30 ans ≈ 1 h 30 ; 60 ans ≈ 3 h ; 100 ans ≈ 5 h, donc sur plusieurs soirées grâce à la sauvegarde de la salle.
+
+### 5.5 Placement
+
+- Routes obligatoires pour relier un bâtiment au manoir et à l'entrepôt. Ce réseau est le même graphe que celui de la logistique (5.2).
+- Tailles variables, par exemple : maison 1 × 1, ferme 2 × 2, manoir 3 × 3.
+- Champs peints par le joueur autour de la ferme. Le rendement dépend de la fertilité de chaque tuile.
+- Pas de rotation des bâtiments en V1.
+
+---
+
+## 6. Risques identifiés
+
+| # | Risque | Gravité | Parade |
+|---|---|---|---|
+| 1 | **Périmètre :** trois jeux en un (city-builder, dynastie, diplomatie et guerre). | Élevée | Tranche verticale stricte, un jalon à la fois, toute nouvelle idée passe d'abord par la ROADMAP. |
+| 2 | **Équilibrage économique :** spirales de mort, ou économie trop facile. | Élevée | Outil `simulate` (100 ans de jeu simulés sans affichage, courbes en CSV). Tous les chiffres dans la config. |
+| 3 | **Fin de partie creuse en solo.** | Élevée | Titres, prestige, pression sur l'espace, successions qui rebattent les cartes. |
+| 4 | **Dérive du code en vibe coding.** | Élevée | DESIGN.md et ROADMAP.md relus à chaque session, TypeScript strict, tests sur la simulation, petits modules. |
+| 5 | **Logistique opaque :** bugs du type « pourquoi personne ne livre ? ». | Moyenne | Outils de débogage (itinéraires, livraisons en cours) livrés en même temps que la logistique. |
+| 6 | **Désaccord entre fief et monde en multi** (un joueur dépense l'or qu'il a promis). | Moyenne | Séquestre dès la proposition, résolution dans un ordre déterministe, égalités départagées par la graine. |
+| 7 | **Transfert d'un fief entre deux joueurs.** | Moyenne | Message `FiefSnapshot` à la barrière ; format de fief autonome dès J1. |
+| 8 | **Organisation du multi synchrone.** | Moyenne | Durée de partie choisie, salle sauvegardée, délai d'attente maximal à la barrière. |
+| 9 | **Sauvegardes cassées** à chaque évolution du format. | Moyenne | Numéro de version et migrations dès J1. |
+| 10 | **Triche** (chaque joueur simule son fief). | Faible (entre amis) | Assumé. Le serveur vérifie seulement la cohérence des transactions. |
+| 11 | **Phaser 4 récent :** erreurs d'API possibles. | Faible | Vérification dans la documentation de Phaser 4 ; rendu isolé dans `client/src/render`. |
+| — | ~~Changement tardif de perspective~~ | Résolu | Vue 3/4 actée (Q7). |
+| — | ~~Dynastie peu ressentie~~ | Atténué | 3 min par an (Q1). |
+
+---
+
+## 7. Architecture : couches Fief et Monde
+
+### 7.1 Schéma
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ RENDU · Phaser 4                                [navigateur] │
+│ scènes, interface, souris et clavier                         │
+└──────────────────────────────────────────────────────────────┘
+        │ commandes                     ▲ lecture seule de l'état
+        │ (construire, démolir…)        │
+        ▼                               │
+┌──────────────────────────────────────────────────────────────┐
+│ COUCHE FIEF · TypeScript pur                    [navigateur] │
+│ bâtiments, routes, livraisons, ressources, population,       │
+│ saisons, famille seigneuriale                                │
+└──────────────────────────────────────────────────────────────┘
+        │ ProposeAction, FiefSummary    ▲ WorldEvent,
+        │ Ready, FiefSnapshot           │ YearResolved
+        ▼                               │
+┌──────────────────────────────────────────────────────────────┐
+│ PASSERELLE MONDE                                [navigateur] │
+│ solo  : LocalWorld  → appel direct                           │
+│ multi : RemoteWorld → WebSocket                              │
+└──────────────────────────────────────────────────────────────┘
+        │                               ▲
+        ▼                               │
+┌──────────────────────────────────────────────────────────────┐
+│ COUCHE MONDE · TypeScript pur, même code partout             │
+│ propriété des fiefs, frontières, relations,                  │
+│ transactions, séquestre, IA voisines, barrière annuelle      │
+│                                                              │
+│ solo  : exécutée dans le navigateur                          │
+│ multi : Durable Object « salle de partie » (Cloudflare)      │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### 7.2 Ce qui transite entre les couches
+
+| Message | Sens | Quand | Contenu |
+|---|---|---|---|
+| `ProposeAction` | Fief → Monde | Pendant l'année | Offre d'achat (fief visé, prix proposé). Plus tard : mariage, guerre, accord commercial. L'or engagé passe sous séquestre. |
+| `FiefSummary` | Fief → Monde | À la barrière | Chiffres publics : population, richesse visible, nombre de fiefs, état de la lignée, prestige. Jamais l'état complet. |
+| `NeighborView` | Fief → Monde → autres joueurs | À la barrière (multi) | Instantané visuel public : bâtiments, routes, champs. Sert uniquement à l'affichage. |
+| `Ready` | Fief → Monde | À la barrière | Le joueur a terminé son année. |
+| `FiefSnapshot` | Fief → Monde → Fief | À la barrière, si un fief change de propriétaire | État détaillé du fief cédé : tuiles, bâtiments, habitants. |
+| `WorldEvent` | Monde → Fief | À la barrière | Résultats : offre acceptée ou refusée, fief gagné ou perdu, paiement reçu, séquestre libéré, décès d'un seigneur voisin, joueur éliminé. |
+| `YearResolved` | Monde → Fief | Fin de la barrière | L'année suivante peut commencer. |
+
+### 7.3 Déroulé de la barrière annuelle
+
+1. **Fin de l'automne :** chaque fief se met en pause (bilan d'automne).
+2. Chaque client envoie `FiefSummary` + `Ready`, plus `NeighborView` en multi et un `FiefSnapshot` si nécessaire.
+3. Quand tous les joueurs sont prêts, ou après un délai maximal (par exemple 60 s pour un joueur absent), le Monde résout tout dans un ordre fixe : transactions, puis IA voisines, puis éliminations.
+4. Le Monde envoie les `WorldEvent` et le `YearResolved`. Chaque fief les applique, et l'hiver commence.
+
+En solo, c'est exactement le même code, exécuté instantanément dans le navigateur.
+
+### 7.4 Règles d'or
+
+- La couche Fief ne lit jamais directement l'état du Monde, et le Monde ne lit jamais l'état complet d'un fief : uniquement des messages.
+- Le rendu Phaser lit l'état mais ne le modifie jamais : il envoie des commandes.
+- Aucun `Math.random()` dans la simulation : uniquement le générateur à graine.
+- Aucune fonction mathématique dont la précision varie selon le navigateur (`Math.sin`, `Math.log`, `Math.exp`, `Math.pow`…) dans la simulation : additions, multiplications, `Math.floor`, `Math.imul` et `Math.sqrt` seulement. Sinon deux joueurs pourraient obtenir des résultats différents.
+- Aucun import de Phaser dans `sim-fief`, `sim-monde` ou `server`.
+
+---
+
+## 8. Arborescence du projet
+
+Un seul dépôt, découpé en plusieurs « paquets ». `sim-monde` est importé à la fois par le client et par le serveur : aucune logique n'est dupliquée.
+
+```
+jeu-medieval/
+├─ DESIGN.md                  ← ce document
+├─ ROADMAP.md                 ← fait / en cours / à faire
+├─ README.md                  ← installer, lancer, tester, publier
+├─ package.json               ← paquets (npm workspaces) et commandes
+├─ tsconfig.base.json         ← réglages TypeScript stricts communs
+├─ vitest.config.ts           ← tests automatiques
+│
+├─ packages/
+│  ├─ data/                   ← équilibrage, modifiable sans toucher au code
+│  │  ├─ world.json           ← taille et grille des fiefs, conditions de départ
+│  │  ├─ terrains.json        ← terrains dominants, part de forêt et de roche, fertilité
+│  │  ├─ buildings.json       ← bâtiments : taille, coût, exigences de terrain
+│  │  ├─ economy.json         ← ressources de départ, coût des routes, remboursement
+│  │  ├─ seasons.json         ← durée d'une année, saisons
+│  │  └─ names.json           ← noms des fiefs
+│  │     (à venir : demography.json, logistics.json, titles.json)
+│  │
+│  ├─ shared/                 ← outils communs aux deux couches
+│  │  └─ src/
+│  │     ├─ rng.ts            ← générateur aléatoire à graine
+│  │     ├─ noise.ts          ← bruit déterministe (forêts, roches, fertilité)
+│  │     ├─ terrain.ts        ← génération du terrain d'un fief
+│  │     ├─ messages.ts       ← messages Fief ↔ Monde (section 7.2)
+│  │     ├─ types.ts          ← ressources, terrains, identifiants
+│  │     └─ index.ts          ← + numéro de version des sauvegardes
+│  │
+│  ├─ sim-fief/               ← couche Fief, TypeScript pur (aucun Phaser)
+│  │  ├─ src/
+│  │  │  ├─ state.ts          ← état complet du domaine (JSON)
+│  │  │  ├─ commands.ts       ← construire, tracer une route, peindre un champ, démolir
+│  │  │  ├─ domain.ts         ← DomainSim : règles de placement, temps, barrière
+│  │  │  ├─ data.ts           ← lecture typée des fichiers de data/
+│  │  │  └─ systems/
+│  │  │     ├─ seasons.ts     ← calendrier (ticks → année, saison, jour)
+│  │  │     └─ roads.ts       ← réseau de routes relié au manoir
+│  │  │        (à venir : logistics, production, agriculture, food, population, dynasty)
+│  │  └─ test/                ← tests automatiques
+│  │
+│  ├─ sim-monde/              ← couche Monde, partagée client/serveur
+│  │  ├─ src/
+│  │  │  ├─ state.ts          ← fiefs, seigneurs, année
+│  │  │  ├─ worldgen.ts       ← création du monde à partir d'une graine
+│  │  │  ├─ barrier.ts        ← barrière annuelle
+│  │  │  └─ ai/neighbors.ts   ← voisins IA (passifs en V1)
+│  │  └─ test/
+│  │
+│  ├─ client/                 ← le jeu affiché : Phaser 4 + Vite
+│  │  ├─ index.html
+│  │  ├─ src/
+│  │  │  ├─ main.ts           ← démarrage
+│  │  │  ├─ game/             ← Session (partie + temps réel), Game (outil actif, sélection)
+│  │  │  ├─ scenes/           ← MapScene : dessin de la carte
+│  │  │  ├─ camera/           ← zoom à trois niveaux, souris et clavier
+│  │  │  ├─ render/           ← couleurs et sol (aucune règle de jeu)
+│  │  │  ├─ ui/               ← interface : bandeau, outils, panneau, fenêtres
+│  │  │  ├─ world-gateway/    ← LocalWorld (solo) ; RemoteWorld en J5
+│  │  │  └─ save/             ← format de sauvegarde, migrations, emplacements
+│  │  └─ test/                ← sauvegarde et déterminisme
+│  │
+│  └─ server/                 ← à partir de J5 : Cloudflare Worker + Durable Object
+│
+└─ tools/
+   ├─ artifact.mjs            ← prépare la version publiable du jeu
+   └─ (à venir : simulate.ts, N années sans affichage → CSV)
+```
+
+**Outils :** Vitest (tests), tsx (scripts TypeScript), Vite + vite-plugin-singlefile (jeu en un seul fichier HTML). Wrangler (déploiement Cloudflare) à partir de J5.
+
+---
+
+## 9. Questions reportées
+
+- **Avant J3 (dynastie) :**
+  - Ordre de succession : primogéniture masculine (historique), primogéniture absolue, ou choix du joueur parmi les éligibles, avec des conséquences ?
+  - Régence quand l'héritier est mineur ?
+  - Conjoint imposé, ou choisi parmi plusieurs candidats ?
+  - Génération des prénoms (médiévaux français ? flamands ?).
+- **Avant J4 (achat de fief) :**
+  - Calcul du prix d'un fief (surface, terrain, population).
+  - Conditions d'acceptation de l'IA vendeuse.
+  - Un fief acheté est-il vide ou livré avec son village ?
+  - Les fiefs IA sont-ils simulés en détail, ou seulement résumés ?
+- **Avant J6 (graphismes) :**
+  - Taille des tuiles (32 px ? 48 px ?) et style graphique.
+- **Général :**
+  - Titre du jeu.
+  - Univers : historique réaliste (quelle époque, quelle région ?) ou monde fictif d'inspiration médiévale ?
+  - Langue de l'interface.
+
+---
+
+## 10. Glossaire
+
+- **Domaine :** l'ensemble des fiefs possédés par une lignée.
+- **Fief :** une parcelle de la carte ; unité d'achat, d'héritage et de conquête.
+- **Lignée (ou dynastie) :** tous les descendants du fondateur.
+- **Commande :** instruction envoyée par l'interface à la simulation (par exemple « construire une ferme ici »).
+- **Barrière annuelle :** le rendez-vous de fin d'automne où la couche Monde résout toutes les actions diplomatiques en même temps.
+- **Bilan d'automne :** la pause annuelle côté joueur, qui coïncide avec la barrière.
+- **Livraison :** trajet planifié d'une quantité de marchandise sur un itinéraire du réseau de routes.
+- **Séquestre :** ressources bloquées tant qu'une proposition n'est pas résolue.
+- **Prestige :** score de réussite d'une lignée, en solo comme en multi.
+
+---
+
+## 11. Journal des décisions
+
+| Date | Décision | Raison |
+|---|---|---|
+| 12/11/2026 | Brief initial validé : vision, piliers, conditions de défaite, architecture en deux couches, périmètre V1, feuille de route. | Brief fondateur. |
+| 12/11/2026 | Seuil de défaite : 5 habitants, sur le domaine entier. | Choix du brief ; précision « domaine entier » ajoutée. |
+| 12/11/2026 | Q1 : 1 an = 3 min (au lieu de 5). | 5 min par an donnait 2 h à 3 h 20 par génération. |
+| 12/11/2026 | Q2 : carte continue + zoom à trois niveaux + vue Monde + terrains dominants. | Choix « mix A + B » ; interprétation à valider. |
+| 12/11/2026 | Q3 : solo bac à sable + titres ; multi durée fixe + prestige + salle sauvegardable ; joueur éliminé → terre libre (branche cadette en option). | Recommandations validées. |
+| 12/11/2026 | Q4 : plafond 8 joueurs, équilibrage pour 2 à 4. | Recommandation validée ; corrige l'incohérence 4/8 de la feuille de route. |
+| 12/11/2026 | Q5 : individus « fiches » + logistique par flux. | Souhait de se rapprocher de l'option A ; entre-deux à valider. |
+| 12/11/2026 | Q6 : routes obligatoires, tailles variables, champs peints, pas de rotation. | Recommandation validée. |
+| 12/11/2026 | Q7 : vue de dessus 3/4. | Recommandation validée. |
+| 12/11/2026 | Q8 : saisons option C (calendrier agricole en J2, événements en V2), avec bilan d'automne et récoltes automatiques. | Saisons de 45 s gérables si le joueur planifie au lieu de micro-gérer. |
+| 12/11/2026 | Q2 et Q5 validés : carte continue à trois niveaux de zoom ; logistique par flux. | Confirmation du joueur. |
+| 12/11/2026 | J1 livré : carte, placement, saisons, barrière annuelle (vide), sauvegarde. Règles complémentaires en section 4. | Premier jalon jouable. |

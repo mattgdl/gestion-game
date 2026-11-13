@@ -1,0 +1,21 @@
+{
+  "name": "jeu-medieval",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @jeu/client",
+    "build": "npm run build -w @jeu/client",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build:artifact": "npm run build && node tools/artifact.mjs"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.15",
+    "typescript": "^5.6.0",
+    "vitest": "^3.2.0"
+  }
+}

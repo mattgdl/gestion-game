@@ -1,0 +1,12 @@
+{
+  "_doc": "Carte du monde. Une grille de fiefs carrés de fiefSize × fiefSize tuiles. V1 : le fief du joueur au centre et deux voisins IA.",
+  "fiefSize": 48,
+  "cols": 3,
+  "rows": 1,
+  "playerFief": { "col": 1, "row": 0 },
+  "playerDominant": "plaines",
+  "aiDominants": ["foret", "pierre", "riviere"],
+  "startClearRadius": 6,
+  "startMinForestTiles": 160,
+  "startMinRockTiles": 24
+}
