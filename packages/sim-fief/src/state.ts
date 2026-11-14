@@ -1,11 +1,19 @@
 /**
  * État de la couche Fief : le domaine d'un joueur (ses fiefs, bâtiments, routes,
- * champs, ressources, horloge). Entièrement sérialisable en JSON.
+ * champs, réserves, livraisons, horloge). Entièrement sérialisable en JSON.
  *
- * Coordonnées : toujours GLOBALES (x, y en tuiles sur toute la carte).
- * Une tuile est repérée dans les listes par sa clé : y × largeur du monde + x.
+ * Coordonnées : toujours GLOBALES (x, y en cases sur toute la carte).
+ * Une case est repérée dans les listes par sa clé : y × largeur du monde + x.
+ *
+ * Format v2 (J2a) : les marchandises n'existent plus en « total » abstrait.
+ * Elles sont dans des bâtiments (réserves, ou production en attente) ou sur le dos
+ * d'un porteur. Seul l'or reste un total : le trésor.
  */
-import type { Resources } from "@jeu/shared";
+
+/** Marchandises physiques, qui se transportent et se stockent. L'or n'en fait pas partie. */
+export type GoodId = "nourriture" | "bois" | "pierre";
+export const GOOD_IDS: readonly GoodId[] = ["nourriture", "bois", "pierre"];
+export type Goods = Partial<Record<GoodId, number>>;
 
 export interface FiefTiles {
   id: string;
@@ -15,7 +23,7 @@ export interface FiefTiles {
   originX: number;
   originY: number;
   size: number;
-  /** Terrain de chaque tuile (index = y local × taille + x local). */
+  /** Terrain de chaque case (index = y local × taille + x local). */
   terrain: number[];
   /** Fertilité de 0 à 100. */
   fertility: number[];
@@ -28,6 +36,48 @@ export interface Building {
   x: number;
   y: number;
   fiefId: string;
+  /** Marchandises présentes : contenu (réserves) ou production en attente de transport (producteurs). */
+  stock: Goods;
+  /** Avancement de la production, en millièmes (entier, pour rester déterministe). */
+  progress: number;
+  /** Dernier tick où le bâtiment a produit ou moissonné. */
+  lastWork: number;
+}
+
+/**
+ * Une livraison = un porteur en voyage. Le trajet est planifié au départ :
+ * on connaît l'itinéraire et les heures d'arrivée et de retour. La simulation ne fait
+ * pas avancer le porteur case par case ; l'affichage le place sur l'itinéraire.
+ */
+export interface Delivery {
+  id: number;
+  fromId: number;
+  toId: number;
+  good: GoodId;
+  amount: number;
+  /** Cases de route parcourues, de la source vers la destination. */
+  path: number[];
+  departTick: number;
+  arriveTick: number;
+  returnTick: number;
+  /**
+   * aller : chargé, vers la destination.
+   * retour : à vide, vers la source.
+   * rapporte : destination disparue, il rapporte la marchandise à la source.
+   */
+  status: "aller" | "retour" | "rapporte";
+}
+
+/** État d'un champ pour l'année en cours (absent = pas semé). */
+export type CropState = "seme" | "recolte";
+
+export interface YearStats {
+  year: number;
+  /** Nourriture moissonnée depuis le printemps. */
+  harvested: number;
+  fieldsHarvested: number;
+  /** Production des ateliers depuis le printemps. */
+  produced: Goods;
 }
 
 export interface LogEntry {
@@ -42,13 +92,18 @@ export interface DomainState {
   fiefSize: number;
   tick: number;
   rngState: number;
-  resources: Resources;
+  /** Or du domaine (pas de limite de stockage). */
+  treasury: number;
   fiefs: Record<string, FiefTiles>;
   buildings: Building[];
-  /** Clés des tuiles de route. */
+  /** Clés des cases de route. */
   roads: number[];
-  /** Clés des tuiles de champ. */
+  /** Clés des cases de champ. */
   fields: number[];
+  /** État des cultures de l'année, par clé de champ (en texte, car les clés JSON sont des textes). */
+  crops: Record<string, CropState>;
+  deliveries: Delivery[];
+  yearStats: YearStats;
   nextId: number;
   /** Journal des derniers événements (les plus récents à la fin). */
   log: LogEntry[];
@@ -56,4 +111,8 @@ export interface DomainState {
   awaitingBarrier: boolean;
   /** Tick auquel la dernière barrière a été résolue (-1 au départ). */
   lastBarrierTick: number;
+}
+
+export function emptyYearStats(year: number): YearStats {
+  return { year, harvested: 0, fieldsHarvested: 0, produced: {} };
 }

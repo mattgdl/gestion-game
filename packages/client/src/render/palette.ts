@@ -52,8 +52,32 @@ export function terrainColor(terrain: number, fertility: number, season: number)
   }
 }
 
-/** Champs : sol nu au printemps, blé vert puis doré, chaume en hiver. */
-export const FIELD_COLORS: Rgb[] = [hex("#8f7a4e"), hex("#b9b04a"), hex("#d6ad45"), hex("#8c7f6c")];
+/** Couleurs des marchandises (porteurs, caisses en attente, itinéraires). */
+export const GOOD_COLORS: Record<"nourriture" | "bois" | "pierre", string> = {
+  nourriture: "#e2bd45",
+  bois: "#9a6234",
+  pierre: "#b9bec4",
+};
+
+const SOIL_TILLED = hex("#7a5f3c");
+const FALLOW = hex("#a3955f");
+const WHEAT_GREEN = hex("#7ea648");
+const WHEAT_GOLD = hex("#d8ad42");
+const STUBBLE = hex("#bba26a");
+const WINTER_SOIL = hex("#c9c2b4");
+
+/**
+ * Couleur d'un champ selon la culture et la saison :
+ * labour au printemps, blé vert qui dore pendant l'été, or à l'automne, chaume après la moisson.
+ * Un champ non semé reste en friche.
+ */
+export function fieldColor(crop: "seme" | "recolte" | undefined, season: number, progress: number, worked: boolean): Rgb {
+  if (season === 3) return WINTER_SOIL;
+  if (crop === "recolte") return STUBBLE;
+  if (crop === "seme") return season === 1 ? mix(WHEAT_GREEN, WHEAT_GOLD, progress * 0.7) : WHEAT_GOLD;
+  if (season === 0 && worked) return mix(SOIL_TILLED, WHEAT_GREEN, progress * 0.35);
+  return FALLOW;
+}
 export const ROAD_COLORS: Rgb[] = [hex("#b39a6e"), hex("#b39a6e"), hex("#a98f63"), hex("#cbc2b4")];
 
 /** Émaux héraldiques : azur (joueur), gueules, sinople, or, pourpre, sable. */

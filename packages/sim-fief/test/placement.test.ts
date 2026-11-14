@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Terrain, hashString } from "@jeu/shared";
 import { DomainSim } from "../src";
-import { newGame, startCenter } from "./helpers";
+import { manorOf, newGame, startCenter } from "./helpers";
 
 describe("début de partie", () => {
   it("place le manoir au centre du fief, relié, avec ses routes de départ", () => {
@@ -11,7 +11,8 @@ describe("début de partie", () => {
     expect(sim.isConnected(manor!.id)).toBe(true);
     expect(sim.state.roads).toHaveLength(5);
     expect(sim.connectedRoads().size).toBe(5);
-    expect(sim.state.resources).toEqual({ nourriture: 100, bois: 150, pierre: 60, or: 200 });
+    expect(sim.totals()).toEqual({ nourriture: 100, bois: 150, pierre: 60, or: 200 });
+    expect(manorOf(sim).stock).toEqual({ nourriture: 100, bois: 150, pierre: 60 });
   });
 });
 
@@ -21,7 +22,7 @@ describe("construction", () => {
     const { cx, cy } = startCenter(sim);
     const r = sim.apply({ type: "build", building: "maison", x: cx + 1, y: cy + 3 });
     expect(r.ok).toBe(true);
-    expect(sim.state.resources.bois).toBe(150 - 8);
+    expect(sim.totals().bois).toBe(150 - 8);
     const house = sim.buildingAt(cx + 1, cy + 3)!;
     expect(sim.isConnected(house.id)).toBe(true);
   });
@@ -57,17 +58,18 @@ describe("construction", () => {
   it("refuse si les ressources manquent, sans rien dépenser", () => {
     const { sim } = newGame();
     const { cx, cy } = startCenter(sim);
-    sim.state.resources.pierre = 10;
+    manorOf(sim).stock.pierre = 10;
     const r = sim.apply({ type: "build", building: "eglise", x: cx + 2, y: cy - 5 });
     expect(r).toMatchObject({ ok: false, reason: "Pas assez de pierre (il en faut 60)." });
-    expect(sim.state.resources.pierre).toBe(10);
+    expect(sim.totals().pierre).toBe(10);
   });
 
   it("n'autorise qu'une seule église", () => {
     const { sim } = newGame();
     const { cx, cy } = startCenter(sim);
     expect(sim.apply({ type: "build", building: "eglise", x: cx + 2, y: cy - 5 }).ok).toBe(true);
-    sim.state.resources = { nourriture: 999, bois: 999, pierre: 999, or: 999 };
+    manorOf(sim).stock = { nourriture: 300, bois: 300, pierre: 300 };
+    sim.state.treasury = 999;
     expect(sim.apply({ type: "build", building: "eglise", x: cx - 5, y: cy - 5 })).toMatchObject({ ok: false });
   });
 
@@ -114,7 +116,7 @@ describe("routes", () => {
     const y = fief.originY + Math.floor(i / fief.size);
     expect(sim.apply({ type: "road", x, y }).ok).toBe(true);
     expect(sim.terrainAt(x, y)).toBe(Terrain.Herbe);
-    expect(sim.state.resources.or).toBe(199);
+    expect(sim.totals().or).toBe(199);
   });
 
   it("refuse l'eau et la roche", () => {
@@ -153,9 +155,9 @@ describe("champs et démolition", () => {
     sim.apply({ type: "build", building: "ferme", x: cx + 1, y: cy + 2 });
     sim.apply({ type: "field", x: cx + 3, y: cy + 3 });
     sim.apply({ type: "field", x: cx + 4, y: cy + 3 });
-    const woodBefore = sim.state.resources.bois;
+    const woodBefore = sim.totals().bois;
     expect(sim.apply({ type: "demolish", x: cx + 1, y: cy + 2 }).ok).toBe(true);
-    expect(sim.state.resources.bois).toBe(woodBefore + 10);
+    expect(sim.totals().bois).toBe(woodBefore + 10);
     expect(sim.state.fields).toHaveLength(0);
   });
 

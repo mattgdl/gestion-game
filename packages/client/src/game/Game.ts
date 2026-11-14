@@ -21,6 +21,7 @@ export interface Toast {
 }
 
 type Listener = () => void;
+type GameEvent = "session" | "tool" | "selection" | "toast" | "view" | "routes";
 
 export class Game {
   session: Session;
@@ -28,6 +29,8 @@ export class Game {
   hover: { x: number; y: number } | null = null;
   selectedBuildingId: number | null = null;
   viewLevel: ViewLevel = "proche";
+  /** Affiche les itinéraires de tous les porteurs en route (touche L). */
+  showRoutes = false;
   toasts: Toast[] = [];
   private nextToast = 1;
   private listeners = new Map<string, Set<Listener>>();
@@ -36,12 +39,12 @@ export class Game {
     this.session = session;
   }
 
-  on(event: "session" | "tool" | "selection" | "toast" | "view", fn: Listener): void {
+  on(event: GameEvent, fn: Listener): void {
     if (!this.listeners.has(event)) this.listeners.set(event, new Set());
     this.listeners.get(event)!.add(fn);
   }
 
-  emit(event: "session" | "tool" | "selection" | "toast" | "view"): void {
+  emit(event: GameEvent): void {
     this.listeners.get(event)?.forEach((fn) => fn());
   }
 
@@ -57,6 +60,11 @@ export class Game {
   setTool(tool: Tool): void {
     this.tool = tool;
     this.emit("tool");
+  }
+
+  toggleRoutes(): void {
+    this.showRoutes = !this.showRoutes;
+    this.emit("routes");
   }
 
   setViewLevel(level: ViewLevel): void {

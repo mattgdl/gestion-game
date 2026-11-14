@@ -20,12 +20,14 @@ import {
   type Cost,
   type FiefSummary,
   type ResourceId,
+  type Resources,
   type TerrainId,
   type WorldDims,
 } from "@jeu/shared";
 import type { CheckResult, Command } from "./commands";
 import { BUILDINGS, ECONOMY, type BuildingDef } from "./data";
-import type { Building, DomainState, FiefTiles } from "./state";
+import { GOOD_IDS, emptyYearStats, type Building, type DomainState, type FiefTiles, type Goods } from "./state";
+import { Economy, goodsTotal } from "./systems/economy";
 import { connectedRoads } from "./systems/roads";
 import { BARRIER_OFFSET, TICKS_PER_SEASON, TICKS_PER_YEAR, dateOf, type GameDate } from "./systems/seasons";
 
@@ -49,6 +51,9 @@ export class DomainSim {
   readonly state: DomainState;
   /** Augmente à chaque changement de la carte (pour que l'affichage sache quoi redessiner). */
   mapVersion = 0;
+  /** Augmente à chaque changement de l'état des cultures (semailles, moisson). */
+  cropVersion = 0;
+  readonly economy: Economy;
 
   private occupancy = new Map<number, Occupant>();
   private buildingsById = new Map<number, Building>();
@@ -58,6 +63,7 @@ export class DomainSim {
 
   private constructor(state: DomainState) {
     this.state = state;
+    this.economy = new Economy(this);
     this.rebuildIndex();
   }
 
@@ -86,11 +92,14 @@ export class DomainSim {
       fiefSize: dims.fiefSize,
       tick: 0,
       rngState: deriveSeed(dims.seed, `domaine-${init.ownerId}`),
-      resources: { ...ECONOMY.ressourcesDepart },
+      treasury: ECONOMY.ressourcesDepart.or,
       fiefs,
       buildings: [],
       roads: [],
       fields: [],
+      crops: {},
+      deliveries: [],
+      yearStats: emptyYearStats(1),
       nextId: 1,
       log: [],
       awaitingBarrier: false,
@@ -99,6 +108,8 @@ export class DomainSim {
     const sim = new DomainSim(state);
     sim.placeStartingManor(dims);
     sim.addLog("Votre lignée s'installe sur ses terres. Printemps de l'an 1.");
+    sim.addLog("Conseil : un bûcheron près de la forêt, relié au manoir par une route, fournira du bois.");
+    sim.addLog("Conseil : les champs se sèment au printemps et se moissonnent à l'automne.");
     return sim;
   }
 
@@ -120,7 +131,9 @@ export class DomainSim {
     const center = Math.floor(target.size / 2);
     const cx = target.originX + center;
     const cy = target.originY + center;
-    const manor: Building = { id: this.state.nextId++, type: "manoir", x: cx - 1, y: cy - 1, fiefId: target.id };
+    const goods = ECONOMY.ressourcesDepart;
+    const manor = this.newBuilding("manoir", cx - 1, cy - 1, target.id);
+    manor.stock = { nourriture: goods.nourriture, bois: goods.bois, pierre: goods.pierre };
     this.state.buildings.push(manor);
     for (let i = 0; i < ECONOMY.routesDepart; i++) {
       this.state.roads.push(this.key(cx, cy + 2 + i));
@@ -210,6 +223,44 @@ export class DomainSim {
     return out;
   }
 
+  /** Cases de route (lecture seule). */
+  roadTiles(): ReadonlySet<number> {
+    return this.roadSet;
+  }
+
+  /** Cases qui touchent un côté du bâtiment (sans les coins), dans les limites de la carte. */
+  perimeter(b: Building): number[] {
+    const def = BUILDINGS[b.type];
+    if (!def) return [];
+    const [w, h] = def.taille;
+    const out: number[] = [];
+    const W = this.state.worldWidth;
+    const H = this.state.worldHeight;
+    for (let dx = 0; dx < w; dx++) {
+      if (b.y > 0) out.push(this.key(b.x + dx, b.y - 1));
+      if (b.y + h < H) out.push(this.key(b.x + dx, b.y + h));
+    }
+    for (let dy = 0; dy < h; dy++) {
+      if (b.x > 0) out.push(this.key(b.x - 1, b.y + dy));
+      if (b.x + w < W) out.push(this.key(b.x + w, b.y + dy));
+    }
+    return out;
+  }
+
+  /** Distance (en cases, déplacement en diagonale compris) entre une case et l'emprise d'un bâtiment. */
+  distanceToBuilding(b: Building, x: number, y: number): number {
+    const def = BUILDINGS[b.type];
+    const [w, h] = def ? def.taille : [1, 1];
+    const dx = x < b.x ? b.x - x : x >= b.x + w ? x - (b.x + w - 1) : 0;
+    const dy = y < b.y ? b.y - y : y >= b.y + h ? y - (b.y + h - 1) : 0;
+    return Math.max(dx, dy);
+  }
+
+  /** Ressources disponibles pour construire : réserves + trésor. */
+  totals(): Resources {
+    return this.economy.totals();
+  }
+
   /** Routes reliées au manoir. */
   connectedRoads(): Set<number> {
     if (!this.connectedRoadCache) {
@@ -229,17 +280,7 @@ export class DomainSim {
     if (!b) return false;
     if (b.type === "manoir") return true;
     const roads = this.connectedRoads();
-    const def = BUILDINGS[b.type];
-    if (!def) return false;
-    const [w, h] = def.taille;
-    for (let dx = 0; dx < w; dx++) {
-      if (roads.has(this.key(b.x + dx, b.y - 1)) || roads.has(this.key(b.x + dx, b.y + h))) return true;
-    }
-    for (let dy = 0; dy < h; dy++) {
-      if (b.x > 0 && roads.has(this.key(b.x - 1, b.y + dy))) return true;
-      if (b.x + w < this.state.worldWidth && roads.has(this.key(b.x + w, b.y + dy))) return true;
-    }
-    return false;
+    return this.perimeter(b).some((k) => roads.has(k));
   }
 
   summary(): FiefSummary {
@@ -247,7 +288,7 @@ export class DomainSim {
       ownerId: this.state.ownerId,
       fiefIds: Object.keys(this.state.fiefs).sort(),
       population: 0,
-      gold: this.state.resources.or,
+      gold: this.state.treasury,
       prestige: 0,
       lineageAlive: true,
     };
@@ -275,8 +316,7 @@ export class DomainSim {
     switch (cmd.type) {
       case "build": {
         const fief = this.fiefAt(cmd.x, cmd.y) as FiefTiles;
-        const b: Building = { id: this.state.nextId++, type: cmd.building, x: cmd.x, y: cmd.y, fiefId: fief.id };
-        this.state.buildings.push(b);
+        this.state.buildings.push(this.newBuilding(cmd.building, cmd.x, cmd.y, fief.id));
         break;
       }
       case "road": {
@@ -290,7 +330,7 @@ export class DomainSim {
         break;
       case "demolish":
         this.demolishAt(cmd.x, cmd.y, result.refund ?? {});
-        break;
+        return result;
     }
     this.rebuildIndex();
     return result;
@@ -371,16 +411,33 @@ export class DomainSim {
     const occ = this.occupantAt(x, y);
     if (!occ) return;
     const k = this.key(x, y);
+    const lost: Goods = {};
+    const addLost = (goods: Goods) => {
+      for (const g of GOOD_IDS) if (goods[g]) lost[g] = (lost[g] ?? 0) + (goods[g] ?? 0);
+    };
     if (occ.kind === "road") {
       this.state.roads = this.state.roads.filter((r) => r !== k);
     } else if (occ.kind === "field") {
       this.state.fields = this.state.fields.filter((f) => f !== k);
+      delete this.state.crops[String(k)];
     } else {
       const b = this.buildingsById.get(occ.id);
+      if (b && this.economy.isStorage(b)) {
+        // Le contenu d'une réserve démolie est déménagé dans les autres réserves, si elles ont de la place.
+        addLost(this.economy.deposit(b.stock, b.id));
+      }
       this.state.buildings = this.state.buildings.filter((other) => other.id !== occ.id);
       if (b?.type === "ferme") this.removeOrphanFields();
     }
-    for (const id of RESOURCE_IDS) this.state.resources[id] += refund[id] ?? 0;
+    this.rebuildIndex();
+    this.state.treasury += refund.or ?? 0;
+    const physical: Goods = {};
+    for (const g of GOOD_IDS) if (refund[g]) physical[g] = refund[g];
+    addLost(this.economy.deposit(physical));
+    if (goodsTotal(lost) > 0) {
+      const parts = GOOD_IDS.filter((g) => lost[g]).map((g) => `${lost[g]} ${RESOURCE_NAMES[g].toLowerCase()}`);
+      this.addLog(`Faute de place dans les réserves, perdu : ${parts.join(", ")}.`);
+    }
   }
 
   /** Les champs qui ne sont plus près d'aucune ferme sont abandonnés. */
@@ -389,21 +446,19 @@ export class DomainSim {
     const before = this.state.fields.length;
     this.state.fields = this.state.fields.filter((k) => {
       const [fx, fy] = this.xy(k);
-      return this.nearFarm(fx, fy);
+      const keep = this.nearFarm(fx, fy);
+      if (!keep) delete this.state.crops[String(k)];
+      return keep;
     });
     const lost = before - this.state.fields.length;
     if (lost > 0) this.addLog(`${lost} champ${lost > 1 ? "s" : ""} sans ferme abandonné${lost > 1 ? "s" : ""}.`);
   }
 
   private nearFarm(x: number, y: number): boolean {
-    const radius = BUILDINGS.ferme?.rayonChamps ?? 4;
     for (const b of this.state.buildings) {
-      if (b.type !== "ferme") continue;
       const def = BUILDINGS[b.type] as BuildingDef;
-      const [w, h] = def.taille;
-      const dx = x < b.x ? b.x - x : x >= b.x + w ? x - (b.x + w - 1) : 0;
-      const dy = y < b.y ? b.y - y : y >= b.y + h ? y - (b.y + h - 1) : 0;
-      if (Math.max(dx, dy) <= radius) return true;
+      if (!def.agriculture) continue;
+      if (this.distanceToBuilding(b, x, y) <= (def.rayonChamps ?? 4)) return true;
     }
     return false;
   }
@@ -418,9 +473,10 @@ export class DomainSim {
   }
 
   private withCost(cost: Cost): CheckResult {
+    const have = this.totals();
     for (const id of RESOURCE_IDS) {
       const need = cost[id] ?? 0;
-      if (need > this.state.resources[id]) {
+      if (need > have[id]) {
         return { ok: false, reason: `Pas assez de ${RESOURCE_NAMES[id].toLowerCase()} (il en faut ${need}).`, cost };
       }
     }
@@ -437,7 +493,11 @@ export class DomainSim {
   }
 
   private pay(cost: Cost): void {
-    for (const id of RESOURCE_IDS) this.state.resources[id] -= cost[id] ?? 0;
+    this.economy.withdraw(cost);
+  }
+
+  private newBuilding(type: string, x: number, y: number, fiefId: string): Building {
+    return { id: this.state.nextId++, type, x, y, fiefId, stock: {}, progress: 0, lastWork: this.state.tick };
   }
 
   private setTerrain(x: number, y: number, terrain: TerrainId): void {
@@ -470,7 +530,8 @@ export class DomainSim {
       events.push({ type: "seasonChanged", date });
       if (date.seasonIndex !== 0) this.addLog(`${date.seasonName} de l'an ${date.year}.`);
     }
-    // Systèmes à venir : production (J2a), population (J2b), dynastie (J3).
+    this.economy.step();
+    // Systèmes à venir : population (J2b), dynastie (J3).
     return events;
   }
 

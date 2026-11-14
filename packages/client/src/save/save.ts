@@ -20,8 +20,32 @@ export interface SaveGame {
 /** Migrations : MIGRATIONS[n] transforme une sauvegarde de version n en version n + 1. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const MIGRATIONS: Record<number, (save: any) => any> = {
-  // Exemple pour plus tard :
-  // 1: (s) => ({ ...s, saveVersion: 2, domain: { ...s.domain, population: [] } }),
+  /**
+   * v1 (J1) → v2 (J2a) : les ressources « totales » deviennent des marchandises rangées
+   * dans le manoir ; l'or passe au trésor. Ajout des livraisons, cultures et statistiques.
+   */
+  1: (s) => {
+    const { resources, ...domain } = s.domain;
+    const res = resources ?? { nourriture: 0, bois: 0, pierre: 0, or: 0 };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const buildings = (domain.buildings ?? []).map((b: any) => ({ ...b, stock: {}, progress: 0, lastWork: 0 }));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const manor = buildings.find((b: any) => b.type === "manoir");
+    if (manor) manor.stock = { nourriture: res.nourriture, bois: res.bois, pierre: res.pierre };
+    const year = Math.floor((domain.tick ?? 0) / 1800) + 1;
+    return {
+      ...s,
+      saveVersion: 2,
+      domain: {
+        ...domain,
+        buildings,
+        treasury: res.or,
+        crops: {},
+        deliveries: [],
+        yearStats: { year, harvested: 0, fieldsHarvested: 0, produced: {} },
+      },
+    };
+  },
 };
 
 export function makeSave(world: WorldState, domain: DomainState, now: Date = new Date()): SaveGame {

@@ -4,7 +4,7 @@
  * Elle lit l'état et envoie des commandes ; elle ne contient aucune règle de jeu.
  */
 import { DOMINANTS, RESOURCE_IDS, RESOURCE_NAMES, TERRAIN_NAMES } from "@jeu/shared";
-import { BUILDINGS, BUILDING_IDS, dateOf, type Building } from "@jeu/sim-fief";
+import { BUILDINGS, BUILDING_IDS, GOOD_IDS, dateOf, goodsTotal, type Building, type Goods } from "@jeu/sim-fief";
 import { PLAYER_ID, fiefById, lordById, type FiefMeta } from "@jeu/sim-monde";
 import { TILE } from "../camera/InputController";
 import type { CameraController } from "../camera/CameraController";
@@ -63,6 +63,7 @@ export class Hud {
   private lastLogTick = -1;
   private lastSeason = -1;
   private confirmNewGame = false;
+  private lastLive = 0;
 
   constructor(
     private readonly root: HTMLElement,
@@ -158,7 +159,12 @@ export class Hud {
           <span class="realm-name" data-el="realmName"></span>
           <span class="realm-sub" data-el="realmSub"></span>
         </div>
-        <div class="resources">${resources}</div>
+        <div class="resources">${resources}
+          <div class="res res-stock" title="Marchandises en réserve / capacité des réserves (manoir et entrepôts)">
+            <span class="res-label">Réserves</span>
+            <span class="res-value" data-el="stockValue">0</span>
+          </div>
+        </div>
         <div class="clock">
           <div class="date" data-el="date"></div>
           <div class="season-track" aria-hidden="true"><span data-el="seasonFill"></span></div>
@@ -189,6 +195,11 @@ export class Hud {
         <section class="panel-section">
           <h2>Sélection</h2>
           <div data-el="selection"></div>
+        </section>
+        <section class="panel-section">
+          <h2>Logistique</h2>
+          <div data-el="logistics"></div>
+          <button type="button" class="btn btn-small" data-act="routes" aria-pressed="false">Montrer les itinéraires (L)</button>
         </section>
         <section class="panel-section">
           <h2>Domaine et voisins</h2>
@@ -231,6 +242,14 @@ export class Hud {
       b.addEventListener("click", () => this.setSpeed(Number(b.dataset.speed)));
     });
     this.root.querySelector('[data-act="home"]')?.addEventListener("click", () => this.actions.focusHome());
+    this.root.querySelector('[data-act="routes"]')?.addEventListener("click", () => this.game.toggleRoutes());
+    this.game.on("routes", () => {
+      const btn = this.root.querySelector<HTMLButtonElement>('[data-act="routes"]');
+      if (!btn) return;
+      btn.setAttribute("aria-pressed", String(this.game.showRoutes));
+      btn.textContent = this.game.showRoutes ? "Masquer les itinéraires (L)" : "Montrer les itinéraires (L)";
+      btn.classList.toggle("is-active", this.game.showRoutes);
+    });
     this.root.querySelector('[data-act="world"]')?.addEventListener("click", () => this.actions.worldView());
     this.root.querySelector('[data-act="zoomin"]')?.addEventListener("click", () => this.zoomCenter(1.4));
     this.root.querySelector('[data-act="zoomout"]')?.addEventListener("click", () => this.zoomCenter(1 / 1.4));
@@ -303,6 +322,7 @@ export class Hud {
     if (key === "c") return this.selectToolById("field");
     if (key === "x" || e.key === "Delete") return this.selectToolById("demolish");
     if (key === "m") return this.actions.worldView();
+    if (key === "l") return this.game.toggleRoutes();
     if (key === "o" || e.key === "Home") return this.actions.focusHome();
     if (e.key === "+" || e.code === "NumpadAdd") return this.zoomCenter(1.4);
     if (e.key === "-" || e.code === "NumpadSubtract") return this.zoomCenter(1 / 1.4);
@@ -371,12 +391,85 @@ export class Hud {
         <div><dt>Fief</dt><dd>${escapeHtml(fief?.name ?? b.fiefId)}</dd></div>
         <div><dt>Route</dt><dd class="${connected ? "ok" : "bad"}">${connected ? "Relié au manoir" : "Non relié : tracez une route jusqu'au manoir"}</dd></div>
       </dl>
+      <div class="sel-live" data-el="selLive"></div>
       ${
         b.type !== "manoir"
           ? `<button type="button" class="btn btn-danger" data-act="demolish-selected">Démolir (rend ${formatCost(refund.refund)})</button>`
           : ""
       }`;
     box.querySelector('[data-act="demolish-selected"]')?.addEventListener("click", () => this.demolish(b));
+    this.renderSelectionLive();
+  }
+
+  /** Partie vivante du panneau de sélection (état, stocks, porteurs), rafraîchie 4 fois par seconde. */
+  private renderSelectionLive(): void {
+    const live = this.el.selection!.querySelector<HTMLElement>('[data-el="selLive"]');
+    const sim = this.game.session.sim;
+    const id = this.game.selectedBuildingId;
+    const b = id !== null ? sim.building(id) : undefined;
+    if (!live || !b) return;
+    const def = BUILDINGS[b.type]!;
+    const eco = sim.economy;
+    const status = eco.status(b.id);
+    const rows: string[] = [];
+    if (status.text) rows.push(`<p class="status status-${status.tone}">${escapeHtml(status.text)}</p>`);
+    const facts: string[] = [];
+    if (def.stockage) {
+      facts.push(`<div><dt>Contenu</dt><dd>${formatGoods(b.stock, "vide")}</dd></div>`);
+      facts.push(`<div><dt>Rempli</dt><dd>${goodsTotal(b.stock)} / ${def.stockage.capacite}</dd></div>`);
+      const incoming = eco.incoming(b.id);
+      if (incoming > 0) facts.push(`<div><dt>En route</dt><dd>+${incoming}</dd></div>`);
+    }
+    if (def.production) {
+      const prod = def.production;
+      facts.push(`<div><dt>Rendement</dt><dd>${Math.round(eco.efficiency(b.id) / 10)} % de ${prod.parAn} ${RESOURCE_NAMES[prod.ressource].toLowerCase()} par an</dd></div>`);
+    }
+    if (def.agriculture) {
+      const info = eco.farmInfo(b.id);
+      if (info) {
+        facts.push(`<div><dt>Champs</dt><dd>${info.fields.length} / ${info.max} travaillés</dd></div>`);
+        if (info.idleNearby > 0) facts.push(`<div><dt>En friche</dt><dd class="bad">${info.idleNearby} champ${info.idleNearby > 1 ? "s" : ""} de trop</dd></div>`);
+        facts.push(`<div><dt>Récolte</dt><dd>${info.expected > 0 ? `${info.expected} nourriture attendue` : "rien d'attendu"}</dd></div>`);
+      }
+    }
+    if (def.transport) {
+      facts.push(`<div><dt>En attente</dt><dd>${formatGoods(b.stock, "rien")} <span class="muted">(max ${def.stockMax ?? 0})</span></dd></div>`);
+    }
+    if (facts.length > 0) rows.push(`<dl class="facts">${facts.join("")}</dl>`);
+    if (def.transport) {
+      const tick = sim.state.tick;
+      const porters = eco.porters(b.id).map(({ delivery: d }, i) => {
+        if (!d) return `<li><span class="porter-n">${i + 1}</span>Au repos</li>`;
+        const dest = sim.building(d.toId);
+        const destName = dest ? (BUILDINGS[dest.type]?.nom ?? "réserve") : "réserve démolie";
+        const goods = `${d.amount} ${RESOURCE_NAMES[d.good].toLowerCase()}`;
+        if (d.status === "aller") return `<li><span class="porter-n">${i + 1}</span>Porte ${goods} vers ${escapeHtml(destName)} · ${seconds(d.arriveTick - tick)}</li>`;
+        if (d.status === "rapporte") return `<li><span class="porter-n">${i + 1}</span>Rapporte ${goods} · ${seconds(d.returnTick - tick)}</li>`;
+        return `<li><span class="porter-n">${i + 1}</span>Revient à vide · ${seconds(d.returnTick - tick)}</li>`;
+      });
+      rows.push(`<h3>Porteurs (charge ${def.transport.charge})</h3><ul class="porters">${porters.join("")}</ul>`);
+    }
+    const html = rows.join("");
+    if (live.innerHTML !== html) live.innerHTML = html;
+  }
+
+  private renderLogistics(): void {
+    const sim = this.game.session.sim;
+    const eco = sim.economy;
+    const usage = eco.storageUsage();
+    const waiting = eco.waiting();
+    const trips = sim.state.deliveries.length;
+    const stats = sim.state.yearStats;
+    const hasFarm = sim.state.buildings.some((b) => BUILDINGS[b.type]?.agriculture);
+    const facts = [
+      `<div><dt>Réserves</dt><dd>${usage.used} / ${usage.capacity}${usage.incoming > 0 ? ` <span class="muted">· +${usage.incoming} en route</span>` : ""}</dd></div>`,
+      `<div><dt>En attente</dt><dd>${formatGoods(waiting, "rien dans les ateliers")}</dd></div>`,
+      `<div><dt>Porteurs</dt><dd>${trips} en route</dd></div>`,
+      `<div><dt>An ${stats.year}</dt><dd>${formatGoods({ ...stats.produced, nourriture: stats.harvested }, "rien produit")}</dd></div>`,
+    ];
+    if (hasFarm) facts.push(`<div><dt>Récolte</dt><dd>${eco.expectedHarvest()} nourriture encore attendue</dd></div>`);
+    const html = `<dl class="facts">${facts.join("")}</dl>`;
+    if (this.el.logistics!.innerHTML !== html) this.el.logistics!.innerHTML = html;
   }
 
   private demolish(b: Building): void {
@@ -573,10 +666,22 @@ export class Hud {
     const sim = session.sim;
     const state = sim.state;
 
+    const totals = sim.totals();
     for (const id of RESOURCE_IDS) {
       const node = this.root.querySelector<HTMLElement>(`[data-res="${id}"]`);
-      const value = String(Math.floor(state.resources[id]));
+      const value = String(Math.floor(totals[id]));
       if (node && node.textContent !== value) node.textContent = value;
+    }
+    const usage = sim.economy.storageUsage();
+    const stockText = `${usage.used}/${usage.capacity}`;
+    if (this.el.stockValue!.textContent !== stockText) this.el.stockValue!.textContent = stockText;
+    this.el.stockValue!.parentElement?.classList.toggle("is-full", usage.capacity > 0 && usage.used >= usage.capacity * 0.9);
+
+    const now = performance.now();
+    if (now - this.lastLive >= 250) {
+      this.lastLive = now;
+      this.renderLogistics();
+      this.renderSelectionLive();
     }
 
     const date = sim.date;
@@ -640,8 +745,13 @@ export class Hud {
       let what = TERRAIN_NAMES[terrain];
       if (terrain === 0) what += ` · fertilité ${fert} %`;
       if (occ?.kind === "road") what = `Route${sim.connectedRoads().has(sim.key(hover.x, hover.y)) ? " reliée" : " non reliée"}`;
-      if (occ?.kind === "field") what = `Champ · fertilité ${fert} %`;
-      if (occ?.kind === "building") what = BUILDINGS[sim.building(occ.id)?.type ?? ""]?.nom ?? what;
+      if (occ?.kind === "field") what = `Champ · fertilité ${fert} % · ${fieldState(this.game, hover.x, hover.y)}`;
+      if (occ?.kind === "building") {
+        const b = sim.building(occ.id);
+        what = BUILDINGS[b?.type ?? ""]?.nom ?? what;
+        const status = b ? sim.economy.status(b.id) : null;
+        if (status?.text) what += ` · <span class="${status.tone === "ok" ? "ok" : status.tone === "info" ? "" : "bad"}">${escapeHtml(status.text)}</span>`;
+      }
       lines.push(`<div>${what}</div>`);
     } else {
       lines.push(`<div class="muted">Hors de votre domaine</div>`);
@@ -706,4 +816,29 @@ const SEED_WORDS = ["blé", "chêne", "orge", "seigle", "lin", "houblon", "tille
 function randomSeed(): string {
   const w = SEED_WORDS[Math.floor(Math.random() * SEED_WORDS.length)] ?? "blé";
   return `${w}-${Math.floor(Math.random() * 900 + 100)}`;
+}
+
+function formatGoods(goods: Goods, empty: string): string {
+  const parts = GOOD_IDS.filter((g) => (goods[g] ?? 0) > 0).map((g) => `${goods[g]} ${RESOURCE_NAMES[g].toLowerCase()}`);
+  return parts.length > 0 ? parts.join(" · ") : empty;
+}
+
+/** Durée en secondes de jeu à vitesse ×1 (10 ticks par seconde). */
+function seconds(ticks: number): string {
+  return `${Math.max(0, Math.ceil(ticks / 10))} s`;
+}
+
+function fieldState(game: Game, x: number, y: number): string {
+  const sim = game.session.sim;
+  const k = sim.key(x, y);
+  const farmId = sim.economy.farmOfField(k);
+  if (farmId === null) return "en friche (ferme déjà à 12 champs)";
+  if (!sim.isConnected(farmId)) return "sa ferme n'est pas reliée";
+  const crop = sim.state.crops[String(k)];
+  const season = sim.date.seasonIndex;
+  if (crop === "recolte") return "moissonné";
+  if (crop === "seme") return season === 2 ? "à moissonner" : "semé";
+  if (season === 0) return "en semailles";
+  if (season === 3) return "au repos";
+  return "non semé (semailles au printemps)";
 }

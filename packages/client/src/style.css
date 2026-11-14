@@ -772,3 +772,76 @@ textarea {
     animation: none !important;
   }
 }
+
+/* ------------------------------------------------------------ J2a : logistique */
+
+.res-stock .res-label {
+  border-bottom-color: #6f7a8a;
+}
+.res-stock.is-full .res-value {
+  color: #f0a75a;
+}
+.status {
+  margin: 0 0 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--panel-raised);
+  border-left: 3px solid var(--edge);
+  line-height: 1.35;
+}
+.status-ok {
+  border-left-color: var(--sinople);
+}
+.status-info {
+  border-left-color: #6f7a8a;
+}
+.status-warn {
+  border-left-color: #d9822b;
+}
+.status-bad {
+  border-left-color: var(--gueules);
+}
+.sel-live h3 {
+  margin: 4px 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+.porters {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+}
+.porters li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.porter-n {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--panel-raised);
+  border: 1px solid var(--edge);
+}
+.facts div {
+  grid-template-columns: 82px 1fr;
+}
+.btn-small {
+  font-size: 13px;
+  padding: 4px 9px;
+}
+.btn.is-active {
+  border-color: var(--or);
+  color: var(--or);
+}

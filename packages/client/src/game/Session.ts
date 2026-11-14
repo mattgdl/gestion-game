@@ -48,6 +48,12 @@ export class Session {
     return this.gateway.world;
   }
 
+  /** Fraction du tick en cours (0 à 1), pour animer les porteurs entre deux ticks. */
+  get tickFraction(): number {
+    if (this.paused || this.waitingForWorld || this.sim.state.awaitingBarrier) return 0;
+    return Math.min(1, this.accumulator / TICK_MS);
+  }
+
   onEvents(listener: (events: SimEvent[]) => void): void {
     this.listeners.push(listener);
   }

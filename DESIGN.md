@@ -1,7 +1,7 @@
 # DESIGN.md — Jeu de gestion médiéval à dynastie
 
-> **Titre provisoire :** « Seigneurie » (nom de travail, à remplacer) · **Version du document :** 0.3 · **Dernière mise à jour :** 12/11/2026
-> **Statut :** J1 livré (le terrain et le temps). Prochain jalon : J2a (l'économie circule).
+> **Titre provisoire :** « Seigneurie » (nom de travail, à remplacer) · **Version du document :** 0.4 · **Dernière mise à jour :** 14/11/2026
+> **Statut :** J2a livré (l'économie circule). Prochain jalon : J2b (le village vit).
 > Ce document est la référence du projet. En cas de doute, c'est lui qui tranche, et chaque décision y est consignée avec sa raison (section 11).
 
 ## Sommaire
@@ -9,7 +9,7 @@
 1. Pitch
 2. Piliers de design
 3. Décisions actées
-4. Ce que J1 a fixé en plus
+4. Règles fixées en codant
 5. Systèmes clés
 6. Risques identifiés
 7. Architecture : couches Fief et Monde
@@ -65,9 +65,11 @@ Une fonctionnalité qui ne sert aucun pilier va dans la ROADMAP, rubrique « peu
 
 ---
 
-## 4. Ce que J1 a fixé en plus
+## 4. Règles fixées en codant
 
-Règles décidées en codant J1, à contester si elles ne te conviennent pas :
+Règles décidées pendant le développement, à contester si elles ne te conviennent pas.
+
+### 4.1 J1 — Le terrain et le temps
 
 | Sujet | Règle | Raison |
 |---|---|---|
@@ -82,6 +84,25 @@ Règles décidées en codant J1, à contester si elles ne te conviennent pas :
 | Départ | Manoir au centre du fief, 5 routes, 100 nourriture, 150 bois, 60 pierre, 200 or. Centre dégagé, forêt et roche garanties dans le fief de départ. | Un départ jouable quelle que soit la graine. |
 | Sauvegarde | Emplacement manuel + sauvegarde automatique à chaque bilan d'automne, export et import en texte. | Les fichiers à télécharger ne fonctionnent pas dans la version publiée. |
 | Interface | Une seule ambiance sombre ; couleurs des seigneurs tirées des émaux héraldiques (azur pour le joueur). | Placeholder cohérent jusqu'à J6. |
+
+### 4.2 J2a — L'économie circule
+
+| Sujet | Règle | Raison |
+|---|---|---|
+| Réserves | Les marchandises (nourriture, bois, pierre) existent physiquement : dans le manoir (400 places), un entrepôt (300 places), un atelier (en attente) ou sur le dos d'un porteur. L'or reste un total, le trésor, sans limite. | Sans réserves pleines, la logistique n'aurait aucun enjeu. |
+| Construction | Instantanée : les matériaux sont prélevés directement dans les réserves, où qu'elles soient. | Simplification assumée ; les chantiers livrés par porteurs sont notés pour plus tard. |
+| Porteurs | Bûcheron et carrière : 1 porteur, charge 5. Ferme : 2 porteurs, charge 8. Un porteur part quand la charge est pleine, ou avec une charge partielle après 15 s sans production. | Les fermes produisent par à-coups pendant la moisson. |
+| Destination | La réserve la plus proche **par la route** qui a de la place. La place est réservée au départ du porteur. | Placer un entrepôt près des ateliers raccourcit les trajets. |
+| Vitesse | 0,5 s par case de route à vitesse ×1 (2 cases par seconde), plus une case pour entrer et sortir. | Un atelier à plus de ~20 cases de sa réserve commence à manquer de porteurs. |
+| Arrêt | Un atelier s'arrête quand sa production en attente atteint son maximum (20 pour bûcheron et carrière, 150 pour la ferme). Pastille orange sur la carte. | Signal visible du goulot d'étranglement. |
+| Réserve démolie | Son contenu est déménagé dans les autres réserves ; ce qui ne tient pas est perdu (signalé dans la chronique). Un porteur en route rapporte sa charge. | Rien ne disparaît sans explication. |
+| Rendement | Bûcheron : 40 bois par an avec 24 cases de forêt à 4 cases ou moins. Carrière : 24 pierre par an avec 10 cases de roche à 3 cases ou moins. En dessous, rendement proportionnel. Pas d'épuisement en J2a. | Le terrain dicte l'emplacement ; l'épuisement est noté pour plus tard. |
+| Ferme | Travaille jusqu'à 12 champs, les plus proches d'abord ; chaque champ est confié à la ferme la plus proche qui a de la place. Les champs en trop restent en friche (hachurés). | Limite de main-d'œuvre, en attendant les vrais travailleurs (J2b). |
+| Semailles | Un champ est semé s'il existe et que sa ferme est reliée **au début de l'été**. Un champ créé en été ne donne rien avant l'année suivante. | Calendrier agricole lisible (Q8). |
+| Moisson | À l'automne, un champ toutes les 2,5 s par ferme ; rendement = 8 × fertilité. Les champs non moissonnés au début de l'hiver sont perdus. | La fertilité compte ; une ferme bloquée perd sa récolte. |
+| Fertilité | Avec l'outil Champ ou en posant une ferme, une carte de fertilité s'affiche autour du curseur (rouge pauvre, vert riche). | Rendre visible le choix de l'emplacement. |
+| Chauffage | Reporté en J2b. | Il dépend des foyers, qui arrivent en J2b. |
+| Sauvegardes | Format v2. Les sauvegardes de J1 sont converties : les ressources sont rangées au manoir. | Les vieilles parties restent jouables. |
 
 ---
 
@@ -106,17 +127,19 @@ Principe : les marchandises circulent vraiment sur les routes, avec un temps de 
 - **Le réseau de routes est un graphe.** Les itinéraires (bâtiment ↔ entrepôt, maison ↔ lieu de travail) sont calculés une fois, puis recalculés seulement quand une route est construite ou détruite.
 - **Une livraison est un trajet planifié** : départ, durée (selon la longueur de l'itinéraire), quantité, capacité du porteur ou de la charrette. La simulation sait où en est chaque livraison sans la faire avancer tuile par tuile.
 - **Ce que tu vois est ce qui est simulé.** L'affichage anime les porteurs le long des itinéraires à partir de ces trajets : de simples points en J2, de vrais porteurs et charrettes en J6.
+- **Livré en J2a :** porteurs des ateliers et des fermes vers le manoir et les entrepôts. Chiffres et règles en section 4.2.
 - **Trajet domicile-travail :** temps de marche calculé de la même façon, qui réduit le temps de travail effectif. Une maison éloignée de la ferme rend la ferme moins productive.
 - **Effets de gameplay :** l'emplacement des entrepôts et des routes compte vraiment ; un village étalé est moins efficace ; les goulots d'étranglement se voient.
 - **Commerce (V2) :** même principe à l'échelle du Monde, avec des convois entre fiefs (temps de trajet, capacité) et des accords commerciaux récurrents résolus à la barrière.
 - **Ce que ce modèle ne fait pas :** pas d'embouteillages ni de collisions entre porteurs, pas de vie individuelle (aller à la taverne, flâner).
-- **Outils de débogage prévus :** affichage des itinéraires, panneau des livraisons en cours. Sans eux, « pourquoi personne ne livre ? » devient impossible à diagnostiquer.
+- **Outils de débogage (livrés en J2a) :** itinéraire du bâtiment sélectionné, itinéraires de tous les porteurs en route (touche L), état de chaque porteur dans le panneau de sélection, section Logistique (réserves, marchandises en attente, porteurs en route). Sans eux, « pourquoi personne ne livre ? » devient impossible à diagnostiquer.
 
 ### 5.3 Saisons et agriculture
 
 - **1 an = 3 min**, donc environ 45 s par saison.
 - **Le joueur ne gère pas les récoltes à la main.** Les fermes sèment, cultivent et récoltent seules selon la saison. Son rôle est stratégique : combien de champs, où, combien de stock pour l'hiver.
-- **Calendrier :** semailles au printemps, croissance en été, récolte en fin d'été et en automne, aucune production agricole en hiver. Le bois de chauffage est consommé en hiver ; un foyer sans bois perd du moral et voit sa mortalité augmenter.
+- **Calendrier (livré en J2a) :** labours et semailles au printemps, croissance en été, moisson à l'automne, aucune production agricole en hiver. Détails en section 4.2.
+- **Chauffage (J2b) :** le bois de chauffage est consommé en hiver ; un foyer sans bois perd du moral et voit sa mortalité augmenter.
 - **Lisibilité :** indicateurs permanents « réserves pour l'hiver : X jours » et « récolte prévue : Y ». Une alerte se déclenche dès l'été si la récolte prévue ne couvrira pas l'hiver : il reste alors une saison et demie pour réagir.
 - **Bilan d'automne :** la barrière annuelle tombe à la fin de l'automne. C'est une pause naturelle chaque année pour planifier la suivante. En solo, une pause automatique au bilan est activée par défaut (désactivable).
 - **Événements (V2) :** rares (environ un tous les 2 à 3 ans), annoncés une saison à l'avance quand c'est crédible (« un été sec s'annonce »). Les choix associés se font pendant le bilan d'automne : aucune décision ne se joue en temps réel, ce qui règle aussi le cas du multi, où il n'y a pas de pause.
@@ -230,6 +253,7 @@ Un seul dépôt, découpé en plusieurs « paquets ». `sim-monde` est importé 
 
 ```
 jeu-medieval/
+├─ CLAUDE.md                  ← consignes pour chaque nouvelle session de Claude
 ├─ DESIGN.md                  ← ce document
 ├─ ROADMAP.md                 ← fait / en cours / à faire
 ├─ README.md                  ← installer, lancer, tester, publier
@@ -244,8 +268,9 @@ jeu-medieval/
 │  │  ├─ buildings.json       ← bâtiments : taille, coût, exigences de terrain
 │  │  ├─ economy.json         ← ressources de départ, coût des routes, remboursement
 │  │  ├─ seasons.json         ← durée d'une année, saisons
+│  │  ├─ logistics.json       ← vitesse des porteurs, attente avant charge partielle
 │  │  └─ names.json           ← noms des fiefs
-│  │     (à venir : demography.json, logistics.json, titles.json)
+│  │     (à venir : demography.json, titles.json)
 │  │
 │  ├─ shared/                 ← outils communs aux deux couches
 │  │  └─ src/
@@ -264,8 +289,9 @@ jeu-medieval/
 │  │  │  ├─ data.ts           ← lecture typée des fichiers de data/
 │  │  │  └─ systems/
 │  │  │     ├─ seasons.ts     ← calendrier (ticks → année, saison, jour)
-│  │  │     └─ roads.ts       ← réseau de routes relié au manoir
-│  │  │        (à venir : logistics, production, agriculture, food, population, dynasty)
+│  │  │     ├─ roads.ts       ← réseau relié au manoir, plus courts chemins
+│  │  │     └─ economy.ts     ← réserves, production, agriculture, porteurs
+│  │  │        (à venir : population, food, dynasty)
 │  │  └─ test/                ← tests automatiques
 │  │
 │  ├─ sim-monde/              ← couche Monde, partagée client/serveur
@@ -351,3 +377,4 @@ jeu-medieval/
 | 12/11/2026 | Q8 : saisons option C (calendrier agricole en J2, événements en V2), avec bilan d'automne et récoltes automatiques. | Saisons de 45 s gérables si le joueur planifie au lieu de micro-gérer. |
 | 12/11/2026 | Q2 et Q5 validés : carte continue à trois niveaux de zoom ; logistique par flux. | Confirmation du joueur. |
 | 12/11/2026 | J1 livré : carte, placement, saisons, barrière annuelle (vide), sauvegarde. Règles complémentaires en section 4. | Premier jalon jouable. |
+| 14/11/2026 | J2a livré : réserves physiques, porteurs, production, semailles et moisson. Chauffage reporté en J2b. Règles en section 4.2. | Deuxième jalon jouable. |

@@ -1,24 +1,20 @@
 # ROADMAP.md
 
-> Mise à jour : 12/11/2026 · Référence des règles : DESIGN.md (v0.3)
+> Mise à jour : 14/11/2026 · Référence des règles : DESIGN.md (v0.4)
 > Chaque jalon se termine par un jeu qui se lance et se joue. Une idée qui sort du jalon en cours est notée ici, pas codée.
 
 ## En cours
 
-- **Retours de jeu sur J1**, puis démarrage de **J2a — L'économie circule**.
+- **Retours de jeu sur J2a**, puis démarrage de **J2b — Le village vit**.
 
 ## À faire
 
-### J2a — L'économie circule
-- Graphe des routes et itinéraires.
-- Logistique par flux : livraisons planifiées entre bâtiments et entrepôts, porteurs affichés (points).
-- Production des bâtiments, entrepôts, calendrier agricole, chauffage en hiver.
-- Outils de débogage : itinéraires, livraisons en cours.
-- **Critère de fin :** les marchandises circulent visiblement ; déplacer un entrepôt change l'efficacité du village.
-
 ### J2b — Le village vit
 - Villageois individuels : âge, foyer, métier, naissances, morts.
-- Logement, emplois, trajet domicile-travail.
+- Logement, emplois, trajet domicile-travail (les ateliers et fermes emploient de vrais villageois).
+- Consommation de nourriture, chauffage en hiver (bois), marché qui distribue aux foyers.
+- Impôts : première source d'or.
+- Équilibrage avec l'outil `simulate`.
 - Famine et défaite (moins de 5 habitants sur le domaine).
 - Indicateurs (réserves pour l'hiver, récolte prévue) et alertes.
 - Bilan d'automne (pause automatique en solo, désactivable).
@@ -63,6 +59,15 @@
 - *(vide)*
 
 ## Fait
+- 14/11/2026 : **J2a — L'économie circule** livré et jouable.
+  - Réserves physiques : manoir (400) et entrepôts (300) ; l'or au trésor.
+  - Porteurs qui suivent le plus court chemin par la route jusqu'à la réserve la plus proche ayant de la place.
+  - Bûcheron et carrière : rendement selon le terrain à portée ; arrêt quand la production s'entasse.
+  - Ferme : semailles au début de l'été, moisson à l'automne, rendement selon la fertilité, champs perdus à l'hiver.
+  - Affichage : porteurs animés, champs qui mûrissent, pastilles d'état, caisses en attente, carte de fertilité.
+  - Débogage : itinéraire du bâtiment sélectionné, itinéraires de tous les porteurs (L), panneau Logistique.
+  - Sauvegardes format v2, conversion automatique des sauvegardes de J1.
+  - 51 tests automatiques.
 - 12/11/2026 : **J1 — Le terrain et le temps** livré et jouable.
   - Carte continue de 3 fiefs générée par graine (terrains dominants, fertilité, rivière, départ garanti).
   - Zoom à trois niveaux (proche, fiefs, Monde) avec étiquettes des fiefs, saut vers un fief, retour au manoir.
@@ -74,7 +79,11 @@
   - 37 tests automatiques : déterminisme, règles de placement, calendrier, barrière, sauvegarde.
 - 12/11/2026 : brief fondateur, DESIGN.md v0.1 à v0.3, réponses aux questions Q1 à Q8, création de cette ROADMAP.
 
-## Idées notées pendant J1 (à trier)
+## Idées notées (à trier)
+- Chantiers : les matériaux de construction livrés par porteurs (aujourd'hui la construction est instantanée).
+- Épuisement des forêts et des carrières, repousse des arbres.
+- Déménager le contenu d'une réserve vers une autre à la demande.
+- Charrettes (charge plus grande, besoin d'une route plus large) pour les longues distances.
 - Ponts pour franchir les rivières (aujourd'hui l'eau bloque les routes).
 - Rotation des bâtiments (exclue de la V1).
 - Pincer pour zoomer sur écran tactile.

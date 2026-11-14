@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { SAVE_VERSION } from "@jeu/shared";
 import { Session } from "../src/game/Session";
-import { SaveError, parseSave, serializeSave } from "../src/save/save";
+import { SaveError, migrateSave, parseSave, serializeSave } from "../src/save/save";
 
 /** Fait tourner une session à vitesse x1 pendant `seconds` secondes simulées. */
 function play(session: Session, seconds: number): void {
@@ -49,4 +49,29 @@ describe("sauvegarde", () => {
       "Cette sauvegarde vient d'une version plus récente du jeu.",
     );
   });
+
+  it("convertit une sauvegarde de J1 (v1) : ressources rangées au manoir, or au trésor", () => {
+    const session = Session.newGame("ancienne");
+    const v2 = session.toSave();
+    // Reconstitue le format v1 de J1 à partir d'une partie neuve.
+    const { treasury: _t, crops: _c, deliveries: _d, yearStats: _y, ...domain } = v2.domain;
+    const v1 = {
+      saveVersion: 1,
+      savedAt: v2.savedAt,
+      world: v2.world,
+      domain: {
+        ...domain,
+        resources: { nourriture: 90, bois: 120, pierre: 40, or: 175 },
+        buildings: domain.buildings.map(({ stock: _s, progress: _p, lastWork: _l, ...b }) => b),
+      },
+    };
+    const migrated = migrateSave(JSON.parse(JSON.stringify(v1)));
+    expect(migrated.saveVersion).toBe(SAVE_VERSION);
+    const restored = Session.fromSave(migrated);
+    expect(restored.sim.totals()).toEqual({ nourriture: 90, bois: 120, pierre: 40, or: 175 });
+    expect(restored.sim.state.deliveries).toEqual([]);
+    play(restored, 30);
+    expect(restored.sim.date.year).toBe(1);
+  });
 });
+

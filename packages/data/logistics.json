@@ -1,0 +1,5 @@
+{
+  "_doc": "Logistique par flux. ticksParCase = durée de passage d'une case de route (10 ticks = 1 s à vitesse x1). attenteChargePartielle = ticks sans production avant qu'un porteur parte avec une charge incomplète.",
+  "ticksParCase": 5,
+  "attenteChargePartielle": 150
+}

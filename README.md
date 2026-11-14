@@ -32,6 +32,7 @@ Les règles et décisions sont dans **DESIGN.md**, l'avancement dans **ROADMAP.m
 | Bâtiments | H Maison, F Ferme, B Bûcheron, P Carrière, E Entrepôt, N Marché, G Église |
 | Annuler l'outil | Clic droit |
 | Zoomer sur un fief | Double-clic, ou clic en vue Monde |
+| Itinéraires de tous les porteurs | L |
 
 ## Débogage
 

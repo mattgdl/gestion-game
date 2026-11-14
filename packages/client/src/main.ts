@@ -138,7 +138,7 @@ function start(data: HotData = {}): void {
   else focusHome(true);
 
   // Accès de débogage depuis la console du navigateur (window.__jeu.game, window.__jeu.camera).
-  (window as unknown as { __jeu: unknown }).__jeu = { game, camera, TILE };
+  (window as unknown as { __jeu: unknown }).__jeu = { game, camera, TILE, actions };
 
   window.claude?.hot?.snapshot?.(() => ({
     save: serializeSave(game.session.toSave()),

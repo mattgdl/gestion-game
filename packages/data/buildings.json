@@ -1,69 +1,156 @@
 {
-  "_doc": "Bâtiments. taille = [largeur, hauteur] en tuiles. cout en ressources. procheDe = terrain requis à moins de 'rayon' tuiles. Les effets (production, logement) arrivent en J2.",
+  "_doc": "Bâtiments. taille = [largeur, hauteur] en cases. cout en ressources. procheDe = terrain requis à moins de 'rayon' cases (et terrain exploité par la production). stockage.capacite = marchandises stockables (nourriture + bois + pierre ; l'or est au trésor, sans limite). production.parAn = unités produites par an à plein rendement ; casesPleinRendement = cases du terrain exploité nécessaires pour le plein rendement. agriculture : champsMax travaillés par la ferme, rendementParChamp à 100 % de fertilité, ticksParRecolte entre deux champs moissonnés. transport : porteurs du bâtiment et charge par voyage. stockMax = marchandises en attente avant arrêt de la production.",
   "manoir": {
     "nom": "Manoir",
-    "taille": [3, 3],
+    "taille": [
+      3,
+      3
+    ],
     "cout": {},
     "constructible": false,
     "unique": true,
     "couleur": "#8a5a3c",
-    "description": "Siège de votre lignée. Toutes les routes partent de lui."
+    "description": "Siège de votre lignée et première réserve (400 marchandises). Toutes les routes partent de lui.",
+    "stockage": {
+      "capacite": 400
+    }
   },
   "maison": {
     "nom": "Maison",
-    "taille": [1, 1],
-    "cout": { "bois": 8 },
+    "taille": [
+      1,
+      1
+    ],
+    "cout": {
+      "bois": 8
+    },
     "constructible": true,
     "couleur": "#c9a26b",
     "description": "Logera une famille de villageois (J2b)."
   },
   "ferme": {
     "nom": "Ferme",
-    "taille": [2, 2],
-    "cout": { "bois": 20, "or": 10 },
+    "taille": [
+      2,
+      2
+    ],
+    "cout": {
+      "bois": 20,
+      "or": 10
+    },
     "constructible": true,
     "couleur": "#b8863b",
     "rayonChamps": 4,
-    "description": "Cultive les champs peints autour d'elle (rayon de 4 tuiles)."
+    "description": "Sème au printemps et moissonne à l'automne jusqu'à 12 champs (rayon de 4 cases).",
+    "agriculture": {
+      "champsMax": 12,
+      "rendementParChamp": 8,
+      "ticksParRecolte": 25
+    },
+    "transport": {
+      "porteurs": 2,
+      "charge": 8
+    },
+    "stockMax": 150
   },
   "bucheron": {
     "nom": "Bûcheron",
-    "taille": [2, 2],
-    "cout": { "bois": 15, "pierre": 5 },
+    "taille": [
+      2,
+      2
+    ],
+    "cout": {
+      "bois": 15,
+      "pierre": 5
+    },
     "constructible": true,
     "couleur": "#6b4a2a",
-    "procheDe": { "terrain": "foret", "rayon": 4 },
-    "description": "Coupera le bois des forêts voisines (J2a)."
+    "procheDe": {
+      "terrain": "foret",
+      "rayon": 4
+    },
+    "description": "Coupe le bois des forêts voisines (rayon de 4 cases). Plein rendement avec 24 cases de forêt.",
+    "production": {
+      "ressource": "bois",
+      "parAn": 40,
+      "casesPleinRendement": 24
+    },
+    "transport": {
+      "porteurs": 1,
+      "charge": 5
+    },
+    "stockMax": 20
   },
   "carriere": {
     "nom": "Carrière",
-    "taille": [2, 2],
-    "cout": { "bois": 25 },
+    "taille": [
+      2,
+      2
+    ],
+    "cout": {
+      "bois": 25
+    },
     "constructible": true,
     "couleur": "#8c8c8c",
-    "procheDe": { "terrain": "roche", "rayon": 3 },
-    "description": "Extraira la pierre des roches voisines (J2a)."
+    "procheDe": {
+      "terrain": "roche",
+      "rayon": 3
+    },
+    "description": "Extrait la pierre des roches voisines (rayon de 3 cases). Plein rendement avec 10 cases de roche.",
+    "production": {
+      "ressource": "pierre",
+      "parAn": 24,
+      "casesPleinRendement": 10
+    },
+    "transport": {
+      "porteurs": 1,
+      "charge": 5
+    },
+    "stockMax": 20
   },
   "entrepot": {
     "nom": "Entrepôt",
-    "taille": [2, 2],
-    "cout": { "bois": 30, "pierre": 10 },
+    "taille": [
+      2,
+      2
+    ],
+    "cout": {
+      "bois": 30,
+      "pierre": 10
+    },
     "constructible": true,
     "couleur": "#a0703c",
-    "description": "Stockera les marchandises au plus près des producteurs (J2a)."
+    "description": "Réserve de 300 marchandises. Les porteurs livrent à la réserve la plus proche par la route.",
+    "stockage": {
+      "capacite": 300
+    }
   },
   "marche": {
     "nom": "Marché",
-    "taille": [3, 2],
-    "cout": { "bois": 30, "pierre": 20, "or": 20 },
+    "taille": [
+      3,
+      2
+    ],
+    "cout": {
+      "bois": 30,
+      "pierre": 20,
+      "or": 20
+    },
     "constructible": true,
     "couleur": "#c0603c",
     "description": "Distribuera nourriture et bois aux foyers (J2b)."
   },
   "eglise": {
     "nom": "Église",
-    "taille": [3, 3],
-    "cout": { "bois": 40, "pierre": 60, "or": 40 },
+    "taille": [
+      3,
+      3
+    ],
+    "cout": {
+      "bois": 40,
+      "pierre": 60,
+      "or": 40
+    },
     "constructible": true,
     "unique": true,
     "couleur": "#d8d0c0",
