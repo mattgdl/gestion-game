@@ -969,6 +969,9 @@ textarea {
   color: var(--text-dim);
   margin-right: 4px;
 }
+.tax-stack .tax-label {
+  flex-basis: 100%;
+}
 .workers-ctl {
   display: flex;
   align-items: center;

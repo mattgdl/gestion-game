@@ -88,5 +88,22 @@ describe("sauvegarde", () => {
     play(restored, 20);
     expect(restored.sim.state.villagers.length).toBeGreaterThan(15);
   });
+
+  it("convertit une sauvegarde de J2b (v3) : accueil des nouveaux venus au rythme normal", () => {
+    const session = Session.newGame("j2b");
+    play(session, 20);
+    const v4 = session.toSave();
+    const { immigration: _i, ...domain } = v4.domain;
+    const v3 = { ...v4, saveVersion: 3, domain };
+    const migrated = migrateSave(JSON.parse(JSON.stringify(v3)));
+    expect(migrated.saveVersion).toBe(SAVE_VERSION);
+    expect(migrated.domain.immigration).toBe("normale");
+    const restored = Session.fromSave(migrated);
+    expect(restored.sim.state.villagers).toEqual(session.sim.state.villagers);
+    play(restored, 20);
+    play(session, 20);
+    expect(restored.sim.state.tick).toBe(session.sim.state.tick);
+    expect(restored.sim.state.villagers).toEqual(session.sim.state.villagers);
+  });
 });
 

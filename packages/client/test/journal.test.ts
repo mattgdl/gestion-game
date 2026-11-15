@@ -29,14 +29,24 @@ describe("journal de partie", () => {
     expect(journal.status).toBe("indisponible");
   });
 
-  it("écrit l'état de la partie avec une sauvegarde rechargeable", async () => {
+  it("n'écrit rien tant que la partie n'est pas jouée, puis l'état avec une sauvegarde rechargeable", async () => {
     const session = Session.newGame("journal");
     const { db, docs } = fakeDb();
     const journal = new Journal(session, memoryStorage());
     journal.attach(db, "u-123");
     await flushPromises();
+    // Page ouverte sans jouer : pas de partie vide dans le journal.
+    expect(docs.size).toBe(0);
+    session.paused = true;
+    journal.onFrame(10_000);
+    await flushPromises();
+    expect(docs.size).toBe(0);
+    session.paused = false;
+    journal.onFrame(6_000);
+    await flushPromises();
+    expect(journal.hasPlayed).toBe(true);
     const doc = docs.get(`parties/${session.gameId}`);
-    expect(doc).toMatchObject({ graine: "journal", joueur: "u-123", batiments: { manoir: 1 } });
+    expect(doc).toMatchObject({ graine: "journal", joueur: "u-123", batiments: { manoir: 1 }, nouveauxVenus: { accueil: "normale" } });
     const restored = Session.fromSave(parseSave(String(doc?.sauvegarde)));
     expect(restored.gameId).toBe(session.gameId);
     expect(restored.sim.toJSON()).toEqual(session.sim.toJSON());

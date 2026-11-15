@@ -98,6 +98,8 @@ export interface YearStats {
   deathsHunger?: number;
   deathsCold?: number;
   marriages?: number;
+  /** Familles de nouveaux venus installées. */
+  immigrants?: number;
   /** Nourriture et bois consommés par les foyers. */
   eaten?: number;
   burned?: number;
@@ -136,6 +138,10 @@ export interface Family {
 
 export type TaxLevel = "aucun" | "normal" | "lourd";
 
+/** Accueil des nouveaux venus : nombre maximal de familles par an (demography.json). */
+export type ImmigrationLevel = "fermee" | "normale" | "ouverte";
+export const IMMIGRATION_LEVELS: readonly ImmigrationLevel[] = ["fermee", "normale", "ouverte"];
+
 export interface GameOver {
   reason: "depeuple";
   tick: number;
@@ -168,6 +174,8 @@ export interface DomainState {
   villagers: Villager[];
   families: Family[];
   taxLevel: TaxLevel;
+  /** Accueil des nouveaux venus (choix du joueur). */
+  immigration: ImmigrationLevel;
   /** Fin de partie : le temps s'arrête. */
   gameOver: GameOver | null;
   nextId: number;
@@ -190,6 +198,7 @@ export function emptyYearStats(year: number): YearStats {
     deathsHunger: 0,
     deathsCold: 0,
     marriages: 0,
+    immigrants: 0,
     eaten: 0,
     burned: 0,
     taxes: 0,

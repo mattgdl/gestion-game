@@ -9,7 +9,7 @@
 import { RESOURCE_NAMES, Rng } from "@jeu/shared";
 import { BUILDINGS, DEMOGRAPHY, ECONOMY, LOGISTICS, NAMES } from "../data";
 import type { DomainSim } from "../domain";
-import type { Building, Delivery, Family, GoodId, Sex, Villager } from "../state";
+import type { Building, Delivery, Family, GoodId, ImmigrationLevel, Sex, Villager } from "../state";
 import { legTicks } from "./economy";
 import { TICKS_PER_SEASON, TICKS_PER_YEAR, dateOf } from "./seasons";
 
@@ -35,6 +35,35 @@ export const DAILY_WOOD = Math.round((D.consommation.boisParFoyerParHiver * 1000
 export interface MoraleBreakdown {
   total: number;
   parts: { label: string; value: number }[];
+}
+
+/** Qui pourrait occuper les maisons libres : pour l'interface (maison vide, accueil des familles). */
+export interface HousingOutlook {
+  /** Maisons sans foyer (reliées ou non). */
+  freeHouses: number;
+  /** Foyers sans abri. */
+  homeless: number;
+  /** Jeunes couples prêts à se marier (17 ans et plus, de foyers différents). */
+  waitingCouples: number;
+  /** Maisons libres et reliées que personne n'attend : elles peuvent accueillir des nouveaux venus. */
+  spare: number;
+  /** Années avant qu'un nouveau couple puisse se former (0 : il y en a déjà), null : personne. */
+  nextMarriageYears: number | null;
+  immigration: ImmigrationCheck;
+}
+
+export interface ImmigrationCheck {
+  level: ImmigrationLevel;
+  /** Familles accueillies au plus par an à ce niveau. */
+  perYear: number;
+  /** Familles déjà arrivées cette année. */
+  arrived: number;
+  /** Vrai si une famille arrivera au prochain début de saison (printemps, été ou automne). */
+  ready: boolean;
+  /** Pourquoi personne ne viendra (null si ready). */
+  reason: string | null;
+  foodDays: number;
+  morale: number;
 }
 
 export class Population {
@@ -70,6 +99,7 @@ export class Population {
         this.newVillager(rng, rng.chance(0.5) ? "F" : "M", tick - this.ageTicks(rng, 0, dep.ageEnfantMax), family.id);
       }
       // Provisions de départ : quelques jours, le reste se prend au manoir.
+      this.version += 1; // la liste des membres (en cache) doit inclure ce foyer
       let daily = 0;
       for (const v of this.members(family.id)) daily += dailyFood(v, tick);
       family.food = daily * D.provisionsDepartJours;
@@ -296,7 +326,10 @@ export class Population {
     const date = dateOf(tick);
     this.birthdays(tick);
     this.housing();
-    if (tick % TICKS_PER_SEASON === 0) this.marriages(tick);
+    if (tick % TICKS_PER_SEASON === 0) {
+      this.marriages(tick);
+      if (date.seasonIndex <= 2) this.immigrate(rng, tick);
+    }
     this.consume(date.seasonIndex);
     this.provision(tick, date.seasonIndex);
     this.mortality(rng, tick, date.seasonIndex);
@@ -346,11 +379,8 @@ export class Population {
 
   /** Au début de chaque saison, les jeunes adultes se marient s'il y a une maison libre pour eux. */
   private marriages(tick: number): void {
-    const singles = this.state.villagers.filter((v) => ageOf(v, tick) >= D.ageMariage && !this.isMarried(v));
-    const men = singles.filter((v) => v.sex === "M").sort((a, b) => a.birthTick - b.birthTick || a.id - b.id);
-    const women = singles.filter((v) => v.sex === "F").sort((a, b) => a.birthTick - b.birthTick || a.id - b.id);
-    const occupied = new Set(this.state.families.map((f) => f.houseId).filter((h): h is number => h !== null));
-    const free = this.state.buildings.filter((b) => BUILDINGS[b.type]?.logement && !occupied.has(b.id));
+    const { men, women } = this.singles(tick);
+    const free = this.freeHouses();
     let married = 0;
     const waiting = Math.min(men.length, women.length);
     while (men.length > 0 && women.length > 0 && free.length > 0) {
@@ -375,6 +405,126 @@ export class Population {
       const n = waiting - married;
       this.sim.addLog(`${n} jeune${n > 1 ? "s" : ""} couple${n > 1 ? "s attendent" : " attend"} une maison libre pour se marier.`);
     }
+  }
+
+  /** Célibataires en âge de se marier, triés par âge (les plus âgés d'abord). */
+  private singles(tick: number): { men: Villager[]; women: Villager[] } {
+    const singles = this.state.villagers.filter((v) => ageOf(v, tick) >= D.ageMariage && !this.isMarried(v));
+    const order = (a: Villager, b: Villager) => a.birthTick - b.birthTick || a.id - b.id;
+    return { men: singles.filter((v) => v.sex === "M").sort(order), women: singles.filter((v) => v.sex === "F").sort(order) };
+  }
+
+  /** Nombre de couples qui pourraient se marier aujourd'hui (même règle que les mariages). */
+  waitingCouples(): number {
+    const { men, women } = this.singles(this.state.tick);
+    let n = 0;
+    for (const m of men) {
+      const idx = women.findIndex((w) => w.familyId !== m.familyId);
+      if (idx < 0) continue;
+      women.splice(idx, 1);
+      n += 1;
+    }
+    return n;
+  }
+
+  /** Années avant qu'un garçon et une fille de foyers différents aient tous deux l'âge de se marier. */
+  private nextMarriageYears(tick: number): number | null {
+    const unmarried = this.state.villagers.filter((v) => !this.isMarried(v));
+    const ready = (v: Villager) => v.birthTick + D.ageMariage * TICKS_PER_YEAR;
+    const order = (a: Villager, b: Villager) => ready(a) - ready(b) || a.id - b.id;
+    const men = unmarried.filter((v) => v.sex === "M").sort(order);
+    const women = unmarried.filter((v) => v.sex === "F").sort(order);
+    let best = Infinity;
+    for (const m of men) {
+      if (ready(m) >= best) break;
+      const w = women.find((o) => o.familyId !== m.familyId);
+      if (!w) continue;
+      best = Math.min(best, Math.max(ready(m), ready(w)));
+    }
+    if (best === Infinity) return null;
+    return Math.max(0, Math.ceil((best - tick) / TICKS_PER_YEAR));
+  }
+
+  /** Maisons libres (reliées d'abord exigées pour les nouveaux venus), dans l'ordre des identifiants. */
+  private freeHouses(): Building[] {
+    const occupied = new Set(this.state.families.map((f) => f.houseId).filter((h): h is number => h !== null));
+    return this.state.buildings.filter((b) => BUILDINGS[b.type]?.logement && !occupied.has(b.id));
+  }
+
+  housingOutlook(): HousingOutlook {
+    const tick = this.state.tick;
+    const free = this.freeHouses();
+    const homeless = this.state.families.filter((f) => f.houseId === null && this.members(f.id).length > 0).length;
+    const waiting = this.waitingCouples();
+    const spare = this.spareHouses(free, homeless, waiting).length;
+    return {
+      freeHouses: free.length,
+      homeless,
+      waitingCouples: waiting,
+      spare,
+      nextMarriageYears: waiting > 0 ? 0 : this.nextMarriageYears(tick),
+      immigration: this.immigrationCheck(spare),
+    };
+  }
+
+  /** Maisons libres et reliées qui restent une fois servis les sans-abri et les jeunes couples. */
+  private spareHouses(free: Building[], homeless: number, waiting: number): Building[] {
+    const reserved = homeless + waiting;
+    if (free.length <= reserved) return [];
+    const connected = free.filter((b) => this.sim.isConnected(b.id));
+    return connected.slice(0, Math.max(0, free.length - reserved));
+  }
+
+  /** Une famille de nouveaux venus viendrait-elle au prochain début de saison ? */
+  immigrationCheck(spare?: number): ImmigrationCheck {
+    const im = D.immigration;
+    const level = this.state.immigration;
+    const perYear = im.famillesParAn[level] ?? 0;
+    const arrived = this.state.yearStats.immigrants ?? 0;
+    const need = this.dailyFoodNeed();
+    const foodDays = need > 0 ? Math.floor((this.foodAvailable() * 1000) / need) : 9999;
+    const morale = this.morale();
+    if (spare === undefined) {
+      const free = this.freeHouses();
+      const homeless = this.state.families.filter((f) => f.houseId === null && this.members(f.id).length > 0).length;
+      spare = this.spareHouses(free, homeless, this.waitingCouples()).length;
+    }
+    let reason: string | null = null;
+    if (perYear === 0) reason = "Accueil des nouveaux venus fermé.";
+    else if (arrived >= perYear) reason = `${arrived > 1 ? `${arrived} familles déjà accueillies` : "Une famille déjà accueillie"} cette année : la suivante au printemps.`;
+    else if (spare <= 0) reason = "Aucune maison libre et reliée que personne n'attend.";
+    else if (foodDays < im.vivresMinJours) reason = `Il faut ${im.vivresMinJours} jours de vivres d'avance (vous en avez ${foodDays}).`;
+    else if (morale < im.moralMin) reason = `Il faut un moral d'au moins ${im.moralMin} (il est de ${morale}).`;
+    return { level, perYear, arrived, ready: reason === null, reason, foodDays, morale };
+  }
+
+  /** Au début du printemps, de l'été et de l'automne : une famille de nouveaux venus s'installe si possible. */
+  private immigrate(rng: Rng, tick: number): void {
+    const check = this.immigrationCheck();
+    if (!check.ready) return;
+    const free = this.freeHouses();
+    const homeless = this.state.families.filter((f) => f.houseId === null && this.members(f.id).length > 0).length;
+    const house = this.spareHouses(free, homeless, this.waitingCouples())[0];
+    if (!house) return;
+    const im = D.immigration;
+    const husband = this.newVillager(rng, "M", tick - this.ageTicks(rng, im.ageMin, im.ageMax), 0);
+    const wife = this.newVillager(rng, "F", tick - this.ageTicks(rng, im.ageMin, im.ageMax), 0);
+    const family = this.newFamily(husband.id, wife.id, house.id);
+    husband.familyId = family.id;
+    wife.familyId = family.id;
+    const kidMax = Math.max(0, Math.min(im.ageEnfantMax, ageOf(wife, tick) - D.ageMariage));
+    const kids = rng.int(0, im.enfantsMax);
+    for (let k = 0; k < kids; k++) {
+      this.newVillager(rng, rng.chance(0.5) ? "F" : "M", tick - this.ageTicks(rng, 0, kidMax), family.id);
+    }
+    this.version += 1;
+    let daily = 0;
+    for (const v of this.members(family.id)) daily += dailyFood(v, tick);
+    family.food = daily * D.provisionsDepartJours;
+    family.morale = this.moraleOf(family, dateOf(tick).seasonIndex).total;
+    const stats = this.state.yearStats;
+    stats.immigrants = (stats.immigrants ?? 0) + 1;
+    this.sim.addLog(`Nouveaux venus : ${husband.name} et ${wife.name}${kids > 0 ? `, avec ${kids} enfant${kids > 1 ? "s" : ""},` : ""} s'installent dans une maison libre.`);
   }
 
   private consume(season: number): void {
@@ -574,6 +724,8 @@ export class Population {
     }
     const tax = m.impots[this.state.taxLevel];
     if (tax !== 0) parts.push({ label: `Impôts ${this.state.taxLevel === "aucun" ? "supprimés" : "lourds"}`, value: tax });
+    const welcome = m.immigration[this.state.immigration] ?? 0;
+    if (welcome !== 0) parts.push({ label: "Accueil ouvert aux nouveaux venus", value: welcome });
     const total = Math.max(0, Math.min(100, parts.reduce((s, p) => s + p.value, 0)));
     return { total, parts };
   }

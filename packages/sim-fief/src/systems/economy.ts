@@ -15,6 +15,7 @@ import { BUILDINGS, LOGISTICS, type BuildingDef } from "../data";
 import type { DomainSim } from "../domain";
 import { GOOD_IDS, emptyYearStats, type Building, type Delivery, type GoodId, type Goods } from "../state";
 import { shortestRoadPaths } from "./roads";
+import type { HousingOutlook } from "./population";
 import { BARRIER_OFFSET, TICKS_PER_SEASON, TICKS_PER_YEAR, dateOf } from "./seasons";
 
 export interface Route {
@@ -619,7 +620,7 @@ export class Economy {
     if (b.type === "eglise") return { text: `Le prêtre soutient le moral des foyers à ${def.influence ?? 0} cases ou moins.`, tone: "ok", blocked: false };
     if (def.logement) {
       const fam = this.sim.population.familyInHouse(b.id);
-      if (!fam) return { text: "Maison libre : un foyer sans abri ou un jeune couple viendra s'y installer.", tone: "info", blocked: false };
+      if (!fam) return emptyHouseStatus(this.sim.population.housingOutlook());
       if (fam.hungryDays > 0) return { text: "Ce foyer a faim : ses provisions sont vides.", tone: "bad", blocked: false };
       if (fam.coldDays > 0) return { text: "Ce foyer a froid : plus de bois de chauffage.", tone: "bad", blocked: false };
       return { text: `Foyer de ${this.sim.population.members(fam.id).length} personnes, moral ${fam.morale}.`, tone: "ok", blocked: false };
@@ -664,4 +665,19 @@ export class Economy {
     while (out.length < n) out.push({ delivery: null });
     return out;
   }
+}
+
+/** Ce que deviendra une maison vide : qui viendra s'y installer, ou pourquoi personne. */
+export function emptyHouseStatus(o: HousingOutlook): BuildingStatus {
+  if (o.homeless > 0) return { text: "Maison libre : un foyer sans abri s'y installe demain.", tone: "info", blocked: false };
+  if (o.waitingCouples > 0) return { text: "Maison libre : un jeune couple s'y mariera au début de la prochaine saison.", tone: "info", blocked: false };
+  if (o.immigration.ready) return { text: "Maison libre : une famille de nouveaux venus s'y installera au début de la prochaine saison.", tone: "info", blocked: false };
+  return { text: `Maison vide. ${o.immigration.reason ?? ""} ${nextMarriageText(o.nextMarriageYears)}`.trim(), tone: "warn", blocked: false };
+}
+
+/** « Premier mariage possible dans environ N ans. » */
+export function nextMarriageText(years: number | null): string {
+  if (years === null) return "Aucun jeune ne pourra s'y marier.";
+  if (years <= 0) return "Un jeune couple pourra s'y marier.";
+  return `Prochain mariage possible dans ${years} an${years > 1 ? "s" : ""} environ.`;
 }

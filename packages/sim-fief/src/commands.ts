@@ -3,7 +3,7 @@
  * L'interface envoie une commande, la simulation la vérifie puis l'applique.
  */
 import type { Cost } from "@jeu/shared";
-import type { TaxLevel } from "./state";
+import type { ImmigrationLevel, TaxLevel } from "./state";
 
 export type Command =
   | { type: "build"; building: string; x: number; y: number }
@@ -12,7 +12,9 @@ export type Command =
   | { type: "demolish"; x: number; y: number }
   /** Nombre maximal de travailleurs d'un bâtiment (0 à ses emplois). */
   | { type: "setWorkers"; buildingId: number; count: number }
-  | { type: "setTax"; level: TaxLevel };
+  | { type: "setTax"; level: TaxLevel }
+  /** Accueil des nouveaux venus : fermé, une famille par an, ou ouvert. */
+  | { type: "setImmigration"; level: ImmigrationLevel };
 
 export interface CheckResult {
   ok: boolean;

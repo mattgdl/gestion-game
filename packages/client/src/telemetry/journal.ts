@@ -5,6 +5,8 @@
  * - Ne touche jamais à la simulation : il lit l'état et compte les commandes.
  * - Ne fonctionne que dans la page publiée sur claude.ai (ailleurs, il reste inactif).
  * - Le joueur peut le désactiver depuis le panneau « Partie ».
+ * - N'écrit rien tant que la partie n'a pas été jouée pendant cette visite (une action acceptée
+ *   ou quelques secondes hors pause) : ouvrir la page ne crée pas de partie vide.
  *
  * Données écrites (collection « parties ») :
  *   parties/<partie>              état courant, temps de jeu, sauvegarde complète (pour rejouer l'analyse)
@@ -21,6 +23,9 @@ export interface JournalDb {
 }
 
 export type JournalStatus = "attente" | "actif" | "indisponible" | "desactive" | "erreur";
+
+/** Secondes de jeu hors pause à partir desquelles une partie compte comme jouée. */
+const PLAYED_AFTER_SECONDS = 5;
 
 interface Counters {
   /** Secondes réelles par vitesse (pause comprise). */
@@ -103,6 +108,10 @@ export function domainSnapshot(sim: DomainSim): Record<string, unknown> {
     population: pop.counts(),
     moral: pop.morale(),
     impots: sim.state.taxLevel,
+    nouveauxVenus: (() => {
+      const im = pop.immigrationCheck();
+      return { accueil: sim.state.immigration, possible: im.ready, raison: im.reason };
+    })(),
     foyersAffames: fams.filter((f) => f.hungryDays > 0).length,
     foyersFroid: fams.filter((f) => f.coldDays > 0).length,
     joursDeVivres: (() => {
@@ -142,6 +151,9 @@ export class Journal {
   private stateWrite: Promise<void> | null = null;
   private stateDirty = false;
   private enabled: boolean;
+  /** La partie a-t-elle été jouée pendant cette visite ? Avant, rien n'est écrit. */
+  private played = false;
+  private playingSeconds = 0;
 
   constructor(
     session: Session,
@@ -185,7 +197,13 @@ export class Journal {
     this.year = emptyCounters();
     this.total = emptyCounters();
     this.startedAt = new Date().toISOString();
-    void this.flush();
+    this.played = false;
+    this.playingSeconds = 0;
+  }
+
+  /** Vrai dès que la partie a été jouée pendant cette visite. */
+  get hasPlayed(): boolean {
+    return this.played;
   }
 
   /** À chaque image : temps réel passé, par vitesse. */
@@ -193,7 +211,11 @@ export class Journal {
     const s = this.session;
     const seconds = deltaMs / 1000;
     if (s.paused) this.year.temps.pause += seconds;
-    else this.year.temps[`x${s.speed}` as "x1" | "x2" | "x3"] += seconds;
+    else {
+      this.year.temps[`x${s.speed}` as "x1" | "x2" | "x3"] += seconds;
+      this.playingSeconds += seconds;
+      if (!this.played && this.playingSeconds >= PLAYED_AFTER_SECONDS) this.markPlayed();
+    }
     this.sinceFlush += seconds;
     if (this.sinceFlush >= this.flushEverySeconds) void this.flush();
   }
@@ -202,6 +224,7 @@ export class Journal {
     const key = cmd.type === "build" ? `build:${cmd.building}` : cmd.type;
     const a = (this.year.actions[key] ??= { ok: 0, refus: 0 });
     if (result.ok) {
+      if (!this.played) this.markPlayed();
       a.ok += 1;
       if (cmd.type === "build") this.year.constructions[cmd.building] = (this.year.constructions[cmd.building] ?? 0) + 1;
     } else if (!quiet) {
@@ -211,8 +234,14 @@ export class Journal {
     }
   }
 
+  private markPlayed(): void {
+    this.played = true;
+    void this.flush();
+  }
+
   /** Fin d'automne : bilan de l'année, puis remise à zéro des compteurs de l'année. */
   onBarrier(): void {
+    this.played = true;
     const sim = this.session.sim;
     const year = sim.date.year;
     const stats = sim.state.yearStats;
@@ -228,6 +257,7 @@ export class Journal {
         decesFaim: stats.deathsHunger ?? 0,
         decesFroid: stats.deathsCold ?? 0,
         mariages: stats.marriages ?? 0,
+        nouveauxVenus: stats.immigrants ?? 0,
       },
       mange: Math.round((stats.eaten ?? 0) / 1000),
       bruleBois: Math.round((stats.burned ?? 0) / 1000),
@@ -247,6 +277,7 @@ export class Journal {
   /** Écrit l'état courant de la partie (avec la sauvegarde complète). */
   async flush(): Promise<void> {
     this.sinceFlush = 0;
+    if (!this.played) return;
     if (this.stateWrite) {
       this.stateDirty = true;
       return this.stateWrite;

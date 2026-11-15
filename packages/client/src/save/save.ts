@@ -59,6 +59,11 @@ const MIGRATIONS: Record<number, (save: any) => any> = {
     sim.addLog("La population arrive : 10 familles campent autour du manoir.");
     return { ...s, saveVersion: 3, domain: sim.toJSON() };
   },
+  /**
+   * v3 (J2b) → v4 (retours de jeu J2b) : accueil des nouveaux venus, au rythme normal
+   * (une famille par an au plus).
+   */
+  3: (s) => ({ ...s, saveVersion: 4, domain: { ...s.domain, immigration: "normale" } }),
 };
 
 export function makeSave(world: WorldState, domain: DomainState, now: Date = new Date(), gameId?: string): SaveGame {

@@ -65,8 +65,27 @@
       "aucun": 10,
       "normal": 0,
       "lourd": -15
+    },
+    "immigration": {
+      "fermee": 0,
+      "normale": 0,
+      "ouverte": -10
     }
   },
   "joursAvantMortalite": 5,
-  "provisionsDepartJours": 10
+  "provisionsDepartJours": 10,
+  "immigration": {
+    "_doc": "Nouveaux venus (retours de jeu J2b). Au début du printemps, de l'été et de l'automne, une famille arrive s'il reste une maison libre et reliée que personne n'attend (ni foyer sans abri, ni jeune couple), si le domaine a au moins vivresMinJours jours de vivres d'avance et un moral d'au moins moralMin. Le joueur choisit le rythme : nombre maximal de familles par an selon le niveau. Le niveau « ouverte » coûte du moral (les anciens se méfient des nouveaux venus).",
+    "famillesParAn": {
+      "fermee": 0,
+      "normale": 1,
+      "ouverte": 3
+    },
+    "vivresMinJours": 120,
+    "moralMin": 50,
+    "ageMin": 18,
+    "ageMax": 30,
+    "enfantsMax": 2,
+    "ageEnfantMax": 8
+  }
 }

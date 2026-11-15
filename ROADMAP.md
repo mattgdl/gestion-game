@@ -1,6 +1,6 @@
 # ROADMAP.md
 
-> Mise à jour : 15/11/2026 · Référence des règles : DESIGN.md (v0.5)
+> Mise à jour : 15/11/2026 · Référence des règles : DESIGN.md (v0.6)
 > Chaque jalon se termine par un jeu qui se lance et se joue. Une idée qui sort du jalon en cours est notée ici, pas codée.
 
 ## En cours
@@ -47,6 +47,14 @@
 - *(vide)*
 
 ## Fait
+- 15/11/2026 : **Retours de la partie test n° 2** (graine orge-349, ans 3 à 7, 14 min).
+  - Nouveaux venus : une famille s'installe dans une maison libre que personne n'attend, s'il y a 120 jours de vivres et du moral ; accueil réglable (fermé, normal = 1 par an, ouvert = 3 par an et moral −10).
+  - La fiche de l'outil Maison et celle d'une maison vide disent qui viendra l'habiter, ou pourquoi personne, et dans combien de temps le prochain mariage est possible.
+  - Les alertes nomment les bâtiments sans travailleur (« Église : ne soutient plus le moral ») et les postes vacants.
+  - Le journal n'écrit plus rien tant que la partie n'a pas été jouée (fini les parties vides).
+  - Correction : les foyers de départ reçoivent bien leurs 10 jours de vivres.
+  - Outil `simulate` : réglage de l'accueil, colonne des nouveaux venus, joueur type qui ajoute aussi bûcherons et maisons.
+  - Sauvegardes format v4. 80 tests automatiques.
 - 15/11/2026 : **J2b — Le village vit** livré et jouable.
   - Population : 10 couples de 20 à 25 ans et leurs enfants, tentes autour du manoir, naissances, décès, mariages, orphelins recueillis.
   - Maisons, emplois automatiques par priorité avec nombre réglable, temps de trajet domicile-travail.
@@ -79,9 +87,10 @@
 
 ## Idées notées (à trier)
 - Remariage des veufs et veuves (aujourd'hui un foyer qui perd un parent ne se reforme pas).
-- Immigration réglable (une famille par an au plus, s'il y a une maison libre et des vivres) : écartée pour l'instant, à reconsidérer si la croissance paraît trop lente avant les premiers mariages (vers l'an 12).
+- Arrivées des nouveaux venus selon la tendance des vivres (récolte attendue), pas seulement les réserves.
+- Export de sauvegarde (fichier) inopérant dans la page publiée sur claude.ai : passer par la capacité de téléchargement de l'artefact.
 - Villageois visibles sur la carte (aller au travail, au marché).
-- Priorités d'emploi réglables par le joueur.
+- Priorités d'emploi réglables par le joueur (aujourd'hui l'église et le marché passent en dernier ; à revoir si l'alerte qui les nomme ne suffit pas).
 - Chantiers : les matériaux de construction livrés par porteurs (aujourd'hui la construction est instantanée).
 - Épuisement des forêts et des carrières, repousse des arbres.
 - Déménager le contenu d'une réserve vers une autre à la demande.

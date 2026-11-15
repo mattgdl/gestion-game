@@ -26,7 +26,7 @@ import {
 } from "@jeu/shared";
 import type { CheckResult, Command } from "./commands";
 import { BUILDINGS, DEMOGRAPHY, ECONOMY, type BuildingDef } from "./data";
-import { GOOD_IDS, emptyYearStats, type Building, type DomainState, type FiefTiles, type Goods } from "./state";
+import { GOOD_IDS, IMMIGRATION_LEVELS, emptyYearStats, type Building, type DomainState, type FiefTiles, type Goods } from "./state";
 import { Economy, goodsTotal } from "./systems/economy";
 import { DAY_TICKS, Population } from "./systems/population";
 import { connectedRoads } from "./systems/roads";
@@ -107,6 +107,7 @@ export class DomainSim {
       villagers: [],
       families: [],
       taxLevel: "normal",
+      immigration: "normale",
       gameOver: null,
       nextId: 1,
       log: [],
@@ -325,6 +326,8 @@ export class DomainSim {
       }
       case "setTax":
         return ["aucun", "normal", "lourd"].includes(cmd.level) ? { ok: true } : { ok: false, reason: "Niveau d'impôt inconnu." };
+      case "setImmigration":
+        return IMMIGRATION_LEVELS.includes(cmd.level) ? { ok: true } : { ok: false, reason: "Niveau d'accueil inconnu." };
     }
   }
 
@@ -339,8 +342,9 @@ export class DomainSim {
       this.population.version += 1;
       return result;
     }
-    if (cmd.type === "setTax") {
-      this.state.taxLevel = cmd.level;
+    if (cmd.type === "setTax" || cmd.type === "setImmigration") {
+      if (cmd.type === "setTax") this.state.taxLevel = cmd.level;
+      else this.state.immigration = cmd.level;
       for (const f of this.state.families) f.morale = this.population.moraleOf(f, this.date.seasonIndex).total;
       return result;
     }

@@ -2,15 +2,12 @@
  * Alertes du village : ce qui va mal ou va bientôt mal tourner, pour que la défaite ne soit
  * jamais une surprise (DESIGN.md, « défaite prévisible »). Lecture seule de la simulation.
  */
-import { BUILDINGS, DAYS_PER_YEAR, DAILY_WOOD, ageOf, type DomainSim } from "@jeu/sim-fief";
-import demographyJson from "@jeu/data/demography.json";
+import { BUILDINGS, DAYS_PER_YEAR, DAILY_WOOD, type DomainSim } from "@jeu/sim-fief";
 
 export interface Alert {
   tone: "bad" | "warn" | "info";
   text: string;
 }
-
-const AGE_MARIAGE = (demographyJson as { ageMariage: number }).ageMariage;
 
 /** Jours de nourriture d'avance pour tout le village (réserves, marchés, foyers). */
 export function foodDays(sim: DomainSim): number {
@@ -70,25 +67,57 @@ export function computeAlerts(sim: DomainSim): Alert[] {
   const usage = sim.economy.storageUsage();
   if (usage.capacity > 0 && usage.used >= usage.capacity * 0.95) out.push({ tone: "warn", text: "Réserves pleines : bâtissez un entrepôt." });
 
-  const c = pop.counts();
-  if (c.jobs > c.employed) {
-    const n = c.jobs - c.employed;
-    out.push({ tone: "info", text: `${n} emploi${n > 1 ? "s" : ""} vacant${n > 1 ? "s" : ""} : pas assez de bras.` });
-  }
+  out.push(...jobAlerts(sim));
 
-  const tick = sim.state.tick;
-  const married = new Set<number>();
-  for (const f of fams) {
-    if (f.husbandId !== null) married.add(f.husbandId);
-    if (f.wifeId !== null) married.add(f.wifeId);
-  }
-  const singles = sim.state.villagers.filter((v) => ageOf(v, tick) >= AGE_MARIAGE && !married.has(v.id));
-  const pairs = Math.min(singles.filter((v) => v.sex === "M").length, singles.filter((v) => v.sex === "F").length);
-  const occupied = new Set(fams.map((f) => f.houseId).filter((h): h is number => h !== null));
-  const freeHouses = sim.state.buildings.filter((b) => BUILDINGS[b.type]?.logement && !occupied.has(b.id)).length;
-  if (pairs > freeHouses) {
-    const n = pairs - freeHouses;
+  const housing = pop.housingOutlook();
+  if (housing.waitingCouples > housing.freeHouses) {
+    const n = housing.waitingCouples - housing.freeHouses;
     out.push({ tone: "info", text: `${n} jeune${n > 1 ? "s" : ""} couple${n > 1 ? "s attendent" : " attend"} une maison pour se marier.` });
   }
+  const im = housing.immigration;
+  if (housing.spare > 0 && im.perYear > 0 && im.arrived < im.perYear && !im.ready && im.reason) {
+    out.push({ tone: "info", text: `Maison${housing.spare > 1 ? "s" : ""} libre${housing.spare > 1 ? "s" : ""}, mais aucune famille ne viendra : ${lowerFirst(im.reason)}` });
+  }
+  return out;
+}
+
+function lowerFirst(text: string): string {
+  return text.charAt(0).toLowerCase() + text.slice(1);
+}
+
+/**
+ * Emplois vacants, en nommant les bâtiments touchés : un bâtiment sans personne est à l'arrêt
+ * (l'église sans prêtre ne soutient plus le moral), un bâtiment incomplet tourne moins vite.
+ */
+export function jobAlerts(sim: DomainSim): Alert[] {
+  const pop = sim.population;
+  const stopped = new Map<string, number>();
+  const partial: string[] = [];
+  for (const b of sim.state.buildings) {
+    const def = BUILDINGS[b.type];
+    const max = def?.travailleurs ?? 0;
+    if (!def || max === 0 || !sim.isConnected(b.id)) continue;
+    const want = Math.min(max, b.workersLimit ?? max);
+    if (want === 0) continue;
+    const have = pop.workers(b.id).length;
+    if (have === 0) stopped.set(def.nom, (stopped.get(def.nom) ?? 0) + 1);
+    else if (have < want) partial.push(`${def.nom} ${have}/${want}`);
+  }
+  const out: Alert[] = [];
+  if (stopped.size > 0) {
+    const names = [...stopped].map(([nom, n]) => (n > 1 ? `${nom} ×${n}` : nom)).join(", ");
+    let morale = "";
+    for (const type of ["eglise", "marche"]) {
+      const nom = BUILDINGS[type]?.nom ?? "";
+      if (!stopped.has(nom)) continue;
+      const lower = nom.toLowerCase();
+      morale += ` ${/^[aeiouéèêh]/.test(lower) ? `L'${lower}` : `Le ${lower}`} ne soutient plus le moral.`;
+    }
+    out.push({
+      tone: "warn",
+      text: `Sans travailleur, à l'arrêt : ${names}.${morale} Retirez un travailleur ailleurs (− dans la fiche d'un bâtiment).`,
+    });
+  }
+  if (partial.length > 0) out.push({ tone: "info", text: `Postes vacants, faute de bras : ${partial.join(", ")}.` });
   return out;
 }

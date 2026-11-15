@@ -8,12 +8,17 @@ import {
   BUILDINGS,
   BUILDING_IDS,
   DAYS_PER_YEAR,
+  DEMOGRAPHY,
+  ECONOMY,
   GOOD_IDS,
   ageOf,
   dateOf,
   goodsTotal,
+  nextMarriageText,
   type Building,
+  type DomainSim,
   type Goods,
+  type ImmigrationLevel,
   type TaxLevel,
   type YearStats,
 } from "@jeu/sim-fief";
@@ -236,6 +241,13 @@ export class Hud {
             <button type="button" class="btn btn-small" data-tax="lourd" title="8 or par foyer · moral −15">Lourds</button>
           </div>
           <p class="muted small" data-el="taxHint"></p>
+          <div class="tax tax-stack" role="group" aria-label="Nouveaux venus">
+            <span class="tax-label">Nouveaux venus</span>
+            <button type="button" class="btn btn-small" data-immigration="fermee" title="Personne ne vient s'installer">Fermé</button>
+            <button type="button" class="btn btn-small" data-immigration="normale" title="${perYear("normale")} · moral ${signed(DEMOGRAPHY.moral.immigration.normale)}">Normal</button>
+            <button type="button" class="btn btn-small" data-immigration="ouverte" title="${perYear("ouverte")} · moral ${signed(DEMOGRAPHY.moral.immigration.ouverte)}">Ouvert</button>
+          </div>
+          <p class="muted small" data-el="immigrationHint"></p>
         </section>
         <section class="panel-section">
           <h2>Logistique</h2>
@@ -288,6 +300,12 @@ export class Hud {
     this.root.querySelectorAll<HTMLButtonElement>("[data-tax]").forEach((btn) =>
       btn.addEventListener("click", () => {
         this.game.command({ type: "setTax", level: btn.dataset.tax as TaxLevel });
+        this.renderVillage();
+      }),
+    );
+    this.root.querySelectorAll<HTMLButtonElement>("[data-immigration]").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        this.game.command({ type: "setImmigration", level: btn.dataset.immigration as ImmigrationLevel });
         this.renderVillage();
       }),
     );
@@ -603,6 +621,7 @@ export class Hud {
           <div class="tc-cost">${costs.length > 0 ? costs.join(" · ") : "gratuit"}</div>
           <p>${escapeHtml(def.utilite)}</p>
           ${def.actifDes ? `<p class="tc-warn">Pas encore d'effet dans cette version : il servira à partir de ${escapeHtml(def.actifDes)}.</p>` : ""}
+          ${def.logement ? newHouseLine(sim) : ""}
           <ul class="tc-conds">${conds.map((c) => `<li>${escapeHtml(c)}</li>`).join("")}</ul>`;
       }
     } else if (tool.kind === "road") {
@@ -689,9 +708,22 @@ export class Hud {
       btn.setAttribute("aria-pressed", String(on));
     });
     const housed = c.families - c.homeless;
-    const rates: Record<TaxLevel, number> = { aucun: 0, normal: 4, lourd: 8 };
+    const rates: Record<TaxLevel, number> = ECONOMY.impotsParFoyer;
     const hint = `Perçus au bilan d'automne : ${rates[level] * housed} or (${housed} foyer${housed > 1 ? "s" : ""} logé${housed > 1 ? "s" : ""}).`;
     if (this.el.taxHint!.textContent !== hint) this.el.taxHint!.textContent = hint;
+    const welcome = sim.state.immigration;
+    this.root.querySelectorAll<HTMLButtonElement>("[data-immigration]").forEach((btn) => {
+      const on = btn.dataset.immigration === welcome;
+      btn.classList.toggle("is-active", on);
+      btn.setAttribute("aria-pressed", String(on));
+    });
+    const im = pop.immigrationCheck();
+    const arrived = im.arrived > 0 ? `${im.arrived} famille${im.arrived > 1 ? "s" : ""} accueillie${im.arrived > 1 ? "s" : ""} cette année. ` : "";
+    const moraleCost = DEMOGRAPHY.moral.immigration[welcome];
+    const rate = `${perYear(welcome)}${moraleCost !== 0 ? `, moral ${signed(moraleCost)}` : ""}. `;
+    const imHint =
+      welcome === "fermee" ? "Personne ne vient s'installer." : `${rate}${arrived}${im.ready ? `Une famille arrivera ${nextArrival(sim.date.seasonIndex)}.` : (im.reason ?? "")}`;
+    if (this.el.immigrationHint!.textContent !== imHint) this.el.immigrationHint!.textContent = imHint;
   }
 
   private renderAlerts(): void {
@@ -716,6 +748,7 @@ export class Hud {
         <div><dt>Naissances</dt><dd>${stats.births ?? 0}</dd></div>
         <div><dt>Décès</dt><dd>${deaths}${causes ? ` <span class="bad">(${causes})</span>` : ""}</dd></div>
         <div><dt>Mariages</dt><dd>${stats.marriages ?? 0}</dd></div>
+        <div><dt>Nouveaux venus</dt><dd>${stats.immigrants ?? 0} famille${(stats.immigrants ?? 0) > 1 ? "s" : ""}</dd></div>
         <div><dt>Impôts</dt><dd>${stats.taxes ?? 0} or</dd></div>
         <div><dt>Village</dt><dd>${c.total} habitants, ${c.families} foyers, moral ${sim.population.morale()}</dd></div>
         <div><dt>Vivres</dt><dd>${days === Infinity ? "—" : `${days} jours d'avance`} pour l'hiver qui vient</dd></div>
@@ -1174,4 +1207,35 @@ function setPauseAtBilan(on: boolean): void {
   } catch {
     /* préférence non mémorisée */
   }
+}
+
+function signed(n: number): string {
+  return n > 0 ? `+${n}` : n < 0 ? `−${-n}` : "0";
+}
+
+function perYear(level: ImmigrationLevel): string {
+  const n = DEMOGRAPHY.immigration.famillesParAn[level];
+  return `${n} famille${n > 1 ? "s" : ""} par an au plus`;
+}
+
+/** Moment de la prochaine arrivée possible : début du printemps, de l'été ou de l'automne. */
+function nextArrival(seasonIndex: number): string {
+  if (seasonIndex === 0) return "au début de l'été";
+  if (seasonIndex === 1) return "au début de l'automne";
+  return "au printemps";
+}
+
+/** Fiche de la maison : qui viendra l'habiter, ou pourquoi elle restera vide. */
+function newHouseLine(sim: DomainSim): string {
+  const o = sim.population.housingOutlook();
+  const free = o.freeHouses;
+  if (o.homeless > free) return `<p>Une famille sans abri s'y installera dès le lendemain.</p>`;
+  if (o.homeless + o.waitingCouples > free) return `<p>Un jeune couple s'y mariera au début de la prochaine saison.</p>`;
+  const im = sim.population.immigrationCheck(o.spare + 1);
+  if (im.ready && o.spare < im.perYear - im.arrived) {
+    return `<p>Une famille de nouveaux venus pourrait s'y installer ${nextArrival(sim.date.seasonIndex)}.</p>`;
+  }
+  let why = im.reason ?? "";
+  if (im.ready) why = `${o.spare} maison${o.spare > 1 ? "s" : ""} libre${o.spare > 1 ? "s" : ""} attend${o.spare > 1 ? "ent" : ""} déjà les nouveaux venus (${perYear(im.level)}).`;
+  return `<p class="tc-warn">Personne ne l'attend : elle restera vide. ${escapeHtml(why)} ${escapeHtml(nextMarriageText(o.nextMarriageYears))}</p>`;
 }

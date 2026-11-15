@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { DAY_TICKS, ageOf, type DomainSim } from "../src";
+import { DAY_TICKS, ageOf, emptyHouseStatus, type DomainSim } from "../src";
 import { build, labGame, manorOf, newGame, road, runUntil } from "./helpers";
 
 const SUMMER = 450;
+const AUTUMN = 900;
 const WINTER = 1350;
 const YEAR = 1800;
 
@@ -34,6 +35,11 @@ describe("population de départ", () => {
     const kids = sim.state.villagers.filter((v) => ageOf(v, tick) < 17);
     expect(sim.state.villagers.length).toBe(20 + kids.length);
     for (const k of kids) expect(ageOf(k, tick)).toBeLessThanOrEqual(5);
+    // Chaque foyer arrive avec 10 jours de vivres.
+    for (const f of fams) {
+      const daily = sim.population.members(f.id).reduce((n, v) => n + (ageOf(v, tick) >= 14 ? 50 : 25), 0);
+      expect(f.food).toBe(daily * 10);
+    }
     expect(sim.population.counts()).toMatchObject({ adults: 20, homeless: 10, families: 10 });
   });
 
@@ -182,5 +188,86 @@ describe("impôts", () => {
     expect(sim.apply({ type: "setTax", level: "lourd" }).ok).toBe(true);
     const housed = sim.state.families.find((f) => f.houseId !== null)!;
     expect(sim.population.moraleOf(housed, 0).parts.map((p) => p.label)).toContain("Impôts lourds");
+  });
+});
+
+describe("nouveaux venus", () => {
+  it("accueille une famille par an au plus quand une maison libre et des vivres l'attendent", () => {
+    const { sim, world } = labGame();
+    houses(sim, 12);
+    runUntil(sim, world, DAY_TICKS + 1);
+    expect(sim.population.housingOutlook()).toMatchObject({ homeless: 0, waitingCouples: 0, spare: 2 });
+    expect(sim.population.immigrationCheck().ready).toBe(true);
+    runUntil(sim, world, SUMMER + 1);
+    expect(sim.state.families).toHaveLength(11);
+    const newcomers = sim.state.families[10]!;
+    expect(newcomers.houseId).not.toBeNull();
+    for (const id of [newcomers.husbandId, newcomers.wifeId]) {
+      const age = ageOf(sim.population.villager(id)!, sim.state.tick);
+      expect(age).toBeGreaterThanOrEqual(18);
+      expect(age).toBeLessThanOrEqual(30);
+    }
+    expect(sim.state.log.some((l) => l.text.startsWith("Nouveaux venus :"))).toBe(true);
+    expect(sim.state.yearStats.immigrants).toBe(1);
+    // Une seule famille par an au rythme normal : rien à l'automne, la suivante au printemps.
+    expect(sim.population.immigrationCheck().reason).toContain("la suivante au printemps");
+    runUntil(sim, world, AUTUMN + 1);
+    expect(sim.state.families).toHaveLength(11);
+    runUntil(sim, world, YEAR + 1);
+    expect(sim.state.families).toHaveLength(12);
+  });
+
+  it("n'accueille personne si l'accueil est fermé, sans un an de vivres ou avec un moral trop bas", () => {
+    const { sim, world } = labGame();
+    houses(sim, 12);
+    runUntil(sim, world, DAY_TICKS + 1);
+    expect(sim.apply({ type: "setImmigration", level: "fermee" }).ok).toBe(true);
+    expect(sim.population.immigrationCheck().reason).toBe("Accueil des nouveaux venus fermé.");
+    runUntil(sim, world, SUMMER + 1);
+    expect(sim.state.families).toHaveLength(10);
+
+    sim.apply({ type: "setImmigration", level: "normale" });
+    for (const f of sim.state.families) f.food = 0;
+    manorOf(sim).stock.nourriture = 50;
+    expect(sim.population.immigrationCheck().reason).toMatch(/^Il faut 120 jours de vivres d'avance/);
+
+    for (const f of sim.state.families) {
+      f.food = 1e9;
+      f.morale = 30;
+    }
+    expect(sim.population.immigrationCheck().reason).toBe("Il faut un moral d'au moins 50 (il est de 30).");
+  });
+
+  it("garde les maisons libres pour les sans-abri et les jeunes couples, et dit pourquoi une maison reste vide", () => {
+    const { sim, world } = labGame();
+    houses(sim, 9);
+    runUntil(sim, world, DAY_TICKS + 1);
+    let o = sim.population.housingOutlook();
+    expect(o).toMatchObject({ homeless: 1, spare: 0 });
+    expect(o.immigration.reason).toBe("Aucune maison libre et reliée que personne n'attend.");
+    // Les enfants de départ ont 5 ans au plus : pas de mariage avant une douzaine d'années.
+    expect(o.nextMarriageYears).toBeGreaterThanOrEqual(12);
+    sim.apply({ type: "setImmigration", level: "fermee" });
+    houses(sim, 2, 82);
+    runUntil(sim, world, 2 * DAY_TICKS + 1);
+    o = sim.population.housingOutlook();
+    expect(o).toMatchObject({ homeless: 0, freeHouses: 1, spare: 1 });
+    const text = emptyHouseStatus(o).text;
+    expect(text).toContain("Maison vide. Accueil des nouveaux venus fermé.");
+    expect(text).toMatch(/Prochain mariage possible dans \d+ ans environ\./);
+    expect(emptyHouseStatus(o).tone).toBe("warn");
+  });
+
+  it("accueille jusqu'à trois familles par an quand l'accueil est ouvert, au prix d'un peu de moral", () => {
+    const { sim, world } = labGame();
+    houses(sim, 14);
+    expect(sim.apply({ type: "setImmigration", level: "ouverte" }).ok).toBe(true);
+    runUntil(sim, world, AUTUMN + 1);
+    expect(sim.state.families).toHaveLength(12);
+    runUntil(sim, world, YEAR + 1);
+    expect(sim.state.families).toHaveLength(13);
+    const housed = sim.state.families[0]!;
+    const parts = sim.population.moraleOf(housed, 0).parts;
+    expect(parts).toContainEqual({ label: "Accueil ouvert aux nouveaux venus", value: -10 });
   });
 });

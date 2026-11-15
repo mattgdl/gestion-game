@@ -90,6 +90,16 @@ export interface DemographyDef {
     eglise: number;
     marche: number;
     impots: Record<"aucun" | "normal" | "lourd", number>;
+    immigration: Record<"fermee" | "normale" | "ouverte", number>;
+  };
+  immigration: {
+    famillesParAn: Record<"fermee" | "normale" | "ouverte", number>;
+    vivresMinJours: number;
+    moralMin: number;
+    ageMin: number;
+    ageMax: number;
+    enfantsMax: number;
+    ageEnfantMax: number;
   };
 }
 export const DEMOGRAPHY = demographyJson as unknown as DemographyDef;
