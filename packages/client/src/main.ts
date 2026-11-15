@@ -8,7 +8,7 @@ import { CameraController } from "./camera/CameraController";
 import { Game } from "./game/Game";
 import { Session } from "./game/Session";
 import { MapScene } from "./scenes/MapScene";
-import { Hud, type HudActions } from "./ui/Hud";
+import { Hud, pauseAtBilan, type HudActions } from "./ui/Hud";
 import { parseSave, serializeSave, type SaveGame } from "./save/save";
 import { readSlot, writeSlot } from "./save/storage";
 import { Journal, type JournalDb } from "./telemetry/journal";
@@ -78,6 +78,8 @@ function start(data: HotData = {}): void {
     if (data.save) session = Session.fromSave(parseSave(data.save));
     else {
       resumed = latestSave();
+      // Une partie terminée ne se reprend pas : on en commence une nouvelle.
+      if (resumed?.domain.gameOver) resumed = null;
       session = resumed ? Session.fromSave(resumed) : Session.newGame(initialSeed());
     }
   } catch {
@@ -131,6 +133,18 @@ function start(data: HotData = {}): void {
       if (events.some((e) => e.type === "barrier")) {
         if (writeSlot("auto", s.toSave())) hud.refreshSaves();
         journal.onBarrier();
+        if (pauseAtBilan()) {
+          const wasPaused = s.paused;
+          s.paused = true;
+          hud.showBilan(s.sim.date.year, structuredClone(s.sim.state.yearStats), () => {
+            s.paused = wasPaused;
+          });
+        }
+      }
+      if (events.some((e) => e.type === "gameOver")) {
+        writeSlot("auto", s.toSave());
+        void journal.flush();
+        hud.showGameOver(() => actions.newGame(initialSeed()));
       }
     });
   };

@@ -105,9 +105,9 @@ describe("ateliers et porteurs", () => {
 
   it("s'arrête quand toutes les réserves sont pleines", () => {
     const { sim, world, mill } = nearWoodcutter();
-    manorOf(sim).stock = { nourriture: 100, bois: 150, pierre: 148 };
+    manorOf(sim).stock = { nourriture: 100, bois: 150, pierre: 248 };
     runUntil(sim, world, YEAR - 1);
-    expect(sim.economy.storageUsage()).toMatchObject({ used: 400, capacity: 400 });
+    expect(sim.economy.storageUsage()).toMatchObject({ used: 500, capacity: 500 });
     expect(mill.stock.bois).toBe(20);
     expect(sim.economy.status(mill.id)).toMatchObject({ blocked: true, tone: "bad" });
   });
@@ -207,7 +207,7 @@ describe("agriculture", () => {
     const { sim, world, farm: f } = farm(FIVE);
     runUntil(sim, world, SUMMER + 1);
     // On bloque la ferme pendant tout l'automne : son stock est plein et les réserves aussi.
-    manorOf(sim).stock = { nourriture: 200, bois: 100, pierre: 100 };
+    manorOf(sim).stock = { nourriture: 300, bois: 100, pierre: 100 };
     f.stock.nourriture = 300;
     runUntil(sim, world, WINTER + 1);
     expect(sim.state.log.map((l) => l.text).some((t) => t.includes("5 champs non moissonnés"))).toBe(true);
@@ -224,17 +224,17 @@ describe("réserves", () => {
     manorOf(sim).stock.bois = 0;
     build(sim, "maison", 73, 30);
     expect(depot.stock.bois).toBe(92);
-    expect(sim.economy.storageUsage().capacity).toBe(700);
+    expect(sim.economy.storageUsage().capacity).toBe(800);
   });
 
   it("déménage le contenu d'un entrepôt démoli et signale ce qui ne tient pas", () => {
     const { sim } = labGame();
     const depot = build(sim, "entrepot", 75, 27);
-    depot.stock = { pierre: 200 };
+    depot.stock = { pierre: 300 };
     manorOf(sim).stock = { nourriture: 100, bois: 120, pierre: 50 };
     sim.apply({ type: "demolish", x: 75, y: 27 });
-    // Le manoir (400) contient 270 : il reste 130 places pour 200 pierres + le remboursement.
-    expect(sim.economy.storageUsage().used).toBe(400);
+    // Le manoir (500) contient 270 : il reste 230 places pour 300 pierres + le remboursement.
+    expect(sim.economy.storageUsage().used).toBe(500);
     expect(sim.state.log.at(-1)?.text).toContain("perdu");
   });
 });

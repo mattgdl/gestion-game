@@ -4,7 +4,19 @@
  * Elle lit l'état et envoie des commandes ; elle ne contient aucune règle de jeu.
  */
 import { DOMINANTS, RESOURCE_IDS, RESOURCE_NAMES, TERRAIN_NAMES } from "@jeu/shared";
-import { BUILDINGS, BUILDING_IDS, GOOD_IDS, dateOf, goodsTotal, type Building, type Goods } from "@jeu/sim-fief";
+import {
+  BUILDINGS,
+  BUILDING_IDS,
+  DAYS_PER_YEAR,
+  GOOD_IDS,
+  ageOf,
+  dateOf,
+  goodsTotal,
+  type Building,
+  type Goods,
+  type TaxLevel,
+  type YearStats,
+} from "@jeu/sim-fief";
 import { PLAYER_ID, fiefById, lordById, type FiefMeta } from "@jeu/sim-monde";
 import { TILE } from "../camera/InputController";
 import type { CameraController } from "../camera/CameraController";
@@ -14,6 +26,7 @@ import { lordColor } from "../render/palette";
 import { parseSave, serializeSave, SaveError, type SaveGame } from "../save/save";
 import { readSlot, slotInfo, writeSlot, type SlotId } from "../save/storage";
 import type { Journal } from "../telemetry/journal";
+import { computeAlerts, foodDays } from "./alerts";
 import { escapeHtml, formatCost, formatRealDate } from "./format";
 
 export interface HudActions {
@@ -169,6 +182,14 @@ export class Hud {
             <span class="res-label">Réserves</span>
             <span class="res-value" data-el="stockValue">0</span>
           </div>
+          <div class="res res-pop" title="Habitants : adultes et enfants">
+            <span class="res-label">Habitants</span>
+            <span class="res-value" data-el="popValue">0</span>
+          </div>
+          <div class="res res-moral" title="Moral moyen des foyers, de 0 à 100 (50 = neutre)">
+            <span class="res-label">Moral</span>
+            <span class="res-value" data-el="moraleValue">0</span>
+          </div>
         </div>
         <div class="clock">
           <div class="date" data-el="date"></div>
@@ -192,6 +213,7 @@ export class Hud {
         <button type="button" data-act="zoomin" aria-label="Zoomer" title="Zoomer (+)">+</button>
         <button type="button" data-act="zoomout" aria-label="Dézoomer" title="Dézoomer (−)">−</button>
       </div>
+      <ul class="alerts" data-el="alerts" aria-live="polite"></ul>
 
       <div class="info-stack">
         <div class="hover-card" data-el="hoverCard" hidden></div>
@@ -203,6 +225,17 @@ export class Hud {
         <section class="panel-section">
           <h2>Sélection</h2>
           <div data-el="selection"></div>
+        </section>
+        <section class="panel-section">
+          <h2>Village</h2>
+          <div data-el="village"></div>
+          <div class="tax" role="group" aria-label="Impôts">
+            <span class="tax-label">Impôts</span>
+            <button type="button" class="btn btn-small" data-tax="aucun" title="0 or par foyer · moral +10">Aucun</button>
+            <button type="button" class="btn btn-small" data-tax="normal" title="4 or par foyer · moral 0">Normaux</button>
+            <button type="button" class="btn btn-small" data-tax="lourd" title="8 or par foyer · moral −15">Lourds</button>
+          </div>
+          <p class="muted small" data-el="taxHint"></p>
         </section>
         <section class="panel-section">
           <h2>Logistique</h2>
@@ -252,6 +285,12 @@ export class Hud {
     });
     this.root.querySelector('[data-act="home"]')?.addEventListener("click", () => this.actions.focusHome());
     this.root.querySelector('[data-act="routes"]')?.addEventListener("click", () => this.game.toggleRoutes());
+    this.root.querySelectorAll<HTMLButtonElement>("[data-tax]").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        this.game.command({ type: "setTax", level: btn.dataset.tax as TaxLevel });
+        this.renderVillage();
+      }),
+    );
     this.game.on("routes", () => {
       const btn = this.root.querySelector<HTMLButtonElement>('[data-act="routes"]');
       if (!btn) return;
@@ -400,6 +439,16 @@ export class Hud {
         <div><dt>Fief</dt><dd>${escapeHtml(fief?.name ?? b.fiefId)}</dd></div>
         <div><dt>Route</dt><dd class="${connected ? "ok" : "bad"}">${connected ? "Relié au manoir" : "Non relié : tracez une route jusqu'au manoir"}</dd></div>
       </dl>
+      ${
+        def.travailleurs
+          ? `<div class="workers-ctl" role="group" aria-label="Travailleurs">
+              <span>Travailleurs</span>
+              <button type="button" class="btn btn-small" data-act="w-minus" aria-label="Un travailleur de moins">−</button>
+              <strong data-el="wCount"></strong>
+              <button type="button" class="btn btn-small" data-act="w-plus" aria-label="Un travailleur de plus">+</button>
+            </div>`
+          : ""
+      }
       <div class="sel-live" data-el="selLive"></div>
       ${
         b.type !== "manoir"
@@ -407,6 +456,15 @@ export class Hud {
           : ""
       }`;
     box.querySelector('[data-act="demolish-selected"]')?.addEventListener("click", () => this.demolish(b));
+    const setWorkers = (delta: number) => {
+      const max = def.travailleurs ?? 0;
+      const current = b.workersLimit ?? max;
+      const next = Math.max(0, Math.min(max, current + delta));
+      if (next !== current) this.game.command({ type: "setWorkers", buildingId: b.id, count: next });
+      this.renderSelectionLive();
+    };
+    box.querySelector('[data-act="w-minus"]')?.addEventListener("click", () => setWorkers(-1));
+    box.querySelector('[data-act="w-plus"]')?.addEventListener("click", () => setWorkers(1));
     this.renderSelectionLive();
   }
 
@@ -441,10 +499,50 @@ export class Hud {
         facts.push(`<div><dt>Récolte</dt><dd>${info.expected > 0 ? `${info.expected} nourriture attendue` : "rien d'attendu"}</dd></div>`);
       }
     }
-    if (def.transport) {
+    if (def.transport && !def.marche) {
       facts.push(`<div><dt>En attente</dt><dd>${formatGoods(b.stock, "rien")} <span class="muted">(max ${def.stockMax ?? 0})</span></dd></div>`);
     }
+    if (def.marche) {
+      facts.push(`<div><dt>Étals</dt><dd>${formatGoods(b.stock, "vides")} <span class="muted">(${def.marche.capacite} places)</span></dd></div>`);
+    }
     if (facts.length > 0) rows.push(`<dl class="facts">${facts.join("")}</dl>`);
+    const pop = sim.population;
+    const tick = sim.state.tick;
+    if (def.travailleurs) {
+      const max = def.travailleurs;
+      const limit = b.workersLimit ?? max;
+      const ids = pop.workers(b.id);
+      const wCount = this.el.selection!.querySelector<HTMLElement>('[data-el="wCount"]');
+      const wText = `${ids.length} / ${limit}${limit < max ? ` (sur ${max})` : ""}`;
+      if (wCount && wCount.textContent !== wText) wCount.textContent = wText;
+      if (ids.length > 0) {
+        const names = ids.map((id) => {
+          const v = pop.villager(id);
+          return v ? `${escapeHtml(v.name)} (${ageOf(v, tick)} ans)` : "";
+        });
+        rows.push(`<p class="small muted">${names.join(", ")}</p>`);
+      }
+    }
+    if (def.logement) {
+      const fam = pop.familyInHouse(b.id);
+      if (fam) {
+        const people = pop.members(fam.id).map((v) => {
+          const role = v.id === fam.husbandId || v.id === fam.wifeId ? "" : v.sex === "F" ? ", fille" : ", fils";
+          return `${escapeHtml(v.name)} (${ageOf(v, tick)} ans${role})`;
+        });
+        const season = sim.date.seasonIndex;
+        const morale = pop.moraleOf(fam, season);
+        let daily = 0;
+        for (const v of pop.members(fam.id)) daily += ageOf(v, tick) >= 14 ? 50 : 25;
+        const days = daily > 0 ? Math.floor(fam.food / daily) : 0;
+        rows.push(`<h3>Foyer</h3><p class="small">${people.join(", ")}</p>`);
+        rows.push(`<dl class="facts">
+          <div><dt>Vivres</dt><dd>${days} jours</dd></div>
+          <div><dt>Bois</dt><dd>${(fam.wood / 1000).toFixed(1)}</dd></div>
+          <div><dt>Moral</dt><dd>${morale.total} <span class="muted">(${morale.parts.map((p) => `${escapeHtml(p.label)} ${p.value > 0 && p.label !== "Base" ? "+" : ""}${p.value}`).join(", ")})</span></dd></div>
+        </dl>`);
+      }
+    }
     if (def.transport) {
       const tick = sim.state.tick;
       const porters = eco.porters(b.id).map(({ delivery: d }, i) => {
@@ -452,11 +550,24 @@ export class Hud {
         const dest = sim.building(d.toId);
         const destName = dest ? (BUILDINGS[dest.type]?.nom ?? "réserve") : "réserve démolie";
         const goods = `${d.amount} ${RESOURCE_NAMES[d.good].toLowerCase()}`;
+        if (d.kind === "collecte") {
+          if (d.status === "aller") return `<li><span class="porter-n">${i + 1}</span>Va chercher ${goods} à ${escapeHtml(destName)} · ${seconds(d.arriveTick - tick)}</li>`;
+          return `<li><span class="porter-n">${i + 1}</span>Rapporte ${goods} · ${seconds(d.returnTick - tick)}</li>`;
+        }
         if (d.status === "aller") return `<li><span class="porter-n">${i + 1}</span>Porte ${goods} vers ${escapeHtml(destName)} · ${seconds(d.arriveTick - tick)}</li>`;
         if (d.status === "rapporte") return `<li><span class="porter-n">${i + 1}</span>Rapporte ${goods} · ${seconds(d.returnTick - tick)}</li>`;
         return `<li><span class="porter-n">${i + 1}</span>Revient à vide · ${seconds(d.returnTick - tick)}</li>`;
       });
       rows.push(`<h3>Porteurs (charge ${def.transport.charge})</h3><ul class="porters">${porters.join("")}</ul>`);
+    } else if (def.logement) {
+      const trip = sim.state.deliveries.find((d) => d.fromId === b.id);
+      if (trip) {
+        const dest = sim.building(trip.toId);
+        const destName = dest ? (BUILDINGS[dest.type]?.nom ?? "réserve") : "réserve";
+        const goods = `${trip.amount} ${RESOURCE_NAMES[trip.good].toLowerCase()}`;
+        const text = trip.status === "aller" ? `Va chercher ${goods} à ${escapeHtml(destName)}` : `Rapporte ${goods}`;
+        rows.push(`<p class="small">${text} · ${seconds((trip.status === "aller" ? trip.arriveTick : trip.returnTick) - tick)}</p>`);
+      }
     }
     const html = rows.join("");
     if (live.innerHTML !== html) live.innerHTML = html;
@@ -552,6 +663,95 @@ export class Hud {
         this.renderJournal();
       });
     }
+  }
+
+  private renderVillage(): void {
+    const sim = this.game.session.sim;
+    const pop = sim.population;
+    const c = pop.counts();
+    const stats = sim.state.yearStats;
+    const yearly = Math.round((pop.dailyFoodNeed() * DAYS_PER_YEAR) / 1000);
+    const days = foodDays(sim);
+    const facts = [
+      `<div><dt>Habitants</dt><dd>${c.total} <span class="muted">(${c.adults} adultes, ${c.children} enfants)</span></dd></div>`,
+      `<div><dt>Foyers</dt><dd>${c.families}${c.homeless > 0 ? ` <span class="bad">dont ${c.homeless} sans abri</span>` : ""}</dd></div>`,
+      `<div><dt>Emplois</dt><dd>${c.employed} / ${c.jobs} occupés <span class="muted">(${c.workers} en âge de travailler)</span></dd></div>`,
+      `<div><dt>Vivres</dt><dd class="${days < 30 ? "bad" : ""}">${days === Infinity ? "—" : `${days} jours`} <span class="muted">(on mange ${yearly} par an)</span></dd></div>`,
+      `<div><dt>Récolte</dt><dd>${sim.economy.expectedHarvest()} encore attendue</dd></div>`,
+      `<div><dt>Cette année</dt><dd>${stats.births ?? 0} naissance${(stats.births ?? 0) > 1 ? "s" : ""}, ${stats.deaths ?? 0} décès${(stats.marriages ?? 0) > 0 ? `, ${stats.marriages} mariage${(stats.marriages ?? 0) > 1 ? "s" : ""}` : ""}</dd></div>`,
+    ];
+    const html = `<dl class="facts">${facts.join("")}</dl>`;
+    if (this.el.village!.innerHTML !== html) this.el.village!.innerHTML = html;
+    const level = sim.state.taxLevel;
+    this.root.querySelectorAll<HTMLButtonElement>("[data-tax]").forEach((btn) => {
+      const on = btn.dataset.tax === level;
+      btn.classList.toggle("is-active", on);
+      btn.setAttribute("aria-pressed", String(on));
+    });
+    const housed = c.families - c.homeless;
+    const rates: Record<TaxLevel, number> = { aucun: 0, normal: 4, lourd: 8 };
+    const hint = `Perçus au bilan d'automne : ${rates[level] * housed} or (${housed} foyer${housed > 1 ? "s" : ""} logé${housed > 1 ? "s" : ""}).`;
+    if (this.el.taxHint!.textContent !== hint) this.el.taxHint!.textContent = hint;
+  }
+
+  private renderAlerts(): void {
+    const alerts = computeAlerts(this.game.session.sim);
+    const html = alerts.map((a) => `<li class="alert alert-${a.tone}">${escapeHtml(a.text)}</li>`).join("");
+    if (this.el.alerts!.innerHTML !== html) this.el.alerts!.innerHTML = html;
+  }
+
+  /** Bilan d'automne : la partie se met en pause (désactivable) le temps de lire l'année. */
+  showBilan(year: number, stats: YearStats, onClose: () => void): void {
+    const sim = this.game.session.sim;
+    const c = sim.population.counts();
+    const prod = formatGoods(stats.produced, "rien");
+    const deaths = stats.deaths ?? 0;
+    const causes = [stats.deathsHunger ? `${stats.deathsHunger} de faim` : "", stats.deathsCold ? `${stats.deathsCold} de froid` : ""].filter(Boolean).join(", ");
+    const days = foodDays(sim);
+    const body = this.openModal(
+      `Bilan de l'an ${year}`,
+      `<dl class="facts bilan">
+        <div><dt>Moisson</dt><dd>${stats.harvested} nourriture (${stats.fieldsHarvested} champs)</dd></div>
+        <div><dt>Ateliers</dt><dd>${prod}</dd></div>
+        <div><dt>Naissances</dt><dd>${stats.births ?? 0}</dd></div>
+        <div><dt>Décès</dt><dd>${deaths}${causes ? ` <span class="bad">(${causes})</span>` : ""}</dd></div>
+        <div><dt>Mariages</dt><dd>${stats.marriages ?? 0}</dd></div>
+        <div><dt>Impôts</dt><dd>${stats.taxes ?? 0} or</dd></div>
+        <div><dt>Village</dt><dd>${c.total} habitants, ${c.families} foyers, moral ${sim.population.morale()}</dd></div>
+        <div><dt>Vivres</dt><dd>${days === Infinity ? "—" : `${days} jours d'avance`} pour l'hiver qui vient</dd></div>
+      </dl>
+      <label class="check"><input id="bilan-pause" type="checkbox" ${pauseAtBilan() ? "checked" : ""} /> Mettre en pause à chaque bilan d'automne</label>
+      <div class="modal-actions"><button type="button" class="btn btn-primary" data-act="bilan-ok">Continuer</button></div>`,
+    );
+    body.querySelector<HTMLInputElement>("#bilan-pause")?.addEventListener("change", (e) => setPauseAtBilan((e.target as HTMLInputElement).checked));
+    body.querySelector('[data-act="bilan-ok"]')?.addEventListener("click", () => {
+      this.closeModal();
+      onClose();
+    });
+  }
+
+  showGameOver(onNewGame: () => void): void {
+    const sim = this.game.session.sim;
+    const year = sim.date.year;
+    const manual = slotInfo("manuelle");
+    const body = this.openModal(
+      "Le domaine s'est vidé",
+      `<p>En l'an ${year}, il ne reste que ${sim.state.villagers.length} habitant${sim.state.villagers.length > 1 ? "s" : ""} : votre lignée n'a plus personne à gouverner.</p>
+       <p class="muted small">La chronique complète de la dynastie arrivera avec J3.</p>
+       <div class="modal-actions">
+         ${manual ? `<button type="button" class="btn" data-act="go-load">Charger la sauvegarde de l'an ${manual.year}</button>` : ""}
+         <button type="button" class="btn btn-primary" data-act="go-new">Nouvelle partie</button>
+       </div>`,
+    );
+    body.querySelector('[data-act="go-new"]')?.addEventListener("click", () => {
+      this.closeModal();
+      onNewGame();
+    });
+    body.querySelector('[data-act="go-load"]')?.addEventListener("click", () => {
+      const save = readSlot("manuelle");
+      this.closeModal();
+      if (save) this.actions.load(save);
+    });
   }
 
   private renderLogistics(): void {
@@ -773,6 +973,13 @@ export class Hud {
       const value = String(Math.floor(totals[id]));
       if (node && node.textContent !== value) node.textContent = value;
     }
+    const counts = sim.population.counts();
+    const popText = String(counts.total);
+    if (this.el.popValue!.textContent !== popText) this.el.popValue!.textContent = popText;
+    const morale = sim.population.morale();
+    const moraleText = String(morale);
+    if (this.el.moraleValue!.textContent !== moraleText) this.el.moraleValue!.textContent = moraleText;
+    this.el.moraleValue!.parentElement?.classList.toggle("is-low", morale < 40);
     const usage = sim.economy.storageUsage();
     const stockText = `${usage.used}/${usage.capacity}`;
     if (this.el.stockValue!.textContent !== stockText) this.el.stockValue!.textContent = stockText;
@@ -782,6 +989,8 @@ export class Hud {
     if (now - this.lastLive >= 250) {
       this.lastLive = now;
       this.renderToolCard();
+      this.renderVillage();
+      this.renderAlerts();
       this.renderLogistics();
       this.renderSelectionLive();
       this.renderJournal();
@@ -949,4 +1158,20 @@ function fieldState(game: Game, x: number, y: number): string {
   if (season === 0) return "en semailles";
   if (season === 3) return "au repos";
   return "non semé (semailles au printemps)";
+}
+
+const PAUSE_KEY = "seigneurie.pauseBilan";
+export function pauseAtBilan(): boolean {
+  try {
+    return localStorage.getItem(PAUSE_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+function setPauseAtBilan(on: boolean): void {
+  try {
+    localStorage.setItem(PAUSE_KEY, on ? "on" : "off");
+  } catch {
+    /* préférence non mémorisée */
+  }
 }

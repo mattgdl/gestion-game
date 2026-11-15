@@ -96,8 +96,20 @@ export function domainSnapshot(sim: DomainSim): Record<string, unknown> {
   const resources: Record<string, number> = {};
   for (const id of RESOURCE_IDS) resources[id] = totals[id];
   const date = sim.date;
+  const pop = sim.population;
+  const fams = sim.state.families;
   return {
     date: { annee: date.year, saison: date.seasonName, jour: date.day },
+    population: pop.counts(),
+    moral: pop.morale(),
+    impots: sim.state.taxLevel,
+    foyersAffames: fams.filter((f) => f.hungryDays > 0).length,
+    foyersFroid: fams.filter((f) => f.coldDays > 0).length,
+    joursDeVivres: (() => {
+      const need = pop.dailyFoodNeed();
+      return need > 0 ? Math.floor((pop.foodAvailable() * 1000) / need) : null;
+    })(),
+    finDePartie: sim.state.gameOver,
     ressources: resources,
     reserves: eco.storageUsage(),
     enAttente: eco.waiting() as Goods,
@@ -210,6 +222,16 @@ export class Journal {
       ...domainSnapshot(sim),
       production: stats.produced,
       moisson: { nourriture: stats.harvested, champs: stats.fieldsHarvested },
+      demographie: {
+        naissances: stats.births ?? 0,
+        deces: stats.deaths ?? 0,
+        decesFaim: stats.deathsHunger ?? 0,
+        decesFroid: stats.deathsCold ?? 0,
+        mariages: stats.marriages ?? 0,
+      },
+      mange: Math.round((stats.eaten ?? 0) / 1000),
+      bruleBois: Math.round((stats.burned ?? 0) / 1000),
+      impotsPercus: stats.taxes ?? 0,
       tempsReel: this.timeOf(this.year),
       actions: this.year.actions,
       refus: this.year.refus,

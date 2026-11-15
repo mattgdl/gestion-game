@@ -915,3 +915,123 @@ textarea {
 .hc-tool.warn {
   color: #f0b46a;
 }
+
+/* ------------------------------------------------------------ J2b : village */
+
+.res-pop .res-label {
+  border-bottom-color: #c98f6a;
+}
+.res-moral .res-label {
+  border-bottom-color: #8fb3d9;
+}
+.res-moral.is-low .res-value {
+  color: #f0a75a;
+}
+.alerts {
+  position: absolute;
+  top: calc(var(--topbar-h) + 62px);
+  left: var(--gutter-left);
+  width: min(360px, calc(100% - 32px));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  pointer-events: none !important;
+}
+.alert {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-left-width: 4px;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13.5px;
+  line-height: 1.35;
+}
+.alert-bad {
+  border-left-color: var(--gueules);
+}
+.alert-warn {
+  border-left-color: #d9822b;
+}
+.alert-info {
+  border-left-color: #6f7a8a;
+}
+.tax {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+}
+.tax-label {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-right: 4px;
+}
+.workers-ctl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+.workers-ctl span {
+  color: var(--text-dim);
+  min-width: 82px;
+}
+.workers-ctl strong {
+  min-width: 70px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+.bilan div {
+  grid-template-columns: 100px 1fr;
+}
+@media (max-width: 900px) {
+  .alerts {
+    top: calc(var(--topbar-h) + 56px);
+  }
+}
+
+/* Bandeau plus compact : 7 compteurs doivent tenir à côté de l'horloge. */
+.topbar {
+  gap: 12px;
+}
+.realm {
+  max-width: 220px;
+}
+.resources {
+  gap: 4px;
+}
+.res {
+  padding: 4px 8px;
+  gap: 5px;
+}
+.res-label {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.res-value {
+  font-size: 16px;
+  min-width: 2ch;
+}
+@media (max-width: 1500px) {
+  .realm-sub {
+    display: none;
+  }
+  .realm-name {
+    font-size: 18px;
+  }
+  .res-label {
+    font-size: 10px;
+  }
+  .date {
+    font-size: 15px;
+  }
+}

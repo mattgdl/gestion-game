@@ -19,6 +19,7 @@ Les règles et décisions sont dans **DESIGN.md**, l'avancement dans **ROADMAP.m
 | `npm run typecheck` | Vérifie les types TypeScript de tout le projet. |
 | `npm run build` | Construit le jeu en un seul fichier : `packages/client/dist/index.html`, qui s'ouvre directement dans un navigateur. |
 | `npm run build:artifact` | Construit la version publiable sur claude.ai : `packages/client/dist/seigneurie.html`. |
+| `npx tsx tools/simulate.ts 30 3 70` | Simule 30 ans d'un village type (3 fermes au départ, fertilité 70 %) et affiche un tableau (CSV) : population, naissances, décès, récoltes, vivres. |
 
 ## Commandes du jeu
 

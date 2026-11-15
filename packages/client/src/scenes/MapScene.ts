@@ -314,6 +314,21 @@ export class MapScene extends Phaser.Scene {
         g.fillRect(cx - 1.5, cy + 2.5, 3, 3);
         continue;
       }
+      if (def.logement && level === "proche") {
+        const fam = sim.population.familyInHouse(b.id);
+        if (!fam) {
+          // Maison libre : volets clos.
+          g.fillStyle(0x10131a, 0.4);
+          g.fillRect(x + 2, y + 2, pw - 4, ph - 4);
+        } else if (fam.hungryDays > 0 || fam.coldDays > 0) {
+          const hungry = fam.hungryDays > 0;
+          g.fillStyle(hungry ? 0xb3261e : 0x3b78c4, 1);
+          g.fillCircle(x + 7, y + 7, 6);
+          g.fillStyle(0xffffff, 1);
+          g.fillRect(x + 5, y + 4, 4, 6);
+        }
+        continue;
+      }
       const status = sim.economy.status(b.id);
       if (status.blocked) {
         // Pastille orange « pause » : bloqué par manque de place ou de porteurs.
@@ -324,7 +339,7 @@ export class MapScene extends Phaser.Scene {
         g.fillRect(cx + 1, cy - 4, 3, 8);
       }
       // Marchandises en attente : une caisse par charge de porteur, le long du bas du bâtiment.
-      if (level === "proche" && !def.stockage && def.transport) {
+      if (level === "proche" && !def.stockage && !def.marche && def.transport) {
         for (const good of GOOD_IDS) {
           const n = b.stock[good] ?? 0;
           if (n <= 0) continue;
@@ -338,6 +353,37 @@ export class MapScene extends Phaser.Scene {
             g.fillStyle(color, 1);
             g.fillRect(bx, by, 7, 7);
           }
+        }
+      }
+    }
+  
+    this.drawTents(sim, g, level);
+  }
+
+  /** Les familles sans abri campent sous des tentes autour du manoir. */
+  private drawTents(sim: DomainSim, g: Phaser.GameObjects.Graphics, level: string): void {
+    if (level === "monde") return;
+    const homeless = sim.state.families.filter((f) => f.houseId === null).length;
+    if (homeless === 0) return;
+    const manor = sim.state.buildings.find((b) => b.type === "manoir");
+    if (!manor) return;
+    let drawn = 0;
+    for (let r = 2; r <= 6 && drawn < homeless; r++) {
+      for (let dy = -r; dy <= r + 2 && drawn < homeless; dy++) {
+        for (let dx = -r; dx <= r + 2 && drawn < homeless; dx++) {
+          if (Math.max(Math.abs(dx - 1), Math.abs(dy - 1)) !== r) continue;
+          const tx = manor.x + dx;
+          const ty = manor.y + dy;
+          if (sim.terrainAt(tx, ty) !== 0 || sim.occupantAt(tx, ty)) continue;
+          const px = tx * TILE;
+          const py = ty * TILE;
+          g.fillStyle(0x2a2118, 1);
+          g.fillTriangle(px + 3, py + TILE - 4, px + TILE / 2, py + 4, px + TILE - 3, py + TILE - 4);
+          g.fillStyle(0xd9c7a1, 1);
+          g.fillTriangle(px + 6, py + TILE - 6, px + TILE / 2, py + 8, px + TILE - 6, py + TILE - 6);
+          g.fillStyle(0x5a4632, 1);
+          g.fillRect(px + TILE / 2 - 2, py + TILE - 12, 4, 6);
+          drawn += 1;
         }
       }
     }

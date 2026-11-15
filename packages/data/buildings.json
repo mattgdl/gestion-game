@@ -10,9 +10,9 @@
     "constructible": false,
     "unique": true,
     "couleur": "#8a5a3c",
-    "description": "Siège de votre lignée et première réserve (400 marchandises). Toutes les routes partent de lui.",
+    "description": "Siège de votre lignée et première réserve (500 marchandises). Toutes les routes partent de lui.",
     "stockage": {
-      "capacite": 400
+      "capacite": 500
     },
     "utilite": "Siège de votre lignée et première réserve de marchandises."
   },

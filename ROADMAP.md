@@ -1,27 +1,13 @@
 # ROADMAP.md
 
-> Mise à jour : 14/11/2026 · Référence des règles : DESIGN.md (v0.4)
+> Mise à jour : 15/11/2026 · Référence des règles : DESIGN.md (v0.5)
 > Chaque jalon se termine par un jeu qui se lance et se joue. Une idée qui sort du jalon en cours est notée ici, pas codée.
 
 ## En cours
 
-- **Retours de jeu sur J2a**, puis démarrage de **J2b — Le village vit**.
+- **Retours de jeu sur J2b**, puis démarrage de **J3 — La lignée**.
 
 ## À faire
-
-### J2b — Le village vit
-- Compteur de population visible en permanence (demande du joueur).
-- Population de départ générée (proposition du joueur : environ 20 habitants), puis naissances (environ une par famille tous les 1,5 an). Modèle exact à valider avant de coder (voir la réponse du 15/11).
-- Villageois individuels : âge, foyer, métier, naissances, morts.
-- Logement, emplois, trajet domicile-travail (les ateliers et fermes emploient de vrais villageois).
-- Consommation de nourriture, chauffage en hiver (bois), marché qui distribue aux foyers.
-- Impôts : première source d'or.
-- Équilibrage avec l'outil `simulate`.
-- Famine et défaite (moins de 5 habitants sur le domaine).
-- Indicateurs (réserves pour l'hiver, récolte prévue) et alertes.
-- Bilan d'automne (pause automatique en solo, désactivable).
-- Outil `simulate` (N années sans affichage, export CSV).
-- **Critère de fin :** une partie de 20 min tient debout ; on peut perdre par famine en la voyant venir.
 
 ### J3 — La lignée
 - Famille seigneuriale, mariage simple, naissances, mortalité, majorité.
@@ -61,6 +47,14 @@
 - *(vide)*
 
 ## Fait
+- 15/11/2026 : **J2b — Le village vit** livré et jouable.
+  - Population : 10 couples de 20 à 25 ans et leurs enfants, tentes autour du manoir, naissances, décès, mariages, orphelins recueillis.
+  - Maisons, emplois automatiques par priorité avec nombre réglable, temps de trajet domicile-travail.
+  - Foyers qui vont chercher nourriture et bois ; marché ravitaillé par ses marchands ; chauffage l'hiver.
+  - Faim et froid (après 5 jours), moral par foyer (église, marché, impôts), impôts au bilan d'automne.
+  - Interface : habitants et moral dans le bandeau, panneau Village, impôts, alertes, fiche des foyers, travailleurs − / +, bilan d'automne en pause, fin de partie.
+  - Outil `simulate` ; équilibrage des fermes (12 par champ, grange de 300, charrettes de 12), manoir de 500 places, chauffage 4 par hiver.
+  - Sauvegardes format v3. 73 tests automatiques.
 - 15/11/2026 : **Retours de la partie test n° 1** (graine orge-349, 3 ans, 9 min) : fiche d'outil avant construction, avertissement des champs en trop, reprise automatique de la dernière partie, sauvegarde automatique toutes les 30 s, bilan annuel sur quatre saisons.
 - 15/11/2026 : **Journal de partie** dans la page publiée : état toutes les 30 s et bilan annuel, lus par Claude via la base de l'artefact.
 - 14/11/2026 : **J2a — L'économie circule** livré et jouable.
@@ -84,6 +78,10 @@
 - 12/11/2026 : brief fondateur, DESIGN.md v0.1 à v0.3, réponses aux questions Q1 à Q8, création de cette ROADMAP.
 
 ## Idées notées (à trier)
+- Remariage des veufs et veuves (aujourd'hui un foyer qui perd un parent ne se reforme pas).
+- Immigration réglable (une famille par an au plus, s'il y a une maison libre et des vivres) : écartée pour l'instant, à reconsidérer si la croissance paraît trop lente avant les premiers mariages (vers l'an 12).
+- Villageois visibles sur la carte (aller au travail, au marché).
+- Priorités d'emploi réglables par le joueur.
 - Chantiers : les matériaux de construction livrés par porteurs (aujourd'hui la construction est instantanée).
 - Épuisement des forêts et des carrières, repousse des arbres.
 - Déménager le contenu d'une réserve vers une autre à la demande.

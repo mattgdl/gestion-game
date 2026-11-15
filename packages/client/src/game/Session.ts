@@ -77,7 +77,14 @@ export class Session {
       events.push(...stepEvents);
       if (stepEvents.some((e) => e.type === "barrier")) {
         this.runBarrier();
-        if (this.waitingForWorld) break;
+        // On s'arrête là pour cette image : l'interface lit le bilan avant le passage à l'hiver.
+        this.accumulator = 0;
+        break;
+      }
+      if (stepEvents.some((e) => e.type === "gameOver")) {
+        this.paused = true;
+        this.accumulator = 0;
+        break;
       }
     }
     if (steps >= MAX_TICKS_PER_FRAME) this.accumulator = 0;

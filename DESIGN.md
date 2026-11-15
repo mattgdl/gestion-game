@@ -1,7 +1,7 @@
 # DESIGN.md — Jeu de gestion médiéval à dynastie
 
-> **Titre provisoire :** « Seigneurie » (nom de travail, à remplacer) · **Version du document :** 0.4 · **Dernière mise à jour :** 14/11/2026
-> **Statut :** J2a livré (l'économie circule). Prochain jalon : J2b (le village vit).
+> **Titre provisoire :** « Seigneurie » (nom de travail, à remplacer) · **Version du document :** 0.5 · **Dernière mise à jour :** 15/11/2026
+> **Statut :** J2b livré (le village vit). Prochain jalon : J3 (la lignée).
 > Ce document est la référence du projet. En cas de doute, c'est lui qui tranche, et chaque décision y est consignée avec sa raison (section 11).
 
 ## Sommaire
@@ -110,6 +110,33 @@ Règles décidées pendant le développement, à contester si elles ne te convie
 | Journal de partie | Dans la page publiée sur claude.ai, le jeu écrit dans la base de l'artefact : l'état de la partie toutes les 30 s (avec la sauvegarde complète) et un bilan à chaque fin d'automne (production, moisson, bâtiments bloqués, actions, refus, temps réel par vitesse). Lecture réservée au propriétaire de l'artefact. Désactivable dans le panneau Partie. | Permettre à Claude d'analyser les vraies parties de test. |
 
 ---
+
+### 4.3 J2b — Le village vit
+
+| Sujet | Règle | Raison |
+|---|---|---|
+| Départ | 10 couples de 20 à 25 ans et 0 à 2 enfants de 0 à 5 ans chacun (environ 30 habitants), sans maison : ils campent sous des tentes autour du manoir. 10 jours de vivres par foyer, le reste au manoir (180 nourriture, 150 bois, 60 pierre ; manoir de 500 places). | Choix du joueur : 20 adultes et leurs enfants. Premier objectif : loger tout le monde avant l'hiver. |
+| Âges | Travail dès 14 ans, mariage dès 17 ans. Réglables dans `demography.json`. | Le joueur n'a pas tranché l'âge du travail. |
+| Naissances | Une femme mariée de 17 à 40 ans a un enfant en moyenne tous les 180 jours de jeu (1,5 an), jamais moins de 120 jours après le précédent ; ×0,5 à ×1,5 selon le moral ; aucune quand le foyer a faim. | Choix du joueur (une naissance par famille tous les 1,5 an). |
+| Mortalité | Par an : 5 % avant 5 ans, 1 % jusqu'à 49 ans, puis 4 %, 10 % et 25 %. Faim et froid : 0,4 % par jour, seulement après 5 jours consécutifs. | Un trajet de ravitaillement en retard ne tue personne ; une famine qui dure, si. |
+| Mariages | Au début de chaque saison, les célibataires de 17 ans et plus (de foyers différents) se marient s'il y a une maison libre. Un veuf ou une veuve ne se remarie pas (pour l'instant). | Les maisons libres deviennent une condition de croissance. |
+| Logement | Une maison = un foyer. Les sans-abri emménagent dans les maisons libres dès le lendemain. Une maison démolie remet son foyer à la rue. | Simple et lisible. |
+| Emplois | Automatiques : la nourriture d'abord (fermes), puis bois, pierre, marché, église ; à priorité égale, à tour de rôle ; le travailleur le plus proche de son domicile. Le joueur peut limiter le nombre de travailleurs de chaque bâtiment (− / +). | Choix du joueur : automatique avec nombre réglable. Priorité à la nourriture : sans elle, le village meurt. |
+| Trajet domicile-travail | Sans perte jusqu'à 10 cases, puis −1,25 % de temps de travail par case, jamais moins de 50 %. | Rapprocher maisons et lieux de travail compte. |
+| Effectifs | Ferme 3 (4 champs par travailleur), bûcheron 2, carrière 2, marché 2, église 1 (prêtre). | Le rendement des ateliers est proportionnel aux emplois occupés. |
+| Consommation | Adulte (14 ans et plus) 6 nourriture par an, enfant 3. Bois de chauffage : 4 par maison et par hiver. | Équilibré avec l'outil `simulate`. |
+| Provisions | Chaque foyer vit sur ses provisions et envoie quelqu'un se ravitailler (15 au plus par voyage) à la réserve ou au marché le plus proche par la route : nourriture quand il en reste moins de 15 jours ou moins que l'aller-retour plus 10 jours ; bois en automne et en hiver. Les sans-abri se servent directement au manoir. | Choix du joueur : les familles vont se servir. La place des maisons compte. |
+| Marché | Ses 2 marchands remplissent ses étals (120 places) jusqu'à 70 nourriture et 40 bois en allant aux réserves ; les foyers proches s'y servent. Moral +10 à 12 cases. | Le marché devient utile. |
+| Église | Avec un prêtre : moral +15 pour les maisons à 15 cases. | L'église devient utile avant J3. |
+| Moral | Par foyer, de 0 à 100 : base 50, nourri +15 / affamé −30, logé +10 / sans abri −20, l'hiver chauffé +5 / froid −20, église +15, marché +10, impôts aucun +10 / lourds −15. Effets : ateliers ×0,75 à ×1,25 (neutre à 50), naissances ×0,5 à ×1,5. | Choix du joueur : moral simple. |
+| Impôts | Au bilan d'automne, par foyer logé : aucun 0, normaux 4, lourds 8 or. Seule source d'or pour l'instant. | Premier revenu ; un vrai choix contre le moral. |
+| Fermes (équilibrage) | 12 nourriture par champ à 100 % de fertilité (au lieu de 8) ; grange de 300 et porteurs de 12 ; une ferme moissonne tout champ semé à sa portée, même si ses emplois ont changé depuis les semailles. | L'outil `simulate` montrait des famines dues aux granges pleines et aux récoltes perdues. |
+| Alertes | Vivres (moins de 60 jours), récolte attendue insuffisante pour l'année, foyers affamés ou sans feu, familles sans abri (rouge à partir de l'automne), bois de chauffage insuffisant à l'automne, maisons sans route, réserves pleines, emplois vacants, jeunes couples sans maison. | Défaite prévisible. |
+| Bilan d'automne | En solo, la partie se met en pause sur une fenêtre de bilan (désactivable dans la fenêtre). | Prévu en 5.3. |
+| Fin de partie | Sous 5 habitants : le temps s'arrête, fenêtre de fin (nouvelle partie ou dernière sauvegarde manuelle). Une partie terminée ne se reprend pas automatiquement. | Condition de défaite n° 2. |
+| Sauvegardes | Format v3. Les sauvegardes de J2a reçoivent la population de départ. | Les vieilles parties restent jouables. |
+
+**Ce que montre l'outil `simulate`** (village type à 70 % de fertilité, joueur qui ajoute fermes et entrepôts quand il le faut) : la population passe d'environ 30 à 80 habitants en 10 ans, puis plafonne autour de 120 avec 6 fermes. Les enfants sont 3 fois plus nombreux que les adultes vers l'an 10 : il faut environ une ferme pour 15 à 20 habitants. Les premiers mariages n'arrivent que vers l'an 12 à 14 (les enfants de départ ont 5 ans au plus) : jusque-là, le nombre de foyers ne peut que baisser. Sans entrepôts, les réserves se remplissent de bois, les fermes ne peuvent plus livrer et le village meurt de faim vers l'an 12.
 
 ## 5. Systèmes clés
 
@@ -274,8 +301,9 @@ jeu-medieval/
 │  │  ├─ economy.json         ← ressources de départ, coût des routes, remboursement
 │  │  ├─ seasons.json         ← durée d'une année, saisons
 │  │  ├─ logistics.json       ← vitesse des porteurs, attente avant charge partielle
-│  │  └─ names.json           ← noms des fiefs
-│  │     (à venir : demography.json, titles.json)
+│  │  ├─ demography.json      ← départ, âges, naissances, mortalité, consommation, moral
+│  │  └─ names.json           ← noms des fiefs et prénoms
+│  │     (à venir : titles.json)
 │  │
 │  ├─ shared/                 ← outils communs aux deux couches
 │  │  └─ src/
@@ -295,8 +323,9 @@ jeu-medieval/
 │  │  │  └─ systems/
 │  │  │     ├─ seasons.ts     ← calendrier (ticks → année, saison, jour)
 │  │  │     ├─ roads.ts       ← réseau relié au manoir, plus courts chemins
-│  │  │     └─ economy.ts     ← réserves, production, agriculture, porteurs
-│  │  │        (à venir : population, food, dynasty)
+│  │  │     ├─ economy.ts     ← réserves, production, agriculture, porteurs, marché
+│  │  │     └─ population.ts  ← villageois, foyers, emplois, provisions, moral, impôts
+│  │  │        (à venir : dynasty)
 │  │  └─ test/                ← tests automatiques
 │  │
 │  ├─ sim-monde/              ← couche Monde, partagée client/serveur
@@ -325,7 +354,7 @@ jeu-medieval/
 │
 └─ tools/
    ├─ artifact.mjs            ← prépare la version publiable du jeu
-   └─ (à venir : simulate.ts, N années sans affichage → CSV)
+   └─ simulate.ts             ← N années d'un village type sans affichage → CSV
 ```
 
 **Outils :** Vitest (tests), tsx (scripts TypeScript), Vite + vite-plugin-singlefile (jeu en un seul fichier HTML). Wrangler (déploiement Cloudflare) à partir de J5.
@@ -386,3 +415,4 @@ jeu-medieval/
 | 14/11/2026 | J2a livré : réserves physiques, porteurs, production, semailles et moisson. Chauffage reporté en J2b. Règles en section 4.2. | Deuxième jalon jouable. |
 | 15/11/2026 | Journal de partie ajouté à la page publiée, lu par Claude pour analyser les parties de test. | Demande du joueur : suivre ses parties et en tirer des conclusions. |
 | 15/11/2026 | Retours de la première partie test : fiche d'outil, avertissement des champs en trop, reprise automatique, bilan sur quatre saisons. | Analyse du journal de partie et retours du joueur. |
+| 15/11/2026 | J2b : 20 adultes et leurs enfants au départ, naissances tous les 1,5 an par famille, emplois automatiques réglables, foyers qui se ravitaillent eux-mêmes, moral simple. Règles en section 4.3. | Choix du joueur (questions du 15/11), équilibrage avec `simulate`. |

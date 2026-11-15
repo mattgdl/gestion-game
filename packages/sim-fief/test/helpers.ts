@@ -68,7 +68,7 @@ export function labGame(blocks: Block[] = [], seed = "labo"): { world: WorldStat
       }
     }
   }
-  // Réserves du laboratoire : celles de J2a (310 sur 400), pour garder de la place.
+  // Réserves du laboratoire : celles de J2a (310 marchandises), pour garder de la place.
   const manor = state.buildings.find((b) => b.type === "manoir");
   if (manor) manor.stock = { nourriture: 100, bois: 150, pierre: 60 };
   // Les foyers du laboratoire ont des provisions à vie : ils ne puisent pas dans les réserves.
