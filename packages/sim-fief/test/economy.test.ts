@@ -31,10 +31,28 @@ describe("ateliers et porteurs", () => {
     expect(sim.economy.efficiency(mill.id)).toBe(1000);
     const start = sim.totals().bois;
     runUntil(sim, world, YEAR - 1);
-    expect(sim.state.yearStats.produced.bois).toBe(39);
     expect(sim.totals().bois).toBeGreaterThanOrEqual(start + 30);
     // Rien ne se perd : réserves + atelier + porteurs = départ + production.
     expect(everywhere(sim, "bois")).toBe(start + 39);
+  });
+
+  it("compte dans le bilan d'une année les quatre saisons, hiver précédent compris", () => {
+    const { sim, world } = nearWoodcutter();
+    runUntil(sim, world, WINTER + 1);
+    expect(sim.state.yearStats).toMatchObject({ year: 2, produced: {} });
+    runUntil(sim, world, YEAR + WINTER - 2);
+    expect(sim.state.yearStats.year).toBe(2);
+    expect(sim.state.yearStats.produced.bois).toBeGreaterThanOrEqual(39);
+    expect(sim.state.yearStats.produced.bois).toBeLessThanOrEqual(40);
+  });
+
+  it("sait si un nouveau champ serait travaillé", () => {
+    const { sim } = labGame();
+    build(sim, "ferme", 73, 28);
+    expect(sim.economy.fieldWouldBeWorked(76, 28)).toBe(true);
+    for (let y = 30; y <= 32; y++) for (let x = 75; x <= 78; x++) sim.apply({ type: "field", x, y });
+    expect(sim.economy.fieldWouldBeWorked(76, 28)).toBe(false);
+    expect(sim.economy.fieldWouldBeWorked(90, 28)).toBe(false);
   });
 
   it("suit le plus court chemin par la route et met le temps prévu", () => {
@@ -128,8 +146,10 @@ describe("agriculture", () => {
     expect(sim.economy.farmInfo(f.id)?.expected).toBe(40);
     runUntil(sim, world, SUMMER + 1);
     expect(Object.values(sim.state.crops).filter((c) => c === "seme")).toHaveLength(5);
+    runUntil(sim, world, WINTER - 2);
+    expect(sim.state.yearStats).toMatchObject({ year: 1, harvested: 40, fieldsHarvested: 5 });
     runUntil(sim, world, WINTER + 100);
-    expect(sim.state.yearStats).toMatchObject({ harvested: 40, fieldsHarvested: 5 });
+    expect(sim.state.yearStats).toMatchObject({ year: 2, harvested: 0 });
     expect(sim.totals().nourriture).toBe(140);
     const texts = sim.state.log.map((l) => l.text);
     expect(texts).toContain("Semailles terminées : 5 champs ensemencés.");
@@ -140,7 +160,7 @@ describe("agriculture", () => {
     const { sim, world, farm: f } = farm(FIVE, SUMMER + 50);
     runUntil(sim, world, 1000);
     expect(sim.economy.status(f.id).text).toContain("Rien de semé");
-    runUntil(sim, world, WINTER + 100);
+    runUntil(sim, world, WINTER - 2);
     expect(sim.state.yearStats.harvested).toBe(0);
     runUntil(sim, world, YEAR + WINTER + 100);
     expect(sim.state.log.map((l) => l.text)).toContain("Moisson de l'an 2 : 40 nourriture sur 5 champs.");

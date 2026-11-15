@@ -857,3 +857,61 @@ textarea {
 .journal p {
   margin: 0;
 }
+
+/* ------------------------------------------------------------ fiche d'outil et survol */
+
+.info-stack {
+  position: absolute;
+  left: var(--gutter-left);
+  bottom: calc(var(--toolbar-h) + 10px);
+  width: min(380px, calc(100% - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none !important;
+}
+.info-stack .hover-card {
+  position: static;
+  max-width: none;
+}
+.tool-card {
+  background: var(--panel);
+  border: 1px solid var(--or);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.tool-card p {
+  margin: 0;
+}
+.tc-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+}
+.tc-size {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.tc-cost {
+  font-variant-numeric: tabular-nums;
+  color: var(--or);
+}
+.tc-warn {
+  color: #f0b46a;
+}
+.tc-conds {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-dim);
+  display: grid;
+  gap: 2px;
+}
+.hc-tool.warn {
+  color: #f0b46a;
+}

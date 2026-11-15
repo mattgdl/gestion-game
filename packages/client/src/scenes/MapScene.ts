@@ -511,6 +511,7 @@ export class MapScene extends Phaser.Scene {
     if (!hover || tool.kind === "inspect") return;
     let rect = { x: hover.x, y: hover.y, w: 1, h: 1 };
     let ok = false;
+    let idle = false;
     if (tool.kind === "build") {
       const a = game.buildAnchor(tool.building, hover.x, hover.y);
       const def = BUILDINGS[tool.building];
@@ -526,6 +527,8 @@ export class MapScene extends Phaser.Scene {
       ok = sim.check({ type: "road", x: hover.x, y: hover.y }).ok;
     } else if (tool.kind === "field") {
       ok = sim.check({ type: "field", x: hover.x, y: hover.y }).ok;
+      // Champ possible mais qu'aucune ferme ne travaillera : orange, il restera en friche.
+      if (ok && !sim.economy.fieldWouldBeWorked(hover.x, hover.y)) idle = true;
     } else if (tool.kind === "demolish") {
       const b = sim.buildingAt(hover.x, hover.y);
       if (b) {
@@ -540,7 +543,7 @@ export class MapScene extends Phaser.Scene {
       g.strokeRect(rect.x * TILE, rect.y * TILE, rect.w * TILE, rect.h * TILE);
       return;
     }
-    const color = ok ? 0x3f9d5a : 0xb3261e;
+    const color = idle ? 0xd9822b : ok ? 0x3f9d5a : 0xb3261e;
     g.fillStyle(color, 0.42);
     g.fillRect(rect.x * TILE, rect.y * TILE, rect.w * TILE, rect.h * TILE);
     g.lineStyle(2, color, 0.95);

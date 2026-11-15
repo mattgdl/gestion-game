@@ -71,12 +71,16 @@ export interface Delivery {
 /** État d'un champ pour l'année en cours (absent = pas semé). */
 export type CropState = "seme" | "recolte";
 
+/**
+ * Statistiques de l'année agricole : de l'hiver de l'année précédente à la fin de l'automne
+ * (l'an 1 commence au printemps). Le bilan de fin d'automne couvre donc quatre saisons.
+ */
 export interface YearStats {
   year: number;
-  /** Nourriture moissonnée depuis le printemps. */
+  /** Nourriture moissonnée cette année agricole. */
   harvested: number;
   fieldsHarvested: number;
-  /** Production des ateliers depuis le printemps. */
+  /** Production des ateliers cette année agricole. */
   produced: Goods;
 }
 

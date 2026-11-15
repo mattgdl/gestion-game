@@ -10,7 +10,7 @@ import { Session } from "./game/Session";
 import { MapScene } from "./scenes/MapScene";
 import { Hud, type HudActions } from "./ui/Hud";
 import { parseSave, serializeSave, type SaveGame } from "./save/save";
-import { writeSlot } from "./save/storage";
+import { readSlot, writeSlot } from "./save/storage";
 import { Journal, type JournalDb } from "./telemetry/journal";
 
 interface HotData {
@@ -62,11 +62,26 @@ function initialSeed(): string {
   return `${words[Math.floor(Math.random() * words.length)]}-${Math.floor(Math.random() * 900 + 100)}`;
 }
 
+/** Dernière partie sauvegardée dans ce navigateur (automatique ou manuelle, la plus récente). */
+function latestSave(): SaveGame | null {
+  const saves = [readSlot("auto"), readSlot("manuelle")].filter((s): s is SaveGame => s !== null);
+  saves.sort((a, b) => (a.savedAt < b.savedAt ? 1 : -1));
+  return saves[0] ?? null;
+}
+
+const AUTOSAVE_MS = 30_000;
+
 function start(data: HotData = {}): void {
   let session: Session;
+  let resumed: SaveGame | null = null;
   try {
-    session = data.save ? Session.fromSave(parseSave(data.save)) : Session.newGame(initialSeed());
+    if (data.save) session = Session.fromSave(parseSave(data.save));
+    else {
+      resumed = latestSave();
+      session = resumed ? Session.fromSave(resumed) : Session.newGame(initialSeed());
+    }
   } catch {
+    resumed = null;
     session = Session.newGame(initialSeed());
   }
 
@@ -145,13 +160,23 @@ function start(data: HotData = {}): void {
   const hud = new Hud(document.getElementById("hud") as HTMLElement, game, camera, actions, journal);
   attachSession(session);
   void connectJournal(journal);
+  let sinceAutosave = 0;
+  const autosave = () => {
+    sinceAutosave = 0;
+    writeSlot("auto", game.session.toSave());
+  };
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") void journal.flush();
+    if (document.visibilityState !== "hidden") return;
+    autosave();
+    void journal.flush();
   });
+  if (resumed) game.toast(`Partie reprise : an ${resumed.world.year}, graine « ${resumed.world.seedText} ».`);
 
   const scene = new MapScene(game, camera, (delta) => {
     game.session.update(delta);
     journal.onFrame(delta);
+    sinceAutosave += delta;
+    if (sinceAutosave >= AUTOSAVE_MS) autosave();
     hud.update();
   });
 

@@ -1,5 +1,5 @@
 {
-  "_doc": "Bâtiments. taille = [largeur, hauteur] en cases. cout en ressources. procheDe = terrain requis à moins de 'rayon' cases (et terrain exploité par la production). stockage.capacite = marchandises stockables (nourriture + bois + pierre ; l'or est au trésor, sans limite). production.parAn = unités produites par an à plein rendement ; casesPleinRendement = cases du terrain exploité nécessaires pour le plein rendement. agriculture : champsMax travaillés par la ferme, rendementParChamp à 100 % de fertilité, ticksParRecolte entre deux champs moissonnés. transport : porteurs du bâtiment et charge par voyage. stockMax = marchandises en attente avant arrêt de la production.",
+  "_doc": "Bâtiments. taille = [largeur, hauteur] en cases. cout en ressources. procheDe = terrain requis à moins de 'rayon' cases (et terrain exploité par la production). stockage.capacite = marchandises stockables (nourriture + bois + pierre ; l'or est au trésor, sans limite). production.parAn = unités produites par an à plein rendement ; casesPleinRendement = cases du terrain exploité nécessaires pour le plein rendement. agriculture : champsMax travaillés par la ferme, rendementParChamp à 100 % de fertilité, ticksParRecolte entre deux champs moissonnés. transport : porteurs du bâtiment et charge par voyage. stockMax = marchandises en attente avant arrêt de la production. utilite = à quoi sert le bâtiment (fiche avant construction). actifDes = jalon à partir duquel le bâtiment a un effet, s'il n'en a pas encore.",
   "manoir": {
     "nom": "Manoir",
     "taille": [
@@ -13,7 +13,8 @@
     "description": "Siège de votre lignée et première réserve (400 marchandises). Toutes les routes partent de lui.",
     "stockage": {
       "capacite": 400
-    }
+    },
+    "utilite": "Siège de votre lignée et première réserve de marchandises."
   },
   "maison": {
     "nom": "Maison",
@@ -26,7 +27,9 @@
     },
     "constructible": true,
     "couleur": "#c9a26b",
-    "description": "Logera une famille de villageois (J2b)."
+    "description": "Logera une famille de villageois (J2b).",
+    "utilite": "Loge une famille. Sans maisons, pas de nouvelles familles ni de bras pour travailler.",
+    "actifDes": "J2b"
   },
   "ferme": {
     "nom": "Ferme",
@@ -51,7 +54,8 @@
       "porteurs": 2,
       "charge": 8
     },
-    "stockMax": 150
+    "stockMax": 150,
+    "utilite": "Nourrit le village : sème au printemps et moissonne à l'automne jusqu'à 12 champs autour d'elle. Une terre fertile donne jusqu'à 8 nourriture par champ."
   },
   "bucheron": {
     "nom": "Bûcheron",
@@ -79,7 +83,8 @@
       "porteurs": 1,
       "charge": 5
     },
-    "stockMax": 20
+    "stockMax": 20,
+    "utilite": "Fournit le bois, nécessaire à presque toutes les constructions (et au chauffage des foyers à partir de J2b)."
   },
   "carriere": {
     "nom": "Carrière",
@@ -106,7 +111,8 @@
       "porteurs": 1,
       "charge": 5
     },
-    "stockMax": 20
+    "stockMax": 20,
+    "utilite": "Fournit la pierre des bâtiments importants : entrepôt, marché, église."
   },
   "entrepot": {
     "nom": "Entrepôt",
@@ -123,7 +129,8 @@
     "description": "Réserve de 300 marchandises. Les porteurs livrent à la réserve la plus proche par la route.",
     "stockage": {
       "capacite": 300
-    }
+    },
+    "utilite": "Ajoute 300 places de réserve. Placé près des ateliers, il raccourcit les trajets des porteurs."
   },
   "marche": {
     "nom": "Marché",
@@ -138,7 +145,9 @@
     },
     "constructible": true,
     "couleur": "#c0603c",
-    "description": "Distribuera nourriture et bois aux foyers (J2b)."
+    "description": "Distribuera nourriture et bois aux foyers (J2b).",
+    "utilite": "Distribuera nourriture et bois aux foyers voisins : les familles n'auront plus à aller jusqu'aux réserves.",
+    "actifDes": "J2b"
   },
   "eglise": {
     "nom": "Église",
@@ -154,6 +163,8 @@
     "constructible": true,
     "unique": true,
     "couleur": "#d8d0c0",
-    "description": "Soutiendra le moral et marquera mariages et successions (J2b-J3)."
+    "description": "Soutiendra le moral et marquera mariages et successions (J2b-J3).",
+    "utilite": "Soutiendra le moral des villageois, puis accueillera les mariages et successions de votre lignée.",
+    "actifDes": "J2b"
   }
 }

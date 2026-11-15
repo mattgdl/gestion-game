@@ -14,6 +14,10 @@ export interface BuildingDef {
   unique?: boolean;
   couleur: string;
   description: string;
+  /** À quoi sert le bâtiment (fiche affichée avant de le construire). */
+  utilite: string;
+  /** Jalon à partir duquel le bâtiment a un effet, s'il n'en a pas encore (ex. « J2b »). */
+  actifDes?: string;
   rayonChamps?: number;
   /** Terrain requis à proximité ; c'est aussi le terrain exploité par la production. */
   procheDe?: { terrain: string; rayon: number };

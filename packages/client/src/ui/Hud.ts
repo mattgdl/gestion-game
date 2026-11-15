@@ -75,7 +75,10 @@ export class Hud {
   ) {
     this.render();
     this.bind();
-    game.on("tool", () => this.renderTools());
+    game.on("tool", () => {
+      this.renderTools();
+      this.renderToolCard();
+    });
     game.on("selection", () => this.renderSelection());
     game.on("toast", () => this.renderToasts());
     game.on("view", () => this.renderView());
@@ -144,7 +147,7 @@ export class Hud {
     const builds = BUILDING_IDS.filter((id) => BUILDINGS[id]?.constructible)
       .map((id) => {
         const def = BUILDINGS[id]!;
-        return `<button class="tool tool-build" type="button" data-tool="build:${id}" title="${escapeHtml(def.description)}">
+        return `<button class="tool tool-build" type="button" data-tool="build:${id}" title="${escapeHtml(def.utilite)}">
           <span class="tool-top">
             <span class="swatch" style="background:${def.couleur}"></span>
             <span class="tool-name">${def.nom}</span>
@@ -190,7 +193,10 @@ export class Hud {
         <button type="button" data-act="zoomout" aria-label="Dézoomer" title="Dézoomer (−)">−</button>
       </div>
 
-      <div class="hover-card" data-el="hoverCard" hidden></div>
+      <div class="info-stack">
+        <div class="hover-card" data-el="hoverCard" hidden></div>
+        <div class="tool-card" data-el="toolCard" hidden></div>
+      </div>
       <div class="toasts" data-el="toasts" aria-live="polite"></div>
 
       <aside class="panel" data-el="panel">
@@ -456,6 +462,58 @@ export class Hud {
     if (live.innerHTML !== html) live.innerHTML = html;
   }
 
+  /** Fiche de l'outil actif : à quoi sert le bâtiment, ce qu'il coûte, où le poser. */
+  private renderToolCard(): void {
+    const card = this.el.toolCard!;
+    const tool = this.game.tool;
+    const sim = this.game.session.sim;
+    let html = "";
+    if (tool.kind === "build") {
+      const def = BUILDINGS[tool.building];
+      if (def) {
+        const totals = sim.totals();
+        const costs = RESOURCE_IDS.filter((id) => (def.cout[id] ?? 0) > 0).map((id) => {
+          const need = def.cout[id] ?? 0;
+          const missing = totals[id] < need;
+          return `<span class="${missing ? "bad" : ""}">${need} ${RESOURCE_NAMES[id].toLowerCase()}${missing ? ` (vous avez ${Math.floor(totals[id])})` : ""}</span>`;
+        });
+        const conds: string[] = [];
+        if (def.procheDe) {
+          const terrain = def.procheDe.terrain === "foret" ? "d'une forêt" : def.procheDe.terrain === "roche" ? "d'une roche" : `de : ${def.procheDe.terrain}`;
+          conds.push(`À ${def.procheDe.rayon} cases au plus ${terrain}.`);
+        }
+        conds.push("Doit toucher une route reliée au manoir pour fonctionner.");
+        if (def.unique) {
+          const built = sim.state.buildings.some((b) => b.type === tool.building);
+          conds.push(built ? "Un seul exemplaire possible : déjà construit." : "Un seul exemplaire possible.");
+        }
+        html = `
+          <div class="tc-head"><span class="swatch" style="background:${def.couleur}"></span><strong>${escapeHtml(def.nom)}</strong><span class="tc-size">${def.taille[0]} × ${def.taille[1]} cases</span></div>
+          <div class="tc-cost">${costs.length > 0 ? costs.join(" · ") : "gratuit"}</div>
+          <p>${escapeHtml(def.utilite)}</p>
+          ${def.actifDes ? `<p class="tc-warn">Pas encore d'effet dans cette version : il servira à partir de ${escapeHtml(def.actifDes)}.</p>` : ""}
+          <ul class="tc-conds">${conds.map((c) => `<li>${escapeHtml(c)}</li>`).join("")}</ul>`;
+      }
+    } else if (tool.kind === "road") {
+      html = `<div class="tc-head"><strong>Route</strong><span class="tc-size">1 or par case</span></div>
+        <p>Relie les bâtiments au manoir. Les porteurs ne circulent que sur les routes, par le plus court chemin.</p>
+        <ul class="tc-conds"><li>Glisser pour tracer ; la forêt est défrichée au passage.</li><li>Ni sur la roche, ni sur l'eau.</li></ul>`;
+    } else if (tool.kind === "field") {
+      html = `<div class="tc-head"><strong>Champ</strong><span class="tc-size">gratuit</span></div>
+        <p>Une ferme travaille au plus 12 champs, les plus proches d'abord. Les autres restent en friche (hachurés, aperçu orange).</p>
+        <ul class="tc-conds"><li>Couleurs : fertilité, du rouge (pauvre) au vert (riche).</li><li>Un champ peint après le printemps ne donne rien avant l'an prochain.</li></ul>`;
+    } else if (tool.kind === "demolish") {
+      html = `<div class="tc-head"><strong>Démolir</strong></div>
+        <p>Rend la moitié du coût. Le contenu d'un entrepôt démoli est déménagé dans les autres réserves.</p>`;
+    }
+    const compact = html.replace(/\s+/g, " ").trim();
+    if (card.dataset.html !== compact) {
+      card.dataset.html = compact;
+      card.innerHTML = html;
+    }
+    card.hidden = html === "";
+  }
+
   /** État du journal de partie (partagé avec Claude ou non), avec le bouton pour l'activer ou l'arrêter. */
   private renderJournal(): void {
     const j = this.journal;
@@ -508,7 +566,7 @@ export class Hud {
       `<div><dt>Réserves</dt><dd>${usage.used} / ${usage.capacity}${usage.incoming > 0 ? ` <span class="muted">· +${usage.incoming} en route</span>` : ""}</dd></div>`,
       `<div><dt>En attente</dt><dd>${formatGoods(waiting, "rien dans les ateliers")}</dd></div>`,
       `<div><dt>Porteurs</dt><dd>${trips} en route</dd></div>`,
-      `<div><dt>An ${stats.year}</dt><dd>${formatGoods({ ...stats.produced, nourriture: stats.harvested }, "rien produit")}</dd></div>`,
+      `<div><dt>Bilan</dt><dd>${stats.year > 1 ? "depuis l'hiver" : "depuis le début"} : ${formatGoods({ ...stats.produced, nourriture: stats.harvested }, "rien")}</dd></div>`,
     ];
     if (hasFarm) facts.push(`<div><dt>Récolte</dt><dd>${eco.expectedHarvest()} nourriture encore attendue</dd></div>`);
     const html = `<dl class="facts">${facts.join("")}</dl>`;
@@ -587,14 +645,14 @@ export class Hud {
       </div>
       <div class="save-slot">${slotLine("manuelle", manual, "manuelle")}</div>
       <div class="save-slot">${slotLine("automatique", auto, "auto")}</div>
-      <p class="muted small">Sauvegarde automatique à chaque bilan d'automne.</p>
+      <p class="muted small">Sauvegarde automatique toutes les 30 s et à chaque bilan d'automne ; la dernière partie reprend à l'ouverture du jeu.</p>
       <form class="new-game" data-el="newGameForm">
         <label for="seed-input">Nouvelle partie, graine</label>
         <div class="new-game-row">
           <input id="seed-input" name="seed" type="text" autocomplete="off" spellcheck="false" />
           <button type="submit" class="btn">${this.confirmNewGame ? "Confirmer" : "Lancer"}</button>
         </div>
-        ${this.confirmNewGame ? `<p class="warn small">La partie en cours sera perdue si elle n'est pas sauvegardée. Cliquez sur Confirmer.</p>` : ""}
+        ${this.confirmNewGame ? `<p class="warn small">La sauvegarde automatique de la partie en cours sera remplacée. Sauvegardez-la d'abord pour la garder, puis cliquez sur Confirmer.</p>` : ""}
       </form>`;
     const input = box.querySelector<HTMLInputElement>("#seed-input")!;
     input.value = randomSeed();
@@ -723,6 +781,7 @@ export class Hud {
     const now = performance.now();
     if (now - this.lastLive >= 250) {
       this.lastLive = now;
+      this.renderToolCard();
       this.renderLogistics();
       this.renderSelectionLive();
       this.renderJournal();
@@ -819,12 +878,17 @@ export class Hud {
         check = sim.check({ type: "demolish", x: hover.x, y: hover.y });
         label = "Démolir";
       }
-      const detail = check.ok
+      let detail = check.ok
         ? tool.kind === "demolish"
           ? `rend ${formatCost(check.refund)}`
           : formatCost(check.cost)
         : (check.reason ?? "Impossible ici.");
-      lines.push(`<div class="hc-tool ${check.ok ? "ok" : "bad"}"><strong>${label}</strong> · ${escapeHtml(detail)}</div>`);
+      let tone = check.ok ? "ok" : "bad";
+      if (check.ok && tool.kind === "field" && !sim.economy.fieldWouldBeWorked(hover.x, hover.y)) {
+        detail = "restera en friche : les fermes à portée travaillent déjà 12 champs.";
+        tone = "warn";
+      }
+      lines.push(`<div class="hc-tool ${tone}"><strong>${label}</strong> · ${escapeHtml(detail)}</div>`);
     }
     card.innerHTML = lines.join("");
     card.hidden = false;

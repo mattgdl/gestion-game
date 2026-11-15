@@ -103,6 +103,10 @@ Règles décidées pendant le développement, à contester si elles ne te convie
 | Fertilité | Avec l'outil Champ ou en posant une ferme, une carte de fertilité s'affiche autour du curseur (rouge pauvre, vert riche). | Rendre visible le choix de l'emplacement. |
 | Chauffage | Reporté en J2b. | Il dépend des foyers, qui arrivent en J2b. |
 | Sauvegardes | Format v2. Les sauvegardes de J1 sont converties : les ressources sont rangées au manoir. | Les vieilles parties restent jouables. |
+| Fiche d'outil | Choisir un outil affiche sa fiche : à quoi sert le bâtiment, coût (en rouge s'il manque), taille, conditions, et « pas encore d'effet » pour ceux qui ne servent qu'à partir d'un jalon futur. | Retour de jeu : on construisait marché et maisons sans savoir à quoi ils servent. |
+| Champs en trop | Un champ qu'aucune ferme ne travaillera s'affiche en orange à la pose, avec un avertissement. Il reste autorisé. | Journal de partie : 48 champs sur 72 étaient en friche. |
+| Reprise | À l'ouverture, le jeu reprend la partie la plus récente (sauvegarde automatique ou manuelle). Sauvegarde automatique toutes les 30 s, quand on quitte l'onglet et à chaque bilan d'automne. | Journal de partie : rouvrir la page lançait une nouvelle partie. |
+| Année agricole | Les statistiques de l'année vont du début de l'hiver à la fin de l'automne ; le bilan d'automne couvre donc quatre saisons. | Le bilan ne comptait que neuf mois de production. |
 | Journal de partie | Dans la page publiée sur claude.ai, le jeu écrit dans la base de l'artefact : l'état de la partie toutes les 30 s (avec la sauvegarde complète) et un bilan à chaque fin d'automne (production, moisson, bâtiments bloqués, actions, refus, temps réel par vitesse). Lecture réservée au propriétaire de l'artefact. Désactivable dans le panneau Partie. | Permettre à Claude d'analyser les vraies parties de test. |
 
 ---
@@ -381,3 +385,4 @@ jeu-medieval/
 | 12/11/2026 | J1 livré : carte, placement, saisons, barrière annuelle (vide), sauvegarde. Règles complémentaires en section 4. | Premier jalon jouable. |
 | 14/11/2026 | J2a livré : réserves physiques, porteurs, production, semailles et moisson. Chauffage reporté en J2b. Règles en section 4.2. | Deuxième jalon jouable. |
 | 15/11/2026 | Journal de partie ajouté à la page publiée, lu par Claude pour analyser les parties de test. | Demande du joueur : suivre ses parties et en tirer des conclusions. |
+| 15/11/2026 | Retours de la première partie test : fiche d'outil, avertissement des champs en trop, reprise automatique, bilan sur quatre saisons. | Analyse du journal de partie et retours du joueur. |

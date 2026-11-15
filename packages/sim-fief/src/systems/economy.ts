@@ -153,6 +153,18 @@ export class Economy {
     return list;
   }
 
+  /** Un champ peint en (x, y) serait-il travaillé ? (une ferme à portée a encore de la place) */
+  fieldWouldBeWorked(x: number, y: number): boolean {
+    this.refresh();
+    for (const farm of this.sim.state.buildings) {
+      const def = BUILDINGS[farm.type];
+      if (!def?.agriculture) continue;
+      if (this.sim.distanceToBuilding(farm, x, y) > (def.rayonChamps ?? 4)) continue;
+      if ((this.farmFields.get(farm.id)?.length ?? 0) < def.agriculture.champsMax) return true;
+    }
+    return false;
+  }
+
   farmOfField(key: number): number | null {
     this.refresh();
     return this.fieldFarm.get(key) ?? null;
@@ -261,7 +273,8 @@ export class Economy {
 
   private onSpring(year: number): void {
     this.sim.state.crops = {};
-    this.sim.state.yearStats = emptyYearStats(year);
+    // Les statistiques de l'année agricole repartent au début de l'hiver (voir onWinter).
+    if (this.sim.state.yearStats.year < year) this.sim.state.yearStats = emptyYearStats(year);
     this.sim.cropVersion += 1;
   }
 
@@ -295,6 +308,8 @@ export class Economy {
       if (rotted > 0) text += ` ${rotted} champ${rotted > 1 ? "s" : ""} non moissonné${rotted > 1 ? "s" : ""}, récolte perdue.`;
       this.sim.addLog(text);
     }
+    // L'année agricole suivante commence avec l'hiver : le bilan de fin d'automne couvre ainsi 4 saisons.
+    this.sim.state.yearStats = emptyYearStats(stats.year + 1);
     this.sim.cropVersion += 1;
   }
 

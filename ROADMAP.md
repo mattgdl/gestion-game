@@ -10,6 +10,8 @@
 ## À faire
 
 ### J2b — Le village vit
+- Compteur de population visible en permanence (demande du joueur).
+- Population de départ générée (proposition du joueur : environ 20 habitants), puis naissances (environ une par famille tous les 1,5 an). Modèle exact à valider avant de coder (voir la réponse du 15/11).
 - Villageois individuels : âge, foyer, métier, naissances, morts.
 - Logement, emplois, trajet domicile-travail (les ateliers et fermes emploient de vrais villageois).
 - Consommation de nourriture, chauffage en hiver (bois), marché qui distribue aux foyers.
@@ -59,6 +61,7 @@
 - *(vide)*
 
 ## Fait
+- 15/11/2026 : **Retours de la partie test n° 1** (graine orge-349, 3 ans, 9 min) : fiche d'outil avant construction, avertissement des champs en trop, reprise automatique de la dernière partie, sauvegarde automatique toutes les 30 s, bilan annuel sur quatre saisons.
 - 15/11/2026 : **Journal de partie** dans la page publiée : état toutes les 30 s et bilan annuel, lus par Claude via la base de l'artefact.
 - 14/11/2026 : **J2a — L'économie circule** livré et jouable.
   - Réserves physiques : manoir (400) et entrepôts (300) ; l'or au trésor.
