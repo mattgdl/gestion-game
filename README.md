@@ -38,3 +38,8 @@ Les règles et décisions sont dans **DESIGN.md**, l'avancement dans **ROADMAP.m
 
 Dans la console du navigateur, `window.__jeu` donne accès à la partie (`__jeu.game.session`) et à la caméra.
 Exemple pour avancer d'un an : `for (let i = 0; i < 1800; i++) __jeu.game.session.update(100)`.
+
+## Journal de partie
+
+Dans la page publiée sur claude.ai, le jeu enregistre l'état de la partie (toutes les 30 s) et un bilan à chaque fin d'automne dans la base de données de l'artefact (collection `parties`). Claude peut le lire pour analyser une partie. Le partage se coupe dans le panneau « Partie ». Ailleurs (fichier local, `npm run dev`), le journal reste inactif.
+

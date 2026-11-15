@@ -3,6 +3,9 @@
  * messages. Fait le lien entre l'affichage (Phaser), l'interface (DOM) et la Session.
  */
 import { BUILDINGS, type CheckResult, type Command } from "@jeu/sim-fief";
+
+/** Observateur des commandes (journal de partie). `quiet` = refus non montré au joueur (tracé de route…). */
+export type CommandObserver = (cmd: Command, result: CheckResult, quiet: boolean) => void;
 import { Session } from "./Session";
 
 export type Tool =
@@ -32,6 +35,7 @@ export class Game {
   /** Affiche les itinéraires de tous les porteurs en route (touche L). */
   showRoutes = false;
   toasts: Toast[] = [];
+  commandObserver: CommandObserver | null = null;
   private nextToast = 1;
   private listeners = new Map<string, Set<Listener>>();
 
@@ -92,6 +96,7 @@ export class Game {
   /** Commande envoyée à la simulation, avec retour visuel en cas de refus. */
   command(cmd: Command, quiet = false): CheckResult {
     const result = this.session.command(cmd);
+    this.commandObserver?.(cmd, result, quiet);
     if (!result.ok && !quiet && result.reason) this.toast(result.reason, "error");
     if (result.ok) this.emit("selection");
     return result;

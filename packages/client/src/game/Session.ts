@@ -23,6 +23,8 @@ export class Session {
   constructor(
     public readonly gateway: WorldGateway,
     public readonly sim: DomainSim,
+    /** Identifiant de la partie, conservé dans les sauvegardes (journal de partie). */
+    public readonly gameId: string = newGameId(),
   ) {}
 
   static newGame(seedText: string): Session {
@@ -37,11 +39,11 @@ export class Session {
   }
 
   static fromSave(save: SaveGame): Session {
-    return new Session(new LocalWorld(structuredClone(save.world)), DomainSim.fromState(save.domain));
+    return new Session(new LocalWorld(structuredClone(save.world)), DomainSim.fromState(save.domain), save.gameId ?? newGameId());
   }
 
   toSave(): SaveGame {
-    return makeSave(this.gateway.world, this.sim.toJSON());
+    return makeSave(this.gateway.world, this.sim.toJSON(), new Date(), this.gameId);
   }
 
   get world() {
@@ -95,4 +97,11 @@ export class Session {
       this.sim.applyBarrierResult(result);
     }
   }
+}
+
+/** Identifiant lisible et unique d'une partie (hors simulation : l'aléatoire du navigateur est permis ici). */
+export function newGameId(now: Date = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+  return `p-${stamp}-${Math.floor(Math.random() * 46656).toString(36).padStart(3, "0")}`;
 }

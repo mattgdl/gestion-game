@@ -13,6 +13,7 @@ import type { Speed } from "../game/Session";
 import { lordColor } from "../render/palette";
 import { parseSave, serializeSave, SaveError, type SaveGame } from "../save/save";
 import { readSlot, slotInfo, writeSlot, type SlotId } from "../save/storage";
+import type { Journal } from "../telemetry/journal";
 import { escapeHtml, formatCost, formatRealDate } from "./format";
 
 export interface HudActions {
@@ -70,6 +71,7 @@ export class Hud {
     private readonly game: Game,
     private readonly camera: CameraController,
     private readonly actions: HudActions,
+    private readonly journal: Journal | null = null,
   ) {
     this.render();
     this.bind();
@@ -212,6 +214,7 @@ export class Hud {
         <section class="panel-section">
           <h2>Partie</h2>
           <div data-el="saves"></div>
+          <div class="journal" data-el="journal"></div>
         </section>
       </aside>
 
@@ -453,6 +456,46 @@ export class Hud {
     if (live.innerHTML !== html) live.innerHTML = html;
   }
 
+  /** État du journal de partie (partagé avec Claude ou non), avec le bouton pour l'activer ou l'arrêter. */
+  private renderJournal(): void {
+    const j = this.journal;
+    const box = this.el.journal!;
+    if (!j) return;
+    let text = "";
+    let button = "";
+    switch (j.status) {
+      case "actif": {
+        const ago = j.lastSentAt === null ? null : Math.round((Date.now() - j.lastSentAt) / 1000);
+        text = `Journal de partie partagé avec Claude${ago === null ? "." : ` · envoyé il y a ${ago} s.`}`;
+        button = "Arrêter le partage";
+        break;
+      }
+      case "attente":
+        text = "Journal de partie : connexion…";
+        break;
+      case "desactive":
+        text = "Journal de partie : non partagé.";
+        button = "Partager avec Claude";
+        break;
+      case "erreur":
+        text = `Journal de partie : dernier envoi en échec (${j.lastError ?? "inconnu"}), nouvel essai sous 30 s.`;
+        button = "Arrêter le partage";
+        break;
+      default:
+        text = "Journal de partie : disponible seulement dans la page publiée sur claude.ai.";
+    }
+    const html = `<p class="muted small">${escapeHtml(text)}</p>${button ? `<button type="button" class="btn btn-small" data-act="journal">${button}</button>` : ""}`;
+    if (box.innerHTML !== html) box.innerHTML = html;
+    if (!box.dataset.bound) {
+      box.dataset.bound = "1";
+      box.addEventListener("click", (e) => {
+        if (!(e.target as HTMLElement).closest('[data-act="journal"]')) return;
+        j.setEnabled(!j.isEnabled);
+        this.renderJournal();
+      });
+    }
+  }
+
   private renderLogistics(): void {
     const sim = this.game.session.sim;
     const eco = sim.economy;
@@ -682,6 +725,7 @@ export class Hud {
       this.lastLive = now;
       this.renderLogistics();
       this.renderSelectionLive();
+      this.renderJournal();
     }
 
     const date = sim.date;

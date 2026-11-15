@@ -11,6 +11,7 @@ import { MapScene } from "./scenes/MapScene";
 import { Hud, type HudActions } from "./ui/Hud";
 import { parseSave, serializeSave, type SaveGame } from "./save/save";
 import { writeSlot } from "./save/storage";
+import { Journal, type JournalDb } from "./telemetry/journal";
 
 interface HotData {
   save?: string;
@@ -23,9 +24,36 @@ interface HotApi {
   data?: HotData;
 }
 
+interface UserApi {
+  id(): Promise<string | null>;
+}
+
 declare global {
   interface Window {
-    claude?: { hot?: HotApi };
+    /** Fourni par claude.ai quand le jeu est ouvert comme artefact publié. */
+    claude?: { hot?: HotApi; use?: (name: string) => Promise<unknown> };
+  }
+}
+
+/** Branche le journal de partie sur la base de données de l'artefact, si la page en a une. */
+async function connectJournal(journal: Journal): Promise<void> {
+  const claude = window.claude;
+  if (!claude?.use) {
+    journal.attach(null);
+    return;
+  }
+  try {
+    const db = (await claude.use("db")) as JournalDb | null;
+    let userId: string | null = null;
+    try {
+      const user = (await claude.use("user")) as UserApi | null;
+      userId = user ? await user.id() : null;
+    } catch {
+      userId = null;
+    }
+    journal.attach(db, userId);
+  } catch {
+    journal.attach(null);
   }
 }
 
@@ -43,6 +71,8 @@ function start(data: HotData = {}): void {
   }
 
   const game = new Game(session);
+  const journal = new Journal(session);
+  game.commandObserver = (cmd, result, quiet) => journal.onCommand(cmd, result, quiet);
   const dims = session.world.dims;
   const camera = new CameraController(dims.cols * dims.fiefSize * TILE, dims.rows * dims.fiefSize * TILE);
   camera.setView(window.innerWidth, window.innerHeight);
@@ -85,6 +115,7 @@ function start(data: HotData = {}): void {
     s.onEvents((events) => {
       if (events.some((e) => e.type === "barrier")) {
         if (writeSlot("auto", s.toSave())) hud.refreshSaves();
+        journal.onBarrier();
       }
     });
   };
@@ -94,6 +125,7 @@ function start(data: HotData = {}): void {
       const s = Session.newGame(seedText);
       attachSession(s);
       game.replaceSession(s);
+      journal.setSession(s);
       focusHome(true);
       game.toast(`Nouvelle partie : graine « ${seedText} ».`);
     },
@@ -101,6 +133,7 @@ function start(data: HotData = {}): void {
       const s = Session.fromSave(save);
       attachSession(s);
       game.replaceSession(s);
+      journal.setSession(s);
       focusHome(true);
       game.toast(`Partie chargée : an ${save.world.year}.`);
     },
@@ -109,11 +142,16 @@ function start(data: HotData = {}): void {
     worldView: () => frame(camera.worldW / 2, camera.worldH / 2, camera.worldW, camera.worldH, 1),
   };
 
-  const hud = new Hud(document.getElementById("hud") as HTMLElement, game, camera, actions);
+  const hud = new Hud(document.getElementById("hud") as HTMLElement, game, camera, actions, journal);
   attachSession(session);
+  void connectJournal(journal);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") void journal.flush();
+  });
 
   const scene = new MapScene(game, camera, (delta) => {
     game.session.update(delta);
+    journal.onFrame(delta);
     hud.update();
   });
 
@@ -138,7 +176,7 @@ function start(data: HotData = {}): void {
   else focusHome(true);
 
   // Accès de débogage depuis la console du navigateur (window.__jeu.game, window.__jeu.camera).
-  (window as unknown as { __jeu: unknown }).__jeu = { game, camera, TILE, actions };
+  (window as unknown as { __jeu: unknown }).__jeu = { game, camera, TILE, actions, journal };
 
   window.claude?.hot?.snapshot?.(() => ({
     save: serializeSave(game.session.toSave()),

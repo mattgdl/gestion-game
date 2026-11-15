@@ -845,3 +845,15 @@ textarea {
   border-color: var(--or);
   color: var(--or);
 }
+
+.journal {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--edge);
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+.journal p {
+  margin: 0;
+}

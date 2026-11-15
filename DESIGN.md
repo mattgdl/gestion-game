@@ -103,6 +103,7 @@ Règles décidées pendant le développement, à contester si elles ne te convie
 | Fertilité | Avec l'outil Champ ou en posant une ferme, une carte de fertilité s'affiche autour du curseur (rouge pauvre, vert riche). | Rendre visible le choix de l'emplacement. |
 | Chauffage | Reporté en J2b. | Il dépend des foyers, qui arrivent en J2b. |
 | Sauvegardes | Format v2. Les sauvegardes de J1 sont converties : les ressources sont rangées au manoir. | Les vieilles parties restent jouables. |
+| Journal de partie | Dans la page publiée sur claude.ai, le jeu écrit dans la base de l'artefact : l'état de la partie toutes les 30 s (avec la sauvegarde complète) et un bilan à chaque fin d'automne (production, moisson, bâtiments bloqués, actions, refus, temps réel par vitesse). Lecture réservée au propriétaire de l'artefact. Désactivable dans le panneau Partie. | Permettre à Claude d'analyser les vraies parties de test. |
 
 ---
 
@@ -312,6 +313,7 @@ jeu-medieval/
 │  │  │  ├─ render/           ← couleurs et sol (aucune règle de jeu)
 │  │  │  ├─ ui/               ← interface : bandeau, outils, panneau, fenêtres
 │  │  │  ├─ world-gateway/    ← LocalWorld (solo) ; RemoteWorld en J5
+│  │  │  ├─ telemetry/        ← journal de partie (base de l'artefact claude.ai)
 │  │  │  └─ save/             ← format de sauvegarde, migrations, emplacements
 │  │  └─ test/                ← sauvegarde et déterminisme
 │  │
@@ -378,3 +380,4 @@ jeu-medieval/
 | 12/11/2026 | Q2 et Q5 validés : carte continue à trois niveaux de zoom ; logistique par flux. | Confirmation du joueur. |
 | 12/11/2026 | J1 livré : carte, placement, saisons, barrière annuelle (vide), sauvegarde. Règles complémentaires en section 4. | Premier jalon jouable. |
 | 14/11/2026 | J2a livré : réserves physiques, porteurs, production, semailles et moisson. Chauffage reporté en J2b. Règles en section 4.2. | Deuxième jalon jouable. |
+| 15/11/2026 | Journal de partie ajouté à la page publiée, lu par Claude pour analyser les parties de test. | Demande du joueur : suivre ses parties et en tirer des conclusions. |

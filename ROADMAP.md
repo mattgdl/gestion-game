@@ -59,6 +59,7 @@
 - *(vide)*
 
 ## Fait
+- 15/11/2026 : **Journal de partie** dans la page publiée : état toutes les 30 s et bilan annuel, lus par Claude via la base de l'artefact.
 - 14/11/2026 : **J2a — L'économie circule** livré et jouable.
   - Réserves physiques : manoir (400) et entrepôts (300) ; l'or au trésor.
   - Porteurs qui suivent le plus court chemin par la route jusqu'à la réserve la plus proche ayant de la place.

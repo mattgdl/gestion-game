@@ -11,6 +11,8 @@ import type { WorldState } from "@jeu/sim-monde";
 
 export interface SaveGame {
   saveVersion: number;
+  /** Identifiant de la partie (journal de partie). Absent des sauvegardes anciennes. */
+  gameId?: string;
   /** Date réelle de la sauvegarde (affichage uniquement). */
   savedAt: string;
   world: WorldState;
@@ -48,9 +50,10 @@ const MIGRATIONS: Record<number, (save: any) => any> = {
   },
 };
 
-export function makeSave(world: WorldState, domain: DomainState, now: Date = new Date()): SaveGame {
+export function makeSave(world: WorldState, domain: DomainState, now: Date = new Date(), gameId?: string): SaveGame {
   return {
     saveVersion: SAVE_VERSION,
+    ...(gameId ? { gameId } : {}),
     savedAt: now.toISOString(),
     world: structuredClone(world),
     domain: structuredClone(domain),
