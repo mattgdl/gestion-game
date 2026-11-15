@@ -19,6 +19,7 @@ import {
   type BarrierResult,
   type Cost,
   type FiefSummary,
+  type LineageSetup,
   type ResourceId,
   type Resources,
   type TerrainId,
@@ -26,7 +27,8 @@ import {
 } from "@jeu/shared";
 import type { CheckResult, Command } from "./commands";
 import { BUILDINGS, DEMOGRAPHY, ECONOMY, type BuildingDef } from "./data";
-import { GOOD_IDS, IMMIGRATION_LEVELS, emptyYearStats, type Building, type DomainState, type FiefTiles, type Goods } from "./state";
+import { GOOD_IDS, IMMIGRATION_LEVELS, SUCCESSION_LAWS, emptyYearStats, type Building, type DomainState, type FiefTiles, type Goods } from "./state";
+import { Dynasty, emptyDynasty } from "./systems/dynasty";
 import { Economy, goodsTotal } from "./systems/economy";
 import { DAY_TICKS, Population } from "./systems/population";
 import { connectedRoads } from "./systems/roads";
@@ -38,13 +40,19 @@ export type SimEvent =
   | { type: "seasonChanged"; date: GameDate }
   | { type: "newYear"; year: number }
   | { type: "barrier" }
-  | { type: "gameOver" };
+  | { type: "gameOver" }
+  /** Le seigneur est mort et un héritier lui succède. */
+  | { type: "succession"; deadId: number; heirId: number }
+  /** Un membre de la lignée atteint sa majorité : une décision attend le joueur. */
+  | { type: "familyMatter"; memberId: number };
 
 export interface DomainInit {
   ownerId: string;
   dims: WorldDims;
   /** Fiefs attribués à ce domaine par le Monde. */
   fiefs: { id: string; col: number; row: number }[];
+  /** Nom de la maison et maisons voisines (J3). */
+  lineage?: LineageSetup;
 }
 
 const LOG_MAX = 40;
@@ -57,6 +65,7 @@ export class DomainSim {
   cropVersion = 0;
   readonly economy: Economy;
   readonly population: Population;
+  readonly dynasty: Dynasty;
 
   private occupancy = new Map<number, Occupant>();
   private buildingsById = new Map<number, Building>();
@@ -67,6 +76,7 @@ export class DomainSim {
   private constructor(state: DomainState) {
     this.state = state;
     this.population = new Population(this);
+    this.dynasty = new Dynasty(this);
     this.economy = new Economy(this);
     this.rebuildIndex();
   }
@@ -108,6 +118,7 @@ export class DomainSim {
       families: [],
       taxLevel: "normal",
       immigration: "normale",
+      dynasty: emptyDynasty(),
       gameOver: null,
       nextId: 1,
       log: [],
@@ -117,7 +128,9 @@ export class DomainSim {
     const sim = new DomainSim(state);
     sim.placeStartingManor(dims);
     sim.withRng((rng) => sim.population.createStart(rng));
-    sim.addLog("Votre lignée s'installe sur ses terres. Printemps de l'an 1.");
+    sim.withRng((rng) => sim.dynasty.createStart(rng, init.lineage ?? { houseName: "Votre lignée", neighbors: [] }));
+    const lord = sim.dynasty.lord;
+    sim.addLog(`La ${sim.state.dynasty.name} s'installe sur ses terres${lord ? ` : ${lord.name} en est le seigneur` : ""}. Printemps de l'an 1.`);
     sim.addLog("Conseil : un bûcheron près de la forêt, relié au manoir par une route, fournira du bois.");
     sim.addLog("Conseil : les champs se sèment au printemps et se moissonnent à l'automne.");
     sim.addLog(`${sim.state.families.length} familles campent autour du manoir : bâtissez-leur des maisons avant l'hiver.`);
@@ -300,8 +313,8 @@ export class DomainSim {
       fiefIds: Object.keys(this.state.fiefs).sort(),
       population: this.state.villagers.length,
       gold: this.state.treasury,
-      prestige: 0,
-      lineageAlive: true,
+      prestige: this.dynasty.prestige().total,
+      lineageAlive: this.state.dynasty.lordId !== null,
     };
   }
 
@@ -328,6 +341,11 @@ export class DomainSim {
         return ["aucun", "normal", "lourd"].includes(cmd.level) ? { ok: true } : { ok: false, reason: "Niveau d'impôt inconnu." };
       case "setImmigration":
         return IMMIGRATION_LEVELS.includes(cmd.level) ? { ok: true } : { ok: false, reason: "Niveau d'accueil inconnu." };
+      case "decreeLaw":
+        if (!SUCCESSION_LAWS.includes(cmd.law)) return { ok: false, reason: "Loi de succession inconnue." };
+        return this.dynasty.checkDecree(cmd.law);
+      case "familyDecision":
+        return this.dynasty.checkDecision(cmd.memberId, cmd.choice);
     }
   }
 
@@ -340,6 +358,14 @@ export class DomainSim {
       if (cmd.count >= max) delete b.workersLimit;
       else b.workersLimit = cmd.count;
       this.population.version += 1;
+      return result;
+    }
+    if (cmd.type === "decreeLaw") {
+      this.dynasty.decree(cmd.law);
+      return result;
+    }
+    if (cmd.type === "familyDecision") {
+      this.dynasty.applyDecision(cmd.memberId, cmd.choice);
       return result;
     }
     if (cmd.type === "setTax" || cmd.type === "setImmigration") {
@@ -573,14 +599,17 @@ export class DomainSim {
     }
     this.economy.step();
     if (s.tick % DAY_TICKS === 0) {
-      this.withRng((rng) => this.population.daily(rng));
-      if (s.villagers.length < DEMOGRAPHY.seuilDefaite) {
+      this.withRng((rng) => {
+        this.population.daily(rng);
+        this.dynasty.daily(rng);
+      });
+      events.push(...this.dynasty.drainEvents());
+      if (!s.gameOver && s.villagers.length < DEMOGRAPHY.seuilDefaite) {
         s.gameOver = { reason: "depeuple", tick: s.tick };
         this.addLog(`Il ne reste que ${s.villagers.length} habitant${s.villagers.length > 1 ? "s" : ""} : le domaine se vide. Fin de la partie.`);
         events.push({ type: "gameOver" });
       }
     }
-    // Système à venir : dynastie (J3).
     return events;
   }
 

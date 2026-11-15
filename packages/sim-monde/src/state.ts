@@ -2,7 +2,7 @@
  * État de la couche Monde : qui possède quel fief, les seigneurs, l'année en cours.
  * Sérialisable en JSON. En solo il vit dans le navigateur ; en multi (J5) dans le serveur.
  */
-import type { DominantId, FiefSummary, WorldDims } from "@jeu/shared";
+import type { DominantId, FiefSummary, LineageSetup, WorldDims } from "@jeu/shared";
 
 export interface FiefMeta {
   id: string;
@@ -52,4 +52,13 @@ export function lordById(world: WorldState, id: string | null): Lord | undefined
 
 export function fiefsOwnedBy(world: WorldState, ownerId: string): FiefMeta[] {
   return world.fiefs.filter((f) => f.ownerId === ownerId);
+}
+
+/** Message de création d'une lignée : le nom de sa maison (son fief de départ) et ses voisins. */
+export function lineageSetupFor(world: WorldState, ownerId: string): LineageSetup {
+  const start = world.dims.startFief;
+  const owned = fiefsOwnedBy(world, ownerId);
+  const home = (start ? owned.find((f) => f.col === start.col && f.row === start.row) : undefined) ?? owned[0];
+  const neighbors = world.lords.filter((l) => l.id !== ownerId && !l.isPlayer).map((l) => l.name);
+  return { houseName: home?.name ?? "Votre lignée", neighbors };
 }

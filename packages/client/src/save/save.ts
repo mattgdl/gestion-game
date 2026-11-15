@@ -6,8 +6,8 @@
  * sauvegardes restent lisibles.
  */
 import { SAVE_VERSION } from "@jeu/shared";
-import { DomainSim, type DomainState } from "@jeu/sim-fief";
-import type { WorldState } from "@jeu/sim-monde";
+import { DomainSim, emptyDynasty, type DomainState } from "@jeu/sim-fief";
+import { PLAYER_ID, lineageSetupFor, type WorldState } from "@jeu/sim-monde";
 
 export interface SaveGame {
   saveVersion: number;
@@ -64,6 +64,16 @@ const MIGRATIONS: Record<number, (save: any) => any> = {
    * (une famille par an au plus).
    */
   3: (s) => ({ ...s, saveVersion: 4, domain: { ...s.domain, immigration: "normale" } }),
+  /**
+   * v4 → v5 (J3) : arrivée de la lignée. Le fondateur, son épouse et leur enfant s'installent
+   * au manoir, avec la loi de succession par défaut.
+   */
+  4: (s) => {
+    const sim = DomainSim.fromState({ ...s.domain, dynasty: emptyDynasty() });
+    sim.withRng((rng) => sim.dynasty.createStart(rng, lineageSetupFor(s.world, s.domain.ownerId ?? PLAYER_ID)));
+    sim.addLog(`La ${sim.state.dynasty.name} s'installe au manoir.`);
+    return { ...s, saveVersion: 5, domain: sim.toJSON() };
+  },
 };
 
 export function makeSave(world: WorldState, domain: DomainState, now: Date = new Date(), gameId?: string): SaveGame {

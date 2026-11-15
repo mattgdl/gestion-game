@@ -19,6 +19,7 @@ import {
   type DomainSim,
   type Goods,
   type ImmigrationLevel,
+  type SuccessionLaw,
   type TaxLevel,
   type YearStats,
 } from "@jeu/sim-fief";
@@ -32,6 +33,7 @@ import { parseSave, serializeSave, SaveError, type SaveGame } from "../save/save
 import { readSlot, slotInfo, writeSlot, type SlotId } from "../save/storage";
 import type { Journal } from "../telemetry/journal";
 import { computeAlerts, foodDays } from "./alerts";
+import { chronicleHtml, decisionHtml, lineagePanelHtml, successionHtml } from "./lineage";
 import { escapeHtml, formatCost, formatRealDate } from "./format";
 
 export interface HudActions {
@@ -83,6 +85,7 @@ export class Hud {
   private lastSeason = -1;
   private confirmNewGame = false;
   private lastLive = 0;
+  private modalOnClose: (() => void) | null = null;
 
   constructor(
     private readonly root: HTMLElement,
@@ -195,6 +198,10 @@ export class Hud {
             <span class="res-label">Moral</span>
             <span class="res-value" data-el="moraleValue">0</span>
           </div>
+          <div class="res res-prestige" title="Prestige de la lignée : population, or, ancienneté, successions, Église et alliances">
+            <span class="res-label">Prestige</span>
+            <span class="res-value" data-el="prestigeValue">0</span>
+          </div>
         </div>
         <div class="clock">
           <div class="date" data-el="date"></div>
@@ -250,6 +257,10 @@ export class Hud {
           <p class="muted small" data-el="immigrationHint"></p>
         </section>
         <section class="panel-section">
+          <h2>Lignée</h2>
+          <div class="lineage" data-el="lineage"></div>
+        </section>
+        <section class="panel-section">
           <h2>Logistique</h2>
           <div data-el="logistics"></div>
           <button type="button" class="btn btn-small" data-act="routes" aria-pressed="false">Montrer les itinéraires (L)</button>
@@ -259,7 +270,7 @@ export class Hud {
           <ul class="fief-list" data-el="fiefList"></ul>
         </section>
         <section class="panel-section">
-          <h2>Chronique</h2>
+          <h2>Événements</h2>
           <ol class="log" data-el="log"></ol>
         </section>
         <section class="panel-section">
@@ -303,6 +314,16 @@ export class Hud {
         this.renderVillage();
       }),
     );
+    this.el.lineage!.addEventListener("click", (ev) => {
+      const target = (ev.target as HTMLElement).closest<HTMLElement>("[data-decide],[data-law],[data-act]");
+      if (!target) return;
+      if (target.dataset.decide) this.openDecision(Number(target.dataset.decide));
+      else if (target.dataset.law) {
+        const result = this.game.command({ type: "decreeLaw", law: target.dataset.law as SuccessionLaw });
+        if (!result.ok && result.reason) this.game.toast(result.reason);
+        this.renderLineage();
+      } else if (target.dataset.act === "chronicle") this.openChronicle();
+    });
     this.root.querySelectorAll<HTMLButtonElement>("[data-immigration]").forEach((btn) =>
       btn.addEventListener("click", () => {
         this.game.command({ type: "setImmigration", level: btn.dataset.immigration as ImmigrationLevel });
@@ -726,6 +747,61 @@ export class Hud {
     if (this.el.immigrationHint!.textContent !== imHint) this.el.immigrationHint!.textContent = imHint;
   }
 
+  private renderLineage(): void {
+    const html = lineagePanelHtml(this.game.session.sim);
+    const box = this.el.lineage!;
+    if (box.dataset.html !== html) {
+      box.dataset.html = html;
+      box.innerHTML = html;
+    }
+  }
+
+  /** Fenêtre d'une affaire de famille : la partie se met en pause le temps de choisir. */
+  openDecision(memberId: number): void {
+    const session = this.game.session;
+    const view = decisionHtml(session.sim, memberId);
+    if (!view) return;
+    const wasPaused = session.paused;
+    session.paused = true;
+    const body = this.openModal(view.title, view.body, () => {
+      if (this.game.session === session) session.paused = wasPaused;
+    });
+    body.querySelectorAll<HTMLButtonElement>("[data-choice]").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        const raw = btn.dataset.choice as string;
+        const choice = /^\d+$/.test(raw) ? Number(raw) : (raw as "eglise" | "alliance" | "refuser");
+        const result = this.game.command({ type: "familyDecision", memberId, choice });
+        if (!result.ok) {
+          this.game.toast(result.reason ?? "Choix impossible.");
+          return;
+        }
+        this.closeModal();
+        this.renderLineage();
+      }),
+    );
+  }
+
+  /** Chronique de la lignée : la partie se met en pause pendant la lecture. */
+  openChronicle(): void {
+    const session = this.game.session;
+    const sim = session.sim;
+    const body = `<div class="chronicle-box">${chronicleHtml(sim)}</div><div class="modal-actions"><button type="button" class="btn btn-primary" data-act="close">Fermer</button></div>`;
+    // La fenêtre précédente (succession) se ferme d'abord et rend la main à la vitesse d'avant.
+    this.openModal(`Chronique de la ${sim.state.dynasty.name}`, body);
+    const wasPaused = session.paused;
+    session.paused = true;
+    this.modalOnClose = () => {
+      if (this.game.session === session) session.paused = wasPaused;
+    };
+  }
+
+  /** Mort du seigneur : la partie se met en pause sur la fenêtre de succession. */
+  showSuccession(deadId: number, heirId: number, onClose: () => void): void {
+    const view = successionHtml(this.game.session.sim, deadId, heirId);
+    const body = this.openModal(view.title, view.body, onClose);
+    body.querySelector('[data-act="chronicle"]')?.addEventListener("click", () => this.openChronicle());
+  }
+
   private renderAlerts(): void {
     const alerts = computeAlerts(this.game.session.sim);
     const html = alerts.map((a) => `<li class="alert alert-${a.tone}">${escapeHtml(a.text)}</li>`).join("");
@@ -751,26 +827,30 @@ export class Hud {
         <div><dt>Nouveaux venus</dt><dd>${stats.immigrants ?? 0} famille${(stats.immigrants ?? 0) > 1 ? "s" : ""}</dd></div>
         <div><dt>Impôts</dt><dd>${stats.taxes ?? 0} or</dd></div>
         <div><dt>Village</dt><dd>${c.total} habitants, ${c.families} foyers, moral ${sim.population.morale()}</dd></div>
+        <div><dt>Lignée</dt><dd>${lineageSummary(sim)}</dd></div>
         <div><dt>Vivres</dt><dd>${days === Infinity ? "—" : `${days} jours d'avance`} pour l'hiver qui vient</dd></div>
       </dl>
       <label class="check"><input id="bilan-pause" type="checkbox" ${pauseAtBilan() ? "checked" : ""} /> Mettre en pause à chaque bilan d'automne</label>
       <div class="modal-actions"><button type="button" class="btn btn-primary" data-act="bilan-ok">Continuer</button></div>`,
+      onClose,
     );
     body.querySelector<HTMLInputElement>("#bilan-pause")?.addEventListener("change", (e) => setPauseAtBilan((e.target as HTMLInputElement).checked));
-    body.querySelector('[data-act="bilan-ok"]')?.addEventListener("click", () => {
-      this.closeModal();
-      onClose();
-    });
+    body.querySelector('[data-act="bilan-ok"]')?.addEventListener("click", () => this.closeModal());
   }
 
   showGameOver(onNewGame: () => void): void {
     const sim = this.game.session.sim;
     const year = sim.date.year;
     const manual = slotInfo("manuelle");
+    const extinct = sim.state.gameOver?.reason === "extinction";
+    const text = extinct
+      ? `<p>En l'an ${year}, la ${escapeHtml(sim.state.dynasty.name)} s'éteint : plus personne ne peut hériter selon la loi.</p>`
+      : `<p>En l'an ${year}, il ne reste que ${sim.state.villagers.length} habitant${sim.state.villagers.length > 1 ? "s" : ""} : votre lignée n'a plus personne à gouverner.</p>`;
     const body = this.openModal(
-      "Le domaine s'est vidé",
-      `<p>En l'an ${year}, il ne reste que ${sim.state.villagers.length} habitant${sim.state.villagers.length > 1 ? "s" : ""} : votre lignée n'a plus personne à gouverner.</p>
-       <p class="muted small">La chronique complète de la dynastie arrivera avec J3.</p>
+      extinct ? "La lignée s'est éteinte" : "Le domaine s'est vidé",
+      `${text}
+       <p>Prestige final : <strong>${sim.dynasty.prestige().total}</strong>.</p>
+       <div class="chronicle-box">${chronicleHtml(sim)}</div>
        <div class="modal-actions">
          ${manual ? `<button type="button" class="btn" data-act="go-load">Charger la sauvegarde de l'an ${manual.year}</button>` : ""}
          <button type="button" class="btn btn-primary" data-act="go-new">Nouvelle partie</button>
@@ -922,7 +1002,12 @@ export class Hud {
     this.renderSaves();
   }
 
-  private openModal(title: string, body: string): HTMLElement {
+  /** Ouvre la fenêtre ; onClose est appelé à sa fermeture (bouton, Échap, clic à côté, ou autre fenêtre). */
+  private openModal(title: string, body: string, onClose: (() => void) | null = null): HTMLElement {
+    const previous = this.modalOnClose;
+    this.modalOnClose = null;
+    previous?.();
+    this.modalOnClose = onClose;
     this.el.modalTitle!.textContent = title;
     this.el.modalBody!.innerHTML = body;
     this.el.modal!.hidden = false;
@@ -932,6 +1017,9 @@ export class Hud {
 
   private closeModal(): void {
     this.el.modal!.hidden = true;
+    const cb = this.modalOnClose;
+    this.modalOnClose = null;
+    cb?.();
   }
 
   private openExport(): void {
@@ -1012,6 +1100,8 @@ export class Hud {
     const morale = sim.population.morale();
     const moraleText = String(morale);
     if (this.el.moraleValue!.textContent !== moraleText) this.el.moraleValue!.textContent = moraleText;
+    const prestigeText = String(sim.dynasty.prestige().total);
+    if (this.el.prestigeValue!.textContent !== prestigeText) this.el.prestigeValue!.textContent = prestigeText;
     this.el.moraleValue!.parentElement?.classList.toggle("is-low", morale < 40);
     const usage = sim.economy.storageUsage();
     const stockText = `${usage.used}/${usage.capacity}`;
@@ -1023,6 +1113,7 @@ export class Hud {
       this.lastLive = now;
       this.renderToolCard();
       this.renderVillage();
+      this.renderLineage();
       this.renderAlerts();
       this.renderLogistics();
       this.renderSelectionLive();
@@ -1238,4 +1329,12 @@ function newHouseLine(sim: DomainSim): string {
   let why = im.reason ?? "";
   if (im.ready) why = `${o.spare} maison${o.spare > 1 ? "s" : ""} libre${o.spare > 1 ? "s" : ""} attend${o.spare > 1 ? "ent" : ""} déjà les nouveaux venus (${perYear(im.level)}).`;
   return `<p class="tc-warn">Personne ne l'attend : elle restera vide. ${escapeHtml(why)} ${escapeHtml(nextMarriageText(o.nextMarriageYears))}</p>`;
+}
+
+/** « Foulques, 42 ans · 3 héritiers · prestige 120 » (bilan d'automne). */
+function lineageSummary(sim: DomainSim): string {
+  const lord = sim.dynasty.lord;
+  if (!lord) return "éteinte";
+  const n = sim.dynasty.lineOfSuccession().length;
+  return `${escapeHtml(lord.name)}, ${sim.dynasty.ageOf(lord)} ans · ${n === 0 ? '<span class="bad">aucun héritier</span>' : `${n} héritier${n > 1 ? "s" : ""}`} · prestige ${sim.dynasty.prestige().total}`;
 }

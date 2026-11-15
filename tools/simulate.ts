@@ -11,7 +11,7 @@ import { Terrain } from "@jeu/shared";
 
 declare const process: { argv: string[] };
 import { DomainSim, ageOf, type Building, type ImmigrationLevel } from "@jeu/sim-fief";
-import { PLAYER_ID, createWorld, fiefsOwnedBy, resolveBarrier } from "@jeu/sim-monde";
+import { PLAYER_ID, createWorld, fiefsOwnedBy, lineageSetupFor, resolveBarrier } from "@jeu/sim-monde";
 
 const years = Number(process.argv[2] ?? 20);
 const farms = Number(process.argv[3] ?? 3);
@@ -24,6 +24,7 @@ const created = DomainSim.create({
   ownerId: PLAYER_ID,
   dims: world.dims,
   fiefs: fiefsOwnedBy(world, PLAYER_ID).map((f) => ({ id: f.id, col: f.col, row: f.row })),
+  lineage: lineageSetupFor(world, PLAYER_ID),
 });
 const state = created.toJSON();
 for (const f of Object.values(state.fiefs)) {
@@ -161,6 +162,16 @@ function playerSpring(): string {
 
 afterBuild();
 
+/** Affaires de famille : l'héritier épouse le prétendant le plus jeune ; les cadets se marient tant que l'ordre de succession compte moins de 4 personnes, sinon l'Église. */
+function familyMatters(): void {
+  for (const dec of [...sim.state.dynasty.decisions]) {
+    const line = sim.dynasty.lineOfSuccession();
+    const isHeir = dec.memberId === sim.state.dynasty.lordId || dec.memberId === line[0];
+    const r = sim.apply({ type: "familyDecision", memberId: dec.memberId, choice: isHeir || line.length < 4 ? 0 : "eglise" });
+    if (!r.ok) sim.apply({ type: "familyDecision", memberId: dec.memberId, choice: 0 });
+  }
+}
+
 const header = [
   "an",
   "habitants",
@@ -187,6 +198,11 @@ const header = [
   "emplois",
   "champsTravailles",
   "champsMoissonnes",
+  "seigneurAge",
+  "regnes",
+  "heritiers",
+  "nobles",
+  "prestige",
   "actions",
 ];
 console.log(header.join(";"));
@@ -196,6 +212,7 @@ for (let y = 1; y <= years; y++) {
   const target = (y - 1) * 1800 + 1348;
   while (sim.state.tick < target && !sim.state.gameOver) {
     const ev = sim.step();
+    if (sim.state.dynasty.decisions.length > 0) familyMatters();
     if (ev.some((e) => e.type === "barrier")) {
       sim.applyBarrierResult(resolveBarrier(world, [{ ownerId: sim.state.ownerId, summary: sim.summary(), ready: true, actions: [] }]));
     }
@@ -232,16 +249,22 @@ for (let y = 1; y <= years; y++) {
       c.jobs,
       sim.state.buildings.filter((b) => b.type === "ferme").reduce((n, b) => n + (sim.economy.farmInfo(b.id)?.fields.length ?? 0), 0),
       s.fieldsHarvested,
+      sim.dynasty.lord ? sim.dynasty.ageOf(sim.dynasty.lord) : "-",
+      sim.state.dynasty.reigns.length,
+      sim.dynasty.lineOfSuccession().length,
+      c.nobles,
+      sim.dynasty.prestige().total,
       actions,
     ].join(";"),
   );
   if (sim.state.gameOver) {
-    console.log(`# fin de partie en l'an ${y}`);
+    console.log(`# fin de partie en l'an ${y} (${sim.state.gameOver.reason})`);
     break;
   }
   // Passe la barrière, puis va jusqu'au printemps suivant pour les décisions du joueur.
   while (sim.state.tick < y * 1800 + 1 && !sim.state.gameOver) {
     const ev = sim.step();
+    if (sim.state.dynasty.decisions.length > 0) familyMatters();
     if (ev.some((e) => e.type === "barrier")) {
       sim.applyBarrierResult(resolveBarrier(world, [{ ownerId: sim.state.ownerId, summary: sim.summary(), ready: true, actions: [] }]));
     }

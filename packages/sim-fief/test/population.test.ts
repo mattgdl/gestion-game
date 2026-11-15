@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { DAY_TICKS, ageOf, emptyHouseStatus, type DomainSim } from "../src";
+
+/** Foyers du village (sans la famille noble, qui vit au manoir). */
+function villageFamilies(sim: DomainSim) {
+  return sim.state.families.filter((f) => !f.noble);
+}
 import { build, labGame, manorOf, newGame, road, runUntil } from "./helpers";
 
 const SUMMER = 450;
@@ -19,7 +24,7 @@ describe("population de départ", () => {
   it("compte 10 couples de 20 à 25 ans et leurs jeunes enfants, sans maison", () => {
     const { sim } = newGame();
     const tick = sim.state.tick;
-    const fams = sim.state.families;
+    const fams = villageFamilies(sim);
     expect(fams).toHaveLength(10);
     for (const f of fams) {
       const h = sim.population.villager(f.husbandId);
@@ -32,15 +37,17 @@ describe("population de départ", () => {
       }
       expect(f.houseId).toBeNull();
     }
-    const kids = sim.state.villagers.filter((v) => ageOf(v, tick) < 17);
-    expect(sim.state.villagers.length).toBe(20 + kids.length);
+    const villagers = sim.state.villagers.filter((v) => !v.noble);
+    const kids = villagers.filter((v) => ageOf(v, tick) < 17);
+    expect(villagers.length).toBe(20 + kids.length);
     for (const k of kids) expect(ageOf(k, tick)).toBeLessThanOrEqual(5);
     // Chaque foyer arrive avec 10 jours de vivres.
     for (const f of fams) {
       const daily = sim.population.members(f.id).reduce((n, v) => n + (ageOf(v, tick) >= 14 ? 50 : 25), 0);
       expect(f.food).toBe(daily * 10);
     }
-    expect(sim.population.counts()).toMatchObject({ adults: 20, homeless: 10, families: 10 });
+    // Plus la famille du seigneur : lui, son épouse et leur enfant.
+    expect(sim.population.counts()).toMatchObject({ adults: 22, homeless: 10, families: 10, nobles: 3 });
   });
 
   it("est la même pour la même graine", () => {
@@ -157,23 +164,34 @@ describe("naissances, décès, fin de partie", () => {
     sim.population.version += 1;
     houses(sim, 11);
     runUntil(sim, world, SUMMER + 1);
-    expect(sim.state.families).toHaveLength(11);
+    expect(villageFamilies(sim)).toHaveLength(11);
     const couple = sim.state.families.find((f) => f.husbandId === boy.id);
     expect(couple?.wifeId).toBe(girl.id);
     expect(couple?.houseId).not.toBeNull();
   });
 
-  it("perd des habitants à la famine, jusqu'à la fin de la partie sous 5 habitants", () => {
+  it("perd des habitants à la famine, jusqu'à la fin de la partie", () => {
     const { sim, world } = newGame("famine");
     manorOf(sim).stock.nourriture = 0;
-    runUntil(sim, world, 5 * YEAR);
-    expect(sim.state.gameOver?.reason).toBe("depeuple");
-    expect(sim.state.villagers.length).toBeLessThan(5);
+    runUntil(sim, world, 10 * YEAR);
+    // Le village se vide, ou la lignée affamée s'éteint la première.
+    expect(["depeuple", "extinction"]).toContain(sim.state.gameOver?.reason);
     expect(sim.state.log.some((l) => l.text.startsWith("La faim emporte"))).toBe(true);
     // Le temps est arrêté.
     const t = sim.state.tick;
     sim.step();
     expect(sim.state.tick).toBe(t);
+  });
+
+  it("s'arrête quand le domaine compte moins de 5 habitants", () => {
+    const { sim, world } = labGame();
+    const lordId = sim.state.dynasty.lordId;
+    sim.state.villagers = sim.state.villagers.filter((v) => v.noble || v.id === sim.state.villagers[0]!.id);
+    sim.population.version += 1;
+    expect(sim.state.villagers.length).toBeLessThan(5);
+    runUntil(sim, world, DAY_TICKS + 1);
+    expect(sim.state.gameOver?.reason).toBe("depeuple");
+    expect(sim.state.dynasty.lordId).toBe(lordId);
   });
 });
 
@@ -199,8 +217,8 @@ describe("nouveaux venus", () => {
     expect(sim.population.housingOutlook()).toMatchObject({ homeless: 0, waitingCouples: 0, spare: 2 });
     expect(sim.population.immigrationCheck().ready).toBe(true);
     runUntil(sim, world, SUMMER + 1);
-    expect(sim.state.families).toHaveLength(11);
-    const newcomers = sim.state.families[10]!;
+    expect(villageFamilies(sim)).toHaveLength(11);
+    const newcomers = villageFamilies(sim)[10]!;
     expect(newcomers.houseId).not.toBeNull();
     for (const id of [newcomers.husbandId, newcomers.wifeId]) {
       const age = ageOf(sim.population.villager(id)!, sim.state.tick);
@@ -212,9 +230,9 @@ describe("nouveaux venus", () => {
     // Une seule famille par an au rythme normal : rien à l'automne, la suivante au printemps.
     expect(sim.population.immigrationCheck().reason).toContain("la suivante au printemps");
     runUntil(sim, world, AUTUMN + 1);
-    expect(sim.state.families).toHaveLength(11);
+    expect(villageFamilies(sim)).toHaveLength(11);
     runUntil(sim, world, YEAR + 1);
-    expect(sim.state.families).toHaveLength(12);
+    expect(villageFamilies(sim)).toHaveLength(12);
   });
 
   it("n'accueille personne si l'accueil est fermé, sans un an de vivres ou avec un moral trop bas", () => {
@@ -224,7 +242,7 @@ describe("nouveaux venus", () => {
     expect(sim.apply({ type: "setImmigration", level: "fermee" }).ok).toBe(true);
     expect(sim.population.immigrationCheck().reason).toBe("Accueil des nouveaux venus fermé.");
     runUntil(sim, world, SUMMER + 1);
-    expect(sim.state.families).toHaveLength(10);
+    expect(villageFamilies(sim)).toHaveLength(10);
 
     sim.apply({ type: "setImmigration", level: "normale" });
     for (const f of sim.state.families) f.food = 0;
@@ -263,9 +281,9 @@ describe("nouveaux venus", () => {
     houses(sim, 14);
     expect(sim.apply({ type: "setImmigration", level: "ouverte" }).ok).toBe(true);
     runUntil(sim, world, AUTUMN + 1);
-    expect(sim.state.families).toHaveLength(12);
+    expect(villageFamilies(sim)).toHaveLength(12);
     runUntil(sim, world, YEAR + 1);
-    expect(sim.state.families).toHaveLength(13);
+    expect(villageFamilies(sim)).toHaveLength(13);
     const housed = sim.state.families[0]!;
     const parts = sim.population.moraleOf(housed, 0).parts;
     expect(parts).toContainEqual({ label: "Accueil ouvert aux nouveaux venus", value: -10 });

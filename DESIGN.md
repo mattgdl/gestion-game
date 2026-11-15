@@ -1,7 +1,7 @@
 # DESIGN.md — Jeu de gestion médiéval à dynastie
 
-> **Titre provisoire :** « Seigneurie » (nom de travail, à remplacer) · **Version du document :** 0.6 · **Dernière mise à jour :** 15/11/2026
-> **Statut :** J2b livré (le village vit), avec les retours de la partie test n° 2 (nouveaux venus). Prochain jalon : J3 (la lignée).
+> **Titre provisoire :** « Seigneurie » (nom de travail, à remplacer) · **Version du document :** 0.7 · **Dernière mise à jour :** 15/11/2026
+> **Statut :** J3 livré (la lignée), à valider en partie test. Prochain jalon : J4 (s'étendre).
 > Ce document est la référence du projet. En cas de doute, c'est lui qui tranche, et chaque décision y est consignée avec sa raison (section 11).
 
 ## Sommaire
@@ -142,6 +142,27 @@ Règles décidées pendant le développement, à contester si elles ne te convie
 **Ce que montre l'outil `simulate`** (village type à 70 % de fertilité, joueur qui ajoute fermes et entrepôts quand il le faut) : la population passe d'environ 30 à 80 habitants en 10 ans, puis plafonne autour de 120 avec 6 fermes. Les enfants sont 3 fois plus nombreux que les adultes vers l'an 10 : il faut environ une ferme pour 15 à 20 habitants. Les premiers mariages n'arrivent que vers l'an 12 à 14 (les enfants de départ ont 5 ans au plus) : jusque-là, le nombre de foyers ne peut que baisser. Sans entrepôts, les réserves se remplissent de bois, les fermes ne peuvent plus livrer et le village meurt de faim vers l'an 12.
 
 **Avec les nouveaux venus** (même village, 30 ans, joueur qui ajoute fermes, entrepôts, bûcherons et maisons ; 9 emplacements de ferme au plus) : à l'an 7, le village compte 19 adultes et 10 foyers sans accueil, 30 adultes et 16 foyers à l'accueil normal, 50 adultes et 26 foyers à l'accueil ouvert. Les arrivées s'arrêtent d'elles-mêmes quand les vivres baissent sous 120 jours. Avec l'accueil normal, le village atteint vers l'an 15 la limite de ce que 9 fermes peuvent nourrir (environ 200 habitants, dont deux tiers d'enfants) ; avec l'accueil ouvert, vers l'an 10. La règle des 120 jours regarde les réserves, pas la tendance : l'alerte « récolte attendue trop faible » reste le signal à surveiller. La terre du fief devient la vraie limite, ce qui prépare J4 (s'étendre).
+
+### 4.4 J3 — La lignée
+
+| Sujet | Règle | Raison |
+|---|---|---|
+| Fondation | Le seigneur (homme, 22 à 26 ans), son épouse (18 à 22 ans, venue d'une maison voisine) et un enfant de 0 à 2 ans s'installent au manoir avec 10 jours de vivres. La lignée s'appelle « Maison de » + le nom du fief de départ. | Une lignée qui commence avec un héritier ; défaite par extinction impossible dès le début. |
+| Famille noble | Ses membres (de sang ou par mariage) sont des villageois à part : ils vivent au manoir, se servent directement dans ses réserves (nourriture, bois l'hiver), ne travaillent pas, ne paient pas d'impôts et ne comptent ni dans le moral du village ni dans les foyers, mais comptent dans la population. Mêmes règles de naissance et de mortalité que le village. | Réutiliser la simulation de la population ; la lignée « coûte » des bouches à nourrir. |
+| Majorité | 16 ans (`dynasty.json`). | Choix par défaut, réglable. |
+| Lois de succession | Trois lois : **masculine seule** (les fils, et seulement par les hommes), **les fils d'abord** (une fille s'il n'y a aucun fils ; par défaut), **aînesse absolue** (l'aîné(e)). | Choix du joueur. |
+| Ordre de succession | Les descendants du seigneur d'abord, de l'aîné au cadet selon la loi ; l'enfant d'un héritier mort prend sa place (avant ses oncles et tantes) ; puis les descendants de son parent (frères, sœurs, neveux…), et ainsi de suite jusqu'au fondateur. Seuls les membres de sang, vivants et restés au domaine, peuvent hériter. | Primogéniture classique, lisible. |
+| Décret | Le joueur peut changer de loi dans le panneau Lignée ; elle s'applique 120 jours (un an) plus tard. Revenir à la loi en vigueur annule le décret. Le panneau dit qui serait l'héritier avec la nouvelle loi. Pas de contrepartie : la loi masculine seule reste un choix d'ambiance, plus risqué. | Choix du joueur : modifiable en jeu avec délai, pour empêcher de choisir l'héritier au dernier moment. |
+| Succession | À la mort du seigneur, le premier de l'ordre de succession hérite ; la partie se met en pause sur une fenêtre de succession. | Écran de succession prévu au jalon. |
+| Régence | Héritier de moins de 16 ans : un parent vivant et majeur gouverne (sinon l'adulte le plus âgé de la famille, sinon un conseil) jusqu'à sa majorité. Moral de chaque foyer du village −10 pendant la régence. | Choix du joueur : régent avec un malus. |
+| Extinction | À la mort du seigneur, si personne ne peut hériter selon la loi en vigueur : fin de la partie. Alertes : un seul héritier quand le couple du seigneur ne peut plus avoir d'enfant (orange), aucun héritier (rouge), décret qui laisserait la lignée sans héritier (rouge). | Défaite n° 1, prévisible. |
+| Affaires de famille | À 16 ans, chaque membre de sang non marié attend une décision : épouser l'un de 3 prétendants (16-19 ans et 10-30 or de dot, 20-26 ans et 30-60 or, 27-35 ans et 60-120 or ; venus des maisons voisines de la carte), entrer dans l'Église (+25 prestige) ou épouser quelqu'un chez un voisin (+40 or, +10 prestige) ; ces deux voies le font sortir de la lignée pour toujours. « Plus tard » laisse la décision en attente. Le seigneur ne peut pas quitter le domaine ; veuf (moins de 55 ans), il se voit proposer un remariage, qu'il peut refuser. La fenêtre de décision met la partie en pause. | Choix du joueur : prétendants au choix et cadets décidés par le joueur. Jeune conjoint = plus d'enfants ; conjoint âgé = grosse dot. |
+| Couple marié | Un membre marié au domaine fonde un foyer noble au manoir, qui prend ses vivres dans les réserves ; ses enfants entrent dans la lignée. | Les cadets mariés sont des héritiers de secours, et des bouches à nourrir. |
+| Prestige | Population (1 par habitant) + or (1 pour 10) + ancienneté de la lignée (2 par an) + successions (20 chacune) + Église et alliances. Affiché dans le bandeau, détaillé dans le panneau Lignée, envoyé au Monde dans le résumé de la barrière. | Premier calcul, prévu au jalon. Titres en J4. |
+| Chronique | Fondation, naissances, mariages, morts, successions, régences, décrets, Église et alliances, datés ; règnes. Fenêtre « Chronique de la lignée » et écran de fin de partie (les deux défaites). | Pilier Transmettre. |
+| Sauvegardes | Format v5. Une partie de J2b reçoit la lignée de départ à son ouverture. | Les vieilles parties restent jouables. |
+
+**Ce que montre l'outil `lignee`** (famille du seigneur seule, vivres illimités, 10 graines, 100 ans) : environ 4 règnes par siècle, soit 25 ans par génération (environ 1 h 15 de jeu à vitesse normale ; la première succession vient vers l'an 30 à 45). Avec la même fécondité que le village, un couple noble a 8 à 12 enfants : en mariant l'héritier au prétendant le plus jeune et quelques cadets, aucune extinction en 100 ans, quelle que soit la loi. En mariant l'héritier au prétendant le plus âgé et en envoyant tous les cadets au loin, 2 à 6 lignées sur 10 s'éteignent vers l'an 70. Si l'on marie tous les enfants, la famille passe à plus de 700 personnes en 60 ans : la faim l'arrêtera, mais les décisions deviendront fastidieuses. Dans l'outil `simulate` (village à 9 fermes au plus), une famine longue a éteint la lignée vers l'an 39 : la famille noble meurt de faim comme le village quand le manoir est vide.
 
 ## 5. Systèmes clés
 
@@ -329,8 +350,8 @@ jeu-medieval/
 │  │  │     ├─ seasons.ts     ← calendrier (ticks → année, saison, jour)
 │  │  │     ├─ roads.ts       ← réseau relié au manoir, plus courts chemins
 │  │  │     ├─ economy.ts     ← réserves, production, agriculture, porteurs, marché
-│  │  │     └─ population.ts  ← villageois, foyers, emplois, provisions, moral, impôts
-│  │  │        (à venir : dynasty)
+│  │  │     ├─ population.ts  ← villageois, foyers, emplois, provisions, moral, impôts
+│  │  │     └─ dynasty.ts     ← lignée : succession, régence, affaires de famille, prestige, chronique
 │  │  └─ test/                ← tests automatiques
 │  │
 │  ├─ sim-monde/              ← couche Monde, partagée client/serveur
@@ -359,6 +380,7 @@ jeu-medieval/
 │
 └─ tools/
    ├─ artifact.mjs            ← prépare la version publiable du jeu
+   ├─ lignee.ts               ← extinctions de la lignée selon la loi et les mariages → CSV
    └─ simulate.ts             ← N années d'un village type sans affichage → CSV
 ```
 
@@ -368,11 +390,12 @@ jeu-medieval/
 
 ## 9. Questions reportées
 
-- **Avant J3 (dynastie) :**
-  - Ordre de succession : primogéniture masculine (historique), primogéniture absolue, ou choix du joueur parmi les éligibles, avec des conséquences ?
-  - Régence quand l'héritier est mineur ?
-  - Conjoint imposé, ou choisi parmi plusieurs candidats ?
-  - Génération des prénoms (médiévaux français ? flamands ?).
+- ~~Avant J3 (dynastie) : ordre de succession, régence, choix du conjoint~~ : tranchés le 15/11 (section 4.4).
+- **Après la partie test de J3 :**
+  - Donner une contrepartie à la loi masculine seule (prestige ?) pour en faire un vrai pari ?
+  - Fécondité de la famille noble : la même que le village (8 à 12 enfants par couple), ou plus faible ?
+  - Une décision par défaut pour les cadets (Église au bout d'un an ?) si les affaires de famille deviennent trop nombreuses.
+  - Prénoms : médiévaux français pour l'instant (`names.json`) ; flamands ou autres à décider avec l'univers.
 - **Avant J4 (achat de fief) :**
   - Calcul du prix d'un fief (surface, terrain, population).
   - Conditions d'acceptation de l'IA vendeuse.
@@ -421,4 +444,5 @@ jeu-medieval/
 | 15/11/2026 | Journal de partie ajouté à la page publiée, lu par Claude pour analyser les parties de test. | Demande du joueur : suivre ses parties et en tirer des conclusions. |
 | 15/11/2026 | Retours de la première partie test : fiche d'outil, avertissement des champs en trop, reprise automatique, bilan sur quatre saisons. | Analyse du journal de partie et retours du joueur. |
 | 15/11/2026 | J2b : 20 adultes et leurs enfants au départ, naissances tous les 1,5 an par famille, emplois automatiques réglables, foyers qui se ravitaillent eux-mêmes, moral simple. Règles en section 4.3. | Choix du joueur (questions du 15/11), équilibrage avec `simulate`. |
+| 15/11/2026 | J3 : trois lois de succession au choix, modifiables par décret appliqué un an plus tard ; conjoint choisi parmi 3 prétendants ; régence avec moral −10 ; avenir des cadets décidé par le joueur (mariage au domaine, Église, alliance). Règles en section 4.4. | Choix du joueur (questions du 15/11). |
 | 15/11/2026 | Nouveaux venus : une famille par an au plus (réglable : fermé, normal, ouvert), s'il reste une maison libre que personne n'attend, 120 jours de vivres et un moral d'au moins 50. Corrections d'interface : maison vide expliquée, bâtiment sans travailleur nommé, journal écrit seulement une fois la partie jouée. | Partie test n° 2 (orge-349, ans 3 à 7) : milieu de partie vide, maisons vides, surplus de nourriture sans usage. Validé par le joueur. |

@@ -1037,4 +1037,94 @@ textarea {
   .date {
     font-size: 15px;
   }
+  /* Le bouton pause, mis en avant, suffit à dire que la partie est en pause. */
+  #hud.is-paused .date::after {
+    content: none;
+  }
+}
+
+/* ------------------------------------------------------------ Lignée (J3) */
+.res-prestige .res-label {
+  border-bottom-color: var(--or);
+}
+.lineage h3,
+.chronicle-box h3 {
+  margin: 10px 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+.kin,
+.matters,
+.reigns,
+.chronicle {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.kin li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  align-items: baseline;
+}
+.kin-rank {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--or);
+  border: 1px solid var(--or-soft);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+.matters li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border-left: 3px solid var(--or);
+  background: var(--or-soft);
+  border-radius: 4px;
+}
+.btn.is-pending {
+  border-style: dashed;
+  border-color: var(--or);
+}
+.suitors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+.suitor {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  padding: 10px;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  background: var(--panel-raised);
+  min-width: 0;
+}
+.suitor-name {
+  font-weight: 700;
+}
+.suitor-dowry {
+  color: var(--or);
+  font-variant-numeric: tabular-nums;
+}
+.suitor .btn {
+  margin-top: 4px;
+  justify-self: start;
+}
+.chronicle-box {
+  max-height: min(50vh, 420px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.chronicle li {
+  line-height: 1.35;
 }

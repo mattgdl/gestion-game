@@ -1,19 +1,13 @@
 # ROADMAP.md
 
-> Mise à jour : 15/11/2026 · Référence des règles : DESIGN.md (v0.6)
+> Mise à jour : 15/11/2026 · Référence des règles : DESIGN.md (v0.7)
 > Chaque jalon se termine par un jeu qui se lance et se joue. Une idée qui sort du jalon en cours est notée ici, pas codée.
 
 ## En cours
 
-- **Retours de jeu sur J2b**, puis démarrage de **J3 — La lignée**.
+- **Partie test de J3 — La lignée** (critère : jouer deux successions, puis perdre par extinction en l'ayant vue venir), puis **J4 — S'étendre**.
 
 ## À faire
-
-### J3 — La lignée
-- Famille seigneuriale, mariage simple, naissances, mortalité, majorité.
-- Ordre de succession (règle à trancher, voir DESIGN 9), extinction, écran de succession.
-- Chronique de la dynastie, premier calcul du prestige.
-- **Critère de fin :** jouer deux successions, puis perdre par extinction en l'ayant vue venir.
 
 ### J4 — S'étendre
 - Vue Monde complète.
@@ -47,6 +41,15 @@
 - *(vide)*
 
 ## Fait
+- 15/11/2026 : **J3 — La lignée** livré, à valider en partie test.
+  - Famille du seigneur au manoir (fondateur, épouse, enfant), qui vit, mange, a des enfants et meurt avec le village, sans travailler ni payer d'impôts.
+  - Trois lois de succession (masculine seule, les fils d'abord, aînesse absolue), changées par décret appliqué un an plus tard ; ordre de succession complet (petits-enfants, frères et sœurs, neveux).
+  - Succession avec fenêtre et pause, régence (moral −10) jusqu'aux 16 ans, fin de partie par extinction.
+  - Affaires de famille à 16 ans : 3 prétendants (âge, dot, maison voisine), Église ou mariage chez un voisin ; remariage du seigneur veuf.
+  - Prestige (bandeau, panneau, résumé envoyé au Monde), chronique de la lignée et règnes, écran de fin avec la chronique.
+  - Panneau Lignée, alertes (un seul héritier, aucun héritier, décret dangereux, affaires en attente), bilan d'automne et journal de partie enrichis.
+  - Outil `lignee` (extinctions selon la loi et les mariages) ; `simulate` gère les affaires de famille.
+  - Sauvegardes format v5. 102 tests automatiques.
 - 15/11/2026 : **Retours de la partie test n° 2** (graine orge-349, ans 3 à 7, 14 min).
   - Nouveaux venus : une famille s'installe dans une maison libre que personne n'attend, s'il y a 120 jours de vivres et du moral ; accueil réglable (fermé, normal = 1 par an, ouvert = 3 par an et moral −10).
   - La fiche de l'outil Maison et celle d'une maison vide disent qui viendra l'habiter, ou pourquoi personne, et dans combien de temps le prochain mariage est possible.
@@ -88,6 +91,7 @@
 ## Idées notées (à trier)
 - Remariage des veufs et veuves (aujourd'hui un foyer qui perd un parent ne se reforme pas).
 - Arrivées des nouveaux venus selon la tendance des vivres (récolte attendue), pas seulement les réserves.
+- Lignée : contrepartie pour la loi masculine seule ; décision par défaut pour les cadets ; fécondité propre à la noblesse ; arbre généalogique dessiné.
 - Export de sauvegarde (fichier) inopérant dans la page publiée sur claude.ai : passer par la capacité de téléchargement de l'artefact.
 - Villageois visibles sur la carte (aller au travail, au marché).
 - Priorités d'emploi réglables par le joueur (aujourd'hui l'église et le marché passent en dernier ; à revoir si l'alerte qui les nomme ne suffit pas).

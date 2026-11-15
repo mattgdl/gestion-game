@@ -3,7 +3,7 @@
  * Aucun Phaser ici : l'affichage lit la session, l'interface lui envoie des commandes.
  */
 import { DomainSim, TICKS_PER_SECOND, type Command, type CheckResult, type SimEvent } from "@jeu/sim-fief";
-import { PLAYER_ID, createWorld, fiefsOwnedBy } from "@jeu/sim-monde";
+import { PLAYER_ID, createWorld, fiefsOwnedBy, lineageSetupFor } from "@jeu/sim-monde";
 import { makeSave, type SaveGame } from "../save/save";
 import { LocalWorld, type WorldGateway } from "../world-gateway/LocalWorld";
 
@@ -34,6 +34,7 @@ export class Session {
       ownerId: PLAYER_ID,
       dims: world.dims,
       fiefs: owned.map((f) => ({ id: f.id, col: f.col, row: f.row })),
+      lineage: lineageSetupFor(world, PLAYER_ID),
     });
     return new Session(new LocalWorld(world), sim);
   }

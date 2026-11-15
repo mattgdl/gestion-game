@@ -1,4 +1,4 @@
-import { PLAYER_ID, createWorld, fiefsOwnedBy, resolveBarrier, type WorldState } from "@jeu/sim-monde";
+import { PLAYER_ID, createWorld, fiefsOwnedBy, lineageSetupFor, resolveBarrier, type WorldState } from "@jeu/sim-monde";
 import { DomainSim, type Building } from "../src";
 
 export function newGame(seed = "test"): { world: WorldState; sim: DomainSim } {
@@ -7,6 +7,7 @@ export function newGame(seed = "test"): { world: WorldState; sim: DomainSim } {
     ownerId: PLAYER_ID,
     dims: world.dims,
     fiefs: fiefsOwnedBy(world, PLAYER_ID).map((f) => ({ id: f.id, col: f.col, row: f.row })),
+    lineage: lineageSetupFor(world, PLAYER_ID),
   });
   return { world, sim };
 }

@@ -4,9 +4,10 @@ import economyJson from "@jeu/data/economy.json";
 import logisticsJson from "@jeu/data/logistics.json";
 import demographyJson from "@jeu/data/demography.json";
 import namesJson from "@jeu/data/names.json";
+import dynastyJson from "@jeu/data/dynasty.json";
 import seasonsJson from "@jeu/data/seasons.json";
 import type { Cost, Resources } from "@jeu/shared";
-import type { GoodId } from "./state";
+import type { GoodId, SuccessionLaw } from "./state";
 
 export interface BuildingDef {
   nom: string;
@@ -103,7 +104,21 @@ export interface DemographyDef {
   };
 }
 export const DEMOGRAPHY = demographyJson as unknown as DemographyDef;
-export const NAMES = namesJson as unknown as { prenomsF: string[]; prenomsM: string[] };
+export const NAMES = namesJson as unknown as { fiefs: string[]; prenomsF: string[]; prenomsM: string[] };
+
+export interface DynastyDef {
+  majorite: number;
+  fondateur: { ageMin: number; ageMax: number; conjointAgeMin: number; conjointAgeMax: number; enfants: number; ageEnfantMax: number };
+  loiDepart: SuccessionLaw;
+  delaiDecretJours: number;
+  regence: { moral: number };
+  remariageAgeMax: number;
+  pretendants: { ageMin: number; ageMax: number; dotMin: number; dotMax: number }[];
+  eglise: { prestige: number };
+  alliance: { or: number; prestige: number };
+  prestige: { parHabitant: number; orParPoint: number; parAnDeLignee: number; parSuccession: number };
+}
+export const DYNASTY = dynastyJson as unknown as DynastyDef;
 
 export interface SeasonsDef {
   secondesParAn: number;

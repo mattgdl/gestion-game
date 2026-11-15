@@ -5,6 +5,15 @@
  * déclarés pour que l'architecture soit prête.
  */
 
+/**
+ * Ce que le Monde dit à un domaine qui se crée, pour sa lignée (J3) : le nom de la maison
+ * (celui de son fief de départ) et les maisons voisines (prétendants, alliances).
+ */
+export interface LineageSetup {
+  houseName: string;
+  neighbors: string[];
+}
+
 /** Chiffres publics d'un domaine, envoyés à chaque barrière. Jamais l'état complet. */
 export interface FiefSummary {
   ownerId: string;

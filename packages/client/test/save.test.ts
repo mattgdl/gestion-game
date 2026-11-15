@@ -81,8 +81,8 @@ describe("sauvegarde", () => {
     const v2 = { ...v3, saveVersion: 2, domain };
     const migrated = migrateSave(JSON.parse(JSON.stringify(v2)));
     expect(migrated.saveVersion).toBe(SAVE_VERSION);
-    expect(migrated.domain.families).toHaveLength(10);
-    expect(migrated.domain.villagers.length).toBeGreaterThanOrEqual(20);
+    expect(migrated.domain.families.filter((f) => !f.noble)).toHaveLength(10);
+    expect(migrated.domain.villagers.filter((v) => !v.noble).length).toBeGreaterThanOrEqual(20);
     expect(migrated.domain.taxLevel).toBe("normal");
     const restored = Session.fromSave(migrated);
     play(restored, 20);
@@ -92,18 +92,44 @@ describe("sauvegarde", () => {
   it("convertit une sauvegarde de J2b (v3) : accueil des nouveaux venus au rythme normal", () => {
     const session = Session.newGame("j2b");
     play(session, 20);
-    const v4 = session.toSave();
-    const { immigration: _i, ...domain } = v4.domain;
-    const v3 = { ...v4, saveVersion: 3, domain };
+    const v5 = session.toSave();
+    const { immigration: _i, dynasty: _d, ...domain } = v5.domain;
+    const villagers = domain.villagers.filter((v) => !v.noble);
+    const families = domain.families.filter((f) => !f.noble);
+    const v3 = { ...v5, saveVersion: 3, domain: { ...domain, villagers, families } };
     const migrated = migrateSave(JSON.parse(JSON.stringify(v3)));
     expect(migrated.saveVersion).toBe(SAVE_VERSION);
     expect(migrated.domain.immigration).toBe("normale");
-    const restored = Session.fromSave(migrated);
-    expect(restored.sim.state.villagers).toEqual(session.sim.state.villagers);
-    play(restored, 20);
+    // Même sauvegarde convertie deux fois : même partie.
+    const a = Session.fromSave(migrated);
+    const b = Session.fromSave(migrateSave(JSON.parse(JSON.stringify(v3))));
+    play(a, 30);
+    play(b, 30);
+    expect(a.sim.toJSON()).toEqual(b.sim.toJSON());
+  });
+
+  it("convertit une sauvegarde de J2b (v4) : la lignée du seigneur s'installe au manoir", () => {
+    const session = Session.newGame("j3");
     play(session, 20);
-    expect(restored.sim.state.tick).toBe(session.sim.state.tick);
-    expect(restored.sim.state.villagers).toEqual(session.sim.state.villagers);
+    const v5 = session.toSave();
+    const { dynasty: _d, ...domain } = v5.domain;
+    const v4 = {
+      ...v5,
+      saveVersion: 4,
+      domain: { ...domain, villagers: domain.villagers.filter((v) => !v.noble), families: domain.families.filter((f) => !f.noble) },
+    };
+    const migrated = migrateSave(JSON.parse(JSON.stringify(v4)));
+    expect(migrated.saveVersion).toBe(SAVE_VERSION);
+    const dyn = migrated.domain.dynasty;
+    expect(dyn.name).toMatch(/^Maison de /);
+    expect(dyn.lordId).toBe(dyn.founderId);
+    expect(dyn.law).toBe("preference-masculine");
+    expect(dyn.members.length).toBeGreaterThanOrEqual(3);
+    expect(dyn.neighbors.length).toBeGreaterThan(0);
+    expect(migrated.domain.families.filter((f) => f.noble)).toHaveLength(1);
+    const restored = Session.fromSave(migrated);
+    play(restored, 20);
+    expect(restored.sim.dynasty.lord?.status).toBe("vivant");
   });
 });
 

@@ -2,7 +2,7 @@
  * Alertes du village : ce qui va mal ou va bientôt mal tourner, pour que la défaite ne soit
  * jamais une surprise (DESIGN.md, « défaite prévisible »). Lecture seule de la simulation.
  */
-import { BUILDINGS, DAYS_PER_YEAR, DAILY_WOOD, type DomainSim } from "@jeu/sim-fief";
+import { BUILDINGS, DAYS_PER_YEAR, DAILY_WOOD, DEMOGRAPHY, type DomainSim } from "@jeu/sim-fief";
 
 export interface Alert {
   tone: "bad" | "warn" | "info";
@@ -67,6 +67,7 @@ export function computeAlerts(sim: DomainSim): Alert[] {
   const usage = sim.economy.storageUsage();
   if (usage.capacity > 0 && usage.used >= usage.capacity * 0.95) out.push({ tone: "warn", text: "Réserves pleines : bâtissez un entrepôt." });
 
+  out.push(...lineageAlerts(sim));
   out.push(...jobAlerts(sim));
 
   const housing = pop.housingOutlook();
@@ -120,4 +121,38 @@ export function jobAlerts(sim: DomainSim): Alert[] {
   }
   if (partial.length > 0) out.push({ tone: "info", text: `Postes vacants, faute de bras : ${partial.join(", ")}.` });
   return out;
+}
+
+/** Lignée : l'extinction doit se voir venir (DESIGN.md, « défaite prévisible »). */
+export function lineageAlerts(sim: DomainSim): Alert[] {
+  const dyn = sim.dynasty;
+  const d = sim.state.dynasty;
+  const lord = dyn.lord;
+  if (!lord) return [];
+  const out: Alert[] = [];
+  const line = dyn.lineOfSuccession();
+  if (line.length === 0) {
+    out.push({ tone: "bad", text: `Aucun héritier : à la mort de ${lord.name}, la lignée s'éteindra. Mariez un membre de la famille.` });
+  } else if (line.length === 1 && !fertileCouple(sim)) {
+    // Tant que le couple du seigneur peut encore avoir des enfants, un seul héritier n'inquiète pas.
+    out.push({ tone: "warn", text: `Un seul héritier possible (${dyn.member(line[0])?.name ?? "?"}) : la lignée est fragile.` });
+  }
+  if (d.pendingLaw && line.length > 0 && dyn.lineOfSuccession(d.pendingLaw.law).length === 0) {
+    out.push({ tone: "bad", text: "Le décret de succession laissera la lignée sans héritier." });
+  }
+  const waiting = d.decisions.map((x) => dyn.member(x.memberId)?.name).filter((n): n is string => !!n);
+  if (waiting.length > 0) {
+    out.push({ tone: "info", text: `Affaire${waiting.length > 1 ? "s" : ""} de famille : ${waiting.join(", ")} ${waiting.length > 1 ? "attendent" : "attend"} votre décision (panneau Lignée).` });
+  }
+  return out;
+}
+
+/** Le seigneur a un conjoint vivant et le couple peut encore avoir des enfants. */
+function fertileCouple(sim: DomainSim): boolean {
+  const lord = sim.dynasty.lord;
+  const spouse = lord ? sim.dynasty.livingSpouse(lord) : undefined;
+  if (!lord || !spouse) return false;
+  const wife = lord.sex === "F" ? lord : spouse;
+  const age = sim.dynasty.ageOf(wife);
+  return age >= DEMOGRAPHY.fecondite.ageMin && age <= DEMOGRAPHY.fecondite.ageMax;
 }

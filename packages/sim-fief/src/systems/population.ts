@@ -7,7 +7,7 @@
  * Les provisions des foyers sont comptées en millièmes d'unité (entiers).
  */
 import { RESOURCE_NAMES, Rng } from "@jeu/shared";
-import { BUILDINGS, DEMOGRAPHY, ECONOMY, LOGISTICS, NAMES } from "../data";
+import { BUILDINGS, DEMOGRAPHY, DYNASTY, ECONOMY, LOGISTICS, NAMES } from "../data";
 import type { DomainSim } from "../domain";
 import type { Building, Delivery, Family, GoodId, ImmigrationLevel, Sex, Villager } from "../state";
 import { legTicks } from "./economy";
@@ -111,14 +111,25 @@ export class Population {
     return rng.int(minYears * TICKS_PER_YEAR, (maxYears + 1) * TICKS_PER_YEAR - 1);
   }
 
-  private newVillager(rng: Rng, sex: Sex, birthTick: number, familyId: number): Villager {
+  newVillager(
+    rng: Rng,
+    sex: Sex,
+    birthTick: number,
+    familyId: number,
+    extra: { fatherId?: number; motherId?: number; noble?: boolean } = {},
+  ): Villager {
     const names = sex === "F" ? NAMES.prenomsF : NAMES.prenomsM;
-    const v: Villager = { id: this.state.nextId++, name: rng.pick(names), sex, birthTick, familyId };
-    this.state.villagers.push(v);
-    return v;
+    return this.addVillager({ name: rng.pick(names), sex, birthTick, familyId, ...extra });
   }
 
-  private newFamily(husbandId: number | null, wifeId: number | null, houseId: number | null): Family {
+  /** Ajoute un villageois déjà décrit (prénom et âge connus, par exemple un conjoint noble). */
+  addVillager(v: Omit<Villager, "id">): Villager {
+    const full: Villager = { id: this.state.nextId++, ...v };
+    this.state.villagers.push(full);
+    return full;
+  }
+
+  newFamily(husbandId: number | null, wifeId: number | null, houseId: number | null): Family {
     const f: Family = {
       id: this.state.nextId++,
       houseId,
@@ -172,15 +183,27 @@ export class Population {
     return this.state.buildings.find((b) => b.type === "manoir");
   }
 
-  counts(): { total: number; adults: number; children: number; workers: number; employed: number; jobs: number; families: number; homeless: number } {
+  counts(): {
+    total: number;
+    adults: number;
+    children: number;
+    workers: number;
+    employed: number;
+    jobs: number;
+    families: number;
+    homeless: number;
+    nobles: number;
+  } {
     this.refreshWorkforce();
     const tick = this.state.tick;
     let adults = 0;
     let workers = 0;
+    let nobles = 0;
     for (const v of this.state.villagers) {
       const age = ageOf(v, tick);
       if (age >= D.ageMariage) adults += 1;
-      if (age >= D.ageTravail) workers += 1;
+      if (v.noble) nobles += 1;
+      else if (age >= D.ageTravail) workers += 1;
     }
     let jobs = 0;
     for (const b of this.state.buildings) {
@@ -194,16 +217,18 @@ export class Population {
       workers,
       employed: this.jobByVillager.size,
       jobs,
-      families: this.state.families.length,
+      families: this.state.families.filter((f) => !f.noble).length,
       homeless: this.state.families.filter((f) => f.houseId === null).length,
+      nobles,
     };
   }
 
-  /** Moral du domaine : moyenne des foyers pondérée par leur taille. */
+  /** Moral du village : moyenne des foyers (hors famille noble) pondérée par leur taille. */
   morale(): number {
     let sum = 0;
     let n = 0;
     for (const f of this.state.families) {
+      if (f.noble) continue;
       const size = this.members(f.id).length;
       sum += f.morale * size;
       n += size;
@@ -246,7 +271,7 @@ export class Population {
         return { b, want: Math.max(0, Math.min(max, b.workersLimit ?? max)), prio: BUILDINGS[b.type]?.prioriteEmploi ?? 9 };
       })
       .sort((a, c) => a.prio - c.prio || a.b.id - c.b.id);
-    const free = this.state.villagers.filter((v) => ageOf(v, tick) >= D.ageTravail);
+    const free = this.state.villagers.filter((v) => !v.noble && ageOf(v, tick) >= D.ageTravail);
     const homeOf = new Map<number, Building | undefined>();
     for (const f of this.state.families) homeOf.set(f.id, this.home(f));
     // Par ordre de priorité (la nourriture d'abord) ; à priorité égale, à tour de rôle.
@@ -409,7 +434,7 @@ export class Population {
 
   /** Célibataires en âge de se marier, triés par âge (les plus âgés d'abord). */
   private singles(tick: number): { men: Villager[]; women: Villager[] } {
-    const singles = this.state.villagers.filter((v) => ageOf(v, tick) >= D.ageMariage && !this.isMarried(v));
+    const singles = this.state.villagers.filter((v) => !v.noble && ageOf(v, tick) >= D.ageMariage && !this.isMarried(v));
     const order = (a: Villager, b: Villager) => a.birthTick - b.birthTick || a.id - b.id;
     return { men: singles.filter((v) => v.sex === "M").sort(order), women: singles.filter((v) => v.sex === "F").sort(order) };
   }
@@ -429,7 +454,7 @@ export class Population {
 
   /** Années avant qu'un garçon et une fille de foyers différents aient tous deux l'âge de se marier. */
   private nextMarriageYears(tick: number): number | null {
-    const unmarried = this.state.villagers.filter((v) => !this.isMarried(v));
+    const unmarried = this.state.villagers.filter((v) => !v.noble && !this.isMarried(v));
     const ready = (v: Villager) => v.birthTick + D.ageMariage * TICKS_PER_YEAR;
     const order = (a: Villager, b: Villager) => ready(a) - ready(b) || a.id - b.id;
     const men = unmarried.filter((v) => v.sex === "M").sort(order);
@@ -582,6 +607,11 @@ export class Population {
     for (const f of this.state.families) {
       if (this.members(f.id).length === 0) continue;
       const target = this.targets(f, season);
+      if (f.noble) {
+        // Famille noble : elle se sert directement dans les réserves du manoir.
+        if (manor) this.serveFromManor(f, manor, target);
+        continue;
+      }
       if (f.houseId === null) {
         // Sans abri : on se sert directement au manoir, sur place.
         if (manor && f.food < target.food / 2) {
@@ -617,6 +647,37 @@ export class Population {
     }
   }
 
+  /** Nourriture mangée par jour par un foyer, en millièmes. */
+  familyDailyFood(familyId: number): number {
+    const tick = this.state.tick;
+    let n = 0;
+    for (const v of this.members(familyId)) n += dailyFood(v, tick);
+    return n;
+  }
+
+  /** Un foyer noble qui vient de se former prend tout de suite ses vivres au manoir. */
+  provisionNoble(f: Family): void {
+    const manor = this.state.buildings.find((b) => b.type === "manoir");
+    if (manor) this.serveFromManor(f, manor, this.targets(f, dateOf(this.state.tick).seasonIndex));
+  }
+
+  private serveFromManor(f: Family, manor: Building, target: { food: number; wood: number }): void {
+    if (f.food < target.food / 2) {
+      const take = Math.min(Math.ceil((target.food - f.food) / 1000), manor.stock.nourriture ?? 0);
+      if (take > 0) {
+        manor.stock.nourriture = (manor.stock.nourriture ?? 0) - take;
+        f.food += take * 1000;
+      }
+    }
+    if (target.wood > 0 && f.wood < target.wood / 2) {
+      const take = Math.min(Math.ceil((target.wood - f.wood) / 1000), manor.stock.bois ?? 0);
+      if (take > 0) {
+        manor.stock.bois = (manor.stock.bois ?? 0) - take;
+        f.wood += take * 1000;
+      }
+    }
+  }
+
   private deathRate(age: number): number {
     for (const r of D.mortaliteParAn) if (age <= r.ageMax) return r.taux;
     return 1;
@@ -638,7 +699,7 @@ export class Population {
     if (dead.length === 0) return;
     const stats = this.state.yearStats;
     for (const { v, cause } of dead) {
-      this.removeVillager(v);
+      this.remove(v);
       stats.deaths = (stats.deaths ?? 0) + 1;
       if (cause === "faim") stats.deathsHunger = (stats.deathsHunger ?? 0) + 1;
       if (cause === "froid") stats.deathsCold = (stats.deathsCold ?? 0) + 1;
@@ -651,9 +712,11 @@ export class Population {
     if (hunger.length > 0) this.sim.addLog(`La faim emporte ${hunger.join(", ")}.`);
     if (cold.length > 0) this.sim.addLog(`Le froid emporte ${cold.join(", ")}.`);
     this.version += 1;
+    this.sim.dynasty.onDeaths(dead.filter((x) => x.v.noble));
   }
 
-  private removeVillager(v: Villager): void {
+  /** Retire un villageois du domaine (mort, ou départ d'un membre de la lignée). */
+  remove(v: Villager): void {
     this.state.villagers = this.state.villagers.filter((o) => o.id !== v.id);
     const f = this.family(v.familyId);
     if (!f) return;
@@ -665,7 +728,7 @@ export class Population {
       this.state.families = this.state.families.filter((o) => o.id !== f.id);
       return;
     }
-    if (f.husbandId === null && f.wifeId === null) {
+    if (f.husbandId === null && f.wifeId === null && !f.noble) {
       // Orphelins : recueillis par le plus petit autre foyer, ou ils restent ensemble.
       const tick = this.state.tick;
       const anyAdult = left.some((m) => ageOf(m, tick) >= D.ageMariage);
@@ -680,6 +743,13 @@ export class Population {
       this.state.families = this.state.families.filter((o) => o.id !== f.id);
       this.version += 1;
     }
+  }
+
+  /** Supprime un foyer qui n'a plus personne. */
+  dropIfEmpty(familyId: number): void {
+    if (this.state.villagers.some((v) => v.familyId === familyId)) return;
+    this.state.families = this.state.families.filter((f) => f.id !== familyId);
+    this.version += 1;
   }
 
   private births(rng: Rng, tick: number): void {
@@ -697,7 +767,8 @@ export class Population {
       const p = (pBase * (500 + f.morale * 10)) / 1000;
       if (rng.next() >= p) continue;
       const sex: Sex = rng.chance(0.5) ? "F" : "M";
-      const child = this.newVillager(rng, sex, tick, f.id);
+      const child = this.newVillager(rng, sex, tick, f.id, { fatherId: father.id, motherId: mother.id });
+      this.sim.dynasty.onBirth(child, f.noble === true);
       f.lastBirthTick = tick;
       born.push(`${child.name}, ${sex === "F" ? "fille" : "fils"} de ${father.name} et ${mother.name}`);
     }
@@ -724,6 +795,7 @@ export class Population {
     }
     const tax = m.impots[this.state.taxLevel];
     if (tax !== 0) parts.push({ label: `Impôts ${this.state.taxLevel === "aucun" ? "supprimés" : "lourds"}`, value: tax });
+    if (this.state.dynasty.regency) parts.push({ label: "Régence", value: DYNASTY.regence.moral });
     const welcome = m.immigration[this.state.immigration] ?? 0;
     if (welcome !== 0) parts.push({ label: "Accueil ouvert aux nouveaux venus", value: welcome });
     const total = Math.max(0, Math.min(100, parts.reduce((s, p) => s + p.value, 0)));
@@ -747,7 +819,7 @@ export class Population {
   /** Bilan d'automne : chaque foyer logé paie l'impôt. */
   collectTaxes(): void {
     const rate = ECONOMY.impotsParFoyer[this.state.taxLevel];
-    const housed = this.state.families.filter((f) => f.houseId !== null).length;
+    const housed = this.state.families.filter((f) => f.houseId !== null && !f.noble).length;
     const amount = rate * housed;
     if (amount > 0) {
       this.state.treasury += amount;

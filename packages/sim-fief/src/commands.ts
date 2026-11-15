@@ -3,7 +3,8 @@
  * L'interface envoie une commande, la simulation la vérifie puis l'applique.
  */
 import type { Cost } from "@jeu/shared";
-import type { ImmigrationLevel, TaxLevel } from "./state";
+import type { ImmigrationLevel, SuccessionLaw, TaxLevel } from "./state";
+import type { DecisionChoice } from "./systems/dynasty";
 
 export type Command =
   | { type: "build"; building: string; x: number; y: number }
@@ -14,7 +15,11 @@ export type Command =
   | { type: "setWorkers"; buildingId: number; count: number }
   | { type: "setTax"; level: TaxLevel }
   /** Accueil des nouveaux venus : fermé, une famille par an, ou ouvert. */
-  | { type: "setImmigration"; level: ImmigrationLevel };
+  | { type: "setImmigration"; level: ImmigrationLevel }
+  /** Décret de succession : la loi change après un délai (revenir à la loi en vigueur annule). */
+  | { type: "decreeLaw"; law: SuccessionLaw }
+  /** Affaire de famille : épouser un prétendant (son indice), l'Église, une alliance, ou refuser un remariage. */
+  | { type: "familyDecision"; memberId: number; choice: DecisionChoice };
 
 export interface CheckResult {
   ok: boolean;

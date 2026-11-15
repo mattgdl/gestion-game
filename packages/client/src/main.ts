@@ -141,6 +141,19 @@ function start(data: HotData = {}): void {
           });
         }
       }
+      for (const ev of events) {
+        if (ev.type === "succession") {
+          if (writeSlot("auto", s.toSave())) hud.refreshSaves();
+          const wasPaused = s.paused;
+          s.paused = true;
+          hud.showSuccession(ev.deadId, ev.heirId, () => {
+            s.paused = wasPaused;
+          });
+        } else if (ev.type === "familyMatter") {
+          const m = s.sim.dynasty.member(ev.memberId);
+          if (m) game.toast(`Affaire de famille : ${m.name} a ${s.sim.dynasty.ageOf(m)} ans. Décidez de son avenir (panneau Lignée).`);
+        }
+      }
       if (events.some((e) => e.type === "gameOver")) {
         writeSlot("auto", s.toSave());
         void journal.flush();

@@ -119,6 +119,7 @@ export function domainSnapshot(sim: DomainSim): Record<string, unknown> {
       return need > 0 ? Math.floor((pop.foodAvailable() * 1000) / need) : null;
     })(),
     finDePartie: sim.state.gameOver,
+    lignee: lineageSnapshot(sim),
     ressources: resources,
     reserves: eco.storageUsage(),
     enAttente: eco.waiting() as Goods,
@@ -130,6 +131,29 @@ export function domainSnapshot(sim: DomainSim): Record<string, unknown> {
     fermes: farms,
     routes: sim.state.roads.length,
     champs: sim.state.fields.length,
+  };
+}
+
+/** La lignée en quelques chiffres : seigneur, héritiers, loi, affaires en attente, prestige. */
+export function lineageSnapshot(sim: DomainSim): Record<string, unknown> {
+  const dyn = sim.dynasty;
+  const d = sim.state.dynasty;
+  const lord = dyn.lord;
+  const line = dyn.lineOfSuccession();
+  return {
+    maison: d.name,
+    loi: d.law,
+    decret: d.pendingLaw,
+    seigneur: lord ? { nom: lord.name, sexe: lord.sex, age: dyn.ageOf(lord) } : null,
+    regence: d.regency !== null,
+    regnes: d.reigns.length,
+    heritiers: line.length,
+    heritier: line[0] !== undefined ? { nom: dyn.member(line[0])?.name, age: dyn.ageOf(dyn.member(line[0])!) } : null,
+    familleAuManoir: d.members.filter((m) => m.status === "vivant").length,
+    affairesEnAttente: d.decisions.length,
+    eglise: d.members.filter((m) => m.status === "eglise").length,
+    partis: d.members.filter((m) => m.status === "parti").length,
+    prestige: dyn.prestige().total,
   };
 }
 

@@ -114,6 +114,11 @@ export interface Villager {
   sex: Sex;
   birthTick: number;
   familyId: number;
+  /** Parents (nés au domaine depuis J3) ; absents pour les villageois de départ. */
+  fatherId?: number | null;
+  motherId?: number | null;
+  /** Membre de la famille noble (sang ou alliance) : vit au manoir, ne travaille pas. */
+  noble?: boolean;
 }
 
 /**
@@ -134,6 +139,8 @@ export interface Family {
   lastBirthTick: number;
   /** Moral de 0 à 100, recalculé chaque jour. */
   morale: number;
+  /** Foyer noble : vit au manoir (houseId = le manoir) et se sert sur ses réserves. */
+  noble?: boolean;
 }
 
 export type TaxLevel = "aucun" | "normal" | "lourd";
@@ -143,8 +150,82 @@ export type ImmigrationLevel = "fermee" | "normale" | "ouverte";
 export const IMMIGRATION_LEVELS: readonly ImmigrationLevel[] = ["fermee", "normale", "ouverte"];
 
 export interface GameOver {
-  reason: "depeuple";
+  /** depeuple : moins de 5 habitants ; extinction : plus aucun héritier à la mort du seigneur. */
+  reason: "depeuple" | "extinction";
   tick: number;
+}
+
+/**
+ * Lois de succession (J3) :
+ * - masculine : les fils seulement, et seulement par les hommes (loi salique) ;
+ * - preference-masculine : les fils d'abord, une fille s'il n'y a aucun fils ;
+ * - absolue : l'aîné(e), fils ou fille.
+ */
+export type SuccessionLaw = "masculine" | "preference-masculine" | "absolue";
+export const SUCCESSION_LAWS: readonly SuccessionLaw[] = ["masculine", "preference-masculine", "absolue"];
+
+/** Membre de la lignée, vivant ou non : l'arbre sert à la succession et à la chronique. */
+export interface DynastyMember {
+  /** Même identifiant que le villageois tant qu'il vit au domaine. */
+  id: number;
+  name: string;
+  sex: Sex;
+  birthTick: number;
+  fatherId: number | null;
+  motherId: number | null;
+  /** Descendant du fondateur (sinon : conjoint entré par mariage). */
+  blood: boolean;
+  status: "vivant" | "mort" | "eglise" | "parti";
+  /** Tick de la mort ou du départ. */
+  endTick: number | null;
+  spouseIds: number[];
+  /** Maison d'origine d'un conjoint. */
+  house?: string;
+  /** Le joueur a refusé de le remarier (veuf, veuve). */
+  noRemarriage?: boolean;
+}
+
+export interface Suitor {
+  name: string;
+  sex: Sex;
+  birthTick: number;
+  /** Or apporté par le mariage. */
+  dowry: number;
+  house: string;
+}
+
+/** Une affaire de famille en attente : l'avenir d'un membre majeur et non marié. */
+export interface FamilyDecision {
+  memberId: number;
+  suitors: Suitor[];
+  createdTick: number;
+}
+
+export interface Reign {
+  lordId: number;
+  fromTick: number;
+  toTick: number | null;
+}
+
+export interface DynastyState {
+  /** « Maison de … ». */
+  name: string;
+  founderId: number;
+  /** Seigneur régnant (null après l'extinction). */
+  lordId: number | null;
+  law: SuccessionLaw;
+  /** Décret pris, appliqué à effectiveTick. */
+  pendingLaw: { law: SuccessionLaw; effectiveTick: number } | null;
+  /** Régence en cours : le régent (null = conseil de régence). Absente = pas de régence. */
+  regency: { regentId: number | null } | null;
+  decisions: FamilyDecision[];
+  members: DynastyMember[];
+  reigns: Reign[];
+  chronicle: LogEntry[];
+  /** Prestige gagné par les actes (Église, alliances). */
+  prestigeAcquis: number;
+  /** Maisons voisines (prétendants, alliances). */
+  neighbors: string[];
 }
 
 export interface LogEntry {
@@ -176,6 +257,8 @@ export interface DomainState {
   taxLevel: TaxLevel;
   /** Accueil des nouveaux venus (choix du joueur). */
   immigration: ImmigrationLevel;
+  /** Lignée du seigneur (J3). */
+  dynasty: DynastyState;
   /** Fin de partie : le temps s'arrête. */
   gameOver: GameOver | null;
   nextId: number;

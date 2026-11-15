@@ -1,0 +1,36 @@
+{
+  "_doc": "Lignée du seigneur (J3). Âges en années de jeu. La famille noble vit au manoir, mange sur ses réserves, ne travaille pas et ne paie pas d'impôts. À sa majorité, chaque membre non marié attend une décision du joueur : épouser l'un des prétendants (qui apportent une dot), entrer dans l'Église (prestige) ou épouser quelqu'un chez un voisin (or et prestige ; il quitte la lignée). Un décret de succession s'applique delaiDecretJours jours après avoir été pris. Pendant une régence (seigneur mineur), le moral de chaque foyer du village change de regence.moral. Prestige : population, or, ancienneté de la lignée, successions et actes (Église, alliances).",
+  "majorite": 16,
+  "fondateur": {
+    "ageMin": 22,
+    "ageMax": 26,
+    "conjointAgeMin": 18,
+    "conjointAgeMax": 22,
+    "enfants": 1,
+    "ageEnfantMax": 2
+  },
+  "loiDepart": "preference-masculine",
+  "delaiDecretJours": 120,
+  "regence": {
+    "moral": -10
+  },
+  "remariageAgeMax": 55,
+  "pretendants": [
+    { "ageMin": 16, "ageMax": 19, "dotMin": 10, "dotMax": 30 },
+    { "ageMin": 20, "ageMax": 26, "dotMin": 30, "dotMax": 60 },
+    { "ageMin": 27, "ageMax": 35, "dotMin": 60, "dotMax": 120 }
+  ],
+  "eglise": {
+    "prestige": 25
+  },
+  "alliance": {
+    "or": 40,
+    "prestige": 10
+  },
+  "prestige": {
+    "parHabitant": 1,
+    "orParPoint": 10,
+    "parAnDeLignee": 2,
+    "parSuccession": 20
+  }
+}
