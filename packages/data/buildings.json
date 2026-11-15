@@ -1,5 +1,5 @@
 {
-  "_doc": "Bâtiments. taille = [largeur, hauteur] en cases. cout en ressources. procheDe = terrain requis à moins de 'rayon' cases (et terrain exploité par la production). stockage.capacite = marchandises stockables (nourriture + bois + pierre ; l'or est au trésor, sans limite). production.parAn = unités produites par an à plein rendement ; casesPleinRendement = cases du terrain exploité nécessaires pour le plein rendement. agriculture : champsMax travaillés par la ferme, rendementParChamp à 100 % de fertilité, ticksParRecolte entre deux champs moissonnés. transport : porteurs du bâtiment et charge par voyage. stockMax = marchandises en attente avant arrêt de la production. utilite = à quoi sert le bâtiment (fiche avant construction). actifDes = jalon à partir duquel le bâtiment a un effet, s'il n'en a pas encore.",
+  "_doc": "Bâtiments. taille = [largeur, hauteur] en cases. cout en ressources. procheDe = terrain requis à moins de 'rayon' cases (et terrain exploité par la production). stockage.capacite = marchandises stockables (nourriture + bois + pierre ; l'or est au trésor, sans limite). production.parAn = unités produites par an à plein rendement ; casesPleinRendement = cases du terrain exploité nécessaires pour le plein rendement. agriculture : champsMax travaillés par la ferme, rendementParChamp à 100 % de fertilité, ticksParRecolte entre deux champs moissonnés. transport : porteurs du bâtiment et charge par voyage. stockMax = marchandises en attente avant arrêt de la production. utilite = à quoi sert le bâtiment (fiche avant construction). actifDes = jalon à partir duquel le bâtiment a un effet, s'il n'en a pas encore. travailleurs = emplois du bâtiment ; prioriteEmploi = ordre de remplissage des emplois (1 d'abord). logement = familles logées. marche : réserve propre (capacite) que ses porteurs remplissent jusqu'aux cibles. influence = rayon (cases) dans lequel les foyers en profitent pour le moral.",
   "manoir": {
     "nom": "Manoir",
     "taille": [
@@ -27,9 +27,9 @@
     },
     "constructible": true,
     "couleur": "#c9a26b",
-    "description": "Logera une famille de villageois (J2b).",
-    "utilite": "Loge une famille. Sans maisons, pas de nouvelles familles ni de bras pour travailler.",
-    "actifDes": "J2b"
+    "description": "Loge une famille.",
+    "utilite": "Loge une famille. Une famille logée a meilleur moral, se chauffe l'hiver et permet aux jeunes adultes de se marier et de fonder un foyer.",
+    "logement": 1
   },
   "ferme": {
     "nom": "Ferme",
@@ -47,15 +47,18 @@
     "description": "Sème au printemps et moissonne à l'automne jusqu'à 12 champs (rayon de 4 cases).",
     "agriculture": {
       "champsMax": 12,
-      "rendementParChamp": 8,
-      "ticksParRecolte": 25
+      "rendementParChamp": 12,
+      "ticksParRecolte": 25,
+      "champsParTravailleur": 4
     },
     "transport": {
       "porteurs": 2,
-      "charge": 8
+      "charge": 12
     },
-    "stockMax": 150,
-    "utilite": "Nourrit le village : sème au printemps et moissonne à l'automne jusqu'à 12 champs autour d'elle. Une terre fertile donne jusqu'à 8 nourriture par champ."
+    "stockMax": 300,
+    "utilite": "Nourrit le village : 3 travailleurs sèment au printemps et moissonnent à l'automne jusqu'à 12 champs (4 par travailleur). Une terre fertile donne jusqu'à 12 nourriture par champ.",
+    "travailleurs": 3,
+    "prioriteEmploi": 1
   },
   "bucheron": {
     "nom": "Bûcheron",
@@ -84,7 +87,9 @@
       "charge": 5
     },
     "stockMax": 20,
-    "utilite": "Fournit le bois, nécessaire à presque toutes les constructions (et au chauffage des foyers à partir de J2b)."
+    "utilite": "Fournit le bois des constructions et du chauffage des foyers en hiver. 2 travailleurs.",
+    "travailleurs": 2,
+    "prioriteEmploi": 2
   },
   "carriere": {
     "nom": "Carrière",
@@ -112,7 +117,9 @@
       "charge": 5
     },
     "stockMax": 20,
-    "utilite": "Fournit la pierre des bâtiments importants : entrepôt, marché, église."
+    "utilite": "Fournit la pierre des bâtiments importants : entrepôt, marché, église. 2 travailleurs.",
+    "travailleurs": 2,
+    "prioriteEmploi": 3
   },
   "entrepot": {
     "nom": "Entrepôt",
@@ -145,9 +152,22 @@
     },
     "constructible": true,
     "couleur": "#c0603c",
-    "description": "Distribuera nourriture et bois aux foyers (J2b).",
-    "utilite": "Distribuera nourriture et bois aux foyers voisins : les familles n'auront plus à aller jusqu'aux réserves.",
-    "actifDes": "J2b"
+    "description": "Rapproche nourriture et bois des foyers.",
+    "utilite": "Ses 2 marchands vont chercher nourriture et bois dans les réserves ; les foyers proches s'y servent au lieu d'aller au manoir. Moral +10 pour les maisons à 12 cases ou moins.",
+    "travailleurs": 2,
+    "prioriteEmploi": 4,
+    "marche": {
+      "capacite": 120,
+      "cibles": {
+        "nourriture": 70,
+        "bois": 40
+      }
+    },
+    "transport": {
+      "porteurs": 2,
+      "charge": 10
+    },
+    "influence": 12
   },
   "eglise": {
     "nom": "Église",
@@ -163,8 +183,10 @@
     "constructible": true,
     "unique": true,
     "couleur": "#d8d0c0",
-    "description": "Soutiendra le moral et marquera mariages et successions (J2b-J3).",
-    "utilite": "Soutiendra le moral des villageois, puis accueillera les mariages et successions de votre lignée.",
-    "actifDes": "J2b"
+    "description": "Soutient le moral des foyers voisins.",
+    "utilite": "Son prêtre soutient le moral (+15) des maisons à 15 cases ou moins. Plus tard (J3), elle accueillera mariages et successions de votre lignée.",
+    "travailleurs": 1,
+    "prioriteEmploi": 5,
+    "influence": 15
   }
 }

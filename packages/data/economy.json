@@ -1,8 +1,20 @@
 {
-  "_doc": "Économie. Les chiffres de production et de consommation arrivent en J2.",
-  "ressourcesDepart": { "nourriture": 100, "bois": 150, "pierre": 60, "or": 200 },
-  "coutRoute": { "or": 1 },
+  "_doc": "Économie. Ressources de départ (rangées au manoir, l'or au trésor), coûts, impôts par foyer logé, perçus à chaque bilan d'automne.",
+  "ressourcesDepart": {
+    "nourriture": 180,
+    "bois": 150,
+    "pierre": 60,
+    "or": 200
+  },
+  "coutRoute": {
+    "or": 1
+  },
   "coutChamp": {},
   "remboursementDemolition": 0.5,
-  "routesDepart": 5
+  "routesDepart": 5,
+  "impotsParFoyer": {
+    "aucun": 0,
+    "normal": 4,
+    "lourd": 8
+  }
 }

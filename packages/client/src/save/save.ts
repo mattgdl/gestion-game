@@ -6,7 +6,7 @@
  * sauvegardes restent lisibles.
  */
 import { SAVE_VERSION } from "@jeu/shared";
-import type { DomainState } from "@jeu/sim-fief";
+import { DomainSim, type DomainState } from "@jeu/sim-fief";
 import type { WorldState } from "@jeu/sim-monde";
 
 export interface SaveGame {
@@ -47,6 +47,17 @@ const MIGRATIONS: Record<number, (save: any) => any> = {
         yearStats: { year, harvested: 0, fieldsHarvested: 0, produced: {} },
       },
     };
+  },
+  /**
+   * v2 (J2a) → v3 (J2b) : arrivée de la population. Les 10 couples de départ et leurs enfants
+   * sont créés, sans maison ; ils emménageront dans les maisons existantes dès le premier jour.
+   */
+  2: (s) => {
+    const domain = { ...s.domain, villagers: [], families: [], taxLevel: "normal", gameOver: null };
+    const sim = DomainSim.fromState(domain);
+    sim.withRng((rng) => sim.population.createStart(rng));
+    sim.addLog("La population arrive : 10 familles campent autour du manoir.");
+    return { ...s, saveVersion: 3, domain: sim.toJSON() };
   },
 };
 

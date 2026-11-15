@@ -73,5 +73,20 @@ describe("sauvegarde", () => {
     play(restored, 30);
     expect(restored.sim.date.year).toBe(1);
   });
+
+  it("convertit une sauvegarde de J2a (v2) : la population de départ arrive", () => {
+    const session = Session.newGame("j2a");
+    const v3 = session.toSave();
+    const { villagers: _v, families: _f, taxLevel: _t, gameOver: _g, ...domain } = v3.domain;
+    const v2 = { ...v3, saveVersion: 2, domain };
+    const migrated = migrateSave(JSON.parse(JSON.stringify(v2)));
+    expect(migrated.saveVersion).toBe(SAVE_VERSION);
+    expect(migrated.domain.families).toHaveLength(10);
+    expect(migrated.domain.villagers.length).toBeGreaterThanOrEqual(20);
+    expect(migrated.domain.taxLevel).toBe("normal");
+    const restored = Session.fromSave(migrated);
+    play(restored, 20);
+    expect(restored.sim.state.villagers.length).toBeGreaterThan(15);
+  });
 });
 

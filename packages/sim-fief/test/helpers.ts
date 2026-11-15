@@ -14,7 +14,7 @@ export function newGame(seed = "test"): { world: WorldState; sim: DomainSim } {
 /** Avance jusqu'au tick voulu, en résolvant les barrières annuelles au passage. */
 export function runUntil(sim: DomainSim, world: WorldState, targetTick: number): number {
   let barriers = 0;
-  while (sim.state.tick < targetTick) {
+  while (sim.state.tick < targetTick && !sim.state.gameOver) {
     const events = sim.step();
     if (events.some((e) => e.type === "barrier")) {
       barriers += 1;
@@ -67,6 +67,14 @@ export function labGame(blocks: Block[] = [], seed = "labo"): { world: WorldStat
         }
       }
     }
+  }
+  // Réserves du laboratoire : celles de J2a (310 sur 400), pour garder de la place.
+  const manor = state.buildings.find((b) => b.type === "manoir");
+  if (manor) manor.stock = { nourriture: 100, bois: 150, pierre: 60 };
+  // Les foyers du laboratoire ont des provisions à vie : ils ne puisent pas dans les réserves.
+  for (const f of state.families) {
+    f.food = 1e9;
+    f.wood = 1e9;
   }
   return { world, sim: DomainSim.fromState(state) };
 }

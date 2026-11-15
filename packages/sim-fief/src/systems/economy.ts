@@ -35,6 +35,8 @@ export interface BuildingStatus {
 export interface FarmInfo {
   fields: number[];
   max: number;
+  /** Champs que les travailleurs actuels peuvent travailler. */
+  capacity: number;
   /** Champs à portée de cette ferme qu'aucune ferme ne travaille (au-delà du maximum). */
   idleNearby: number;
   expected: number;
@@ -61,8 +63,8 @@ export function fieldYield(def: BuildingDef, fertility: number): number {
 }
 
 export class Economy {
-  private cacheVersion = -1;
-  private routes = new Map<number, Route[]>();
+  private cacheKey = "";
+  private routes = new Map<string, Route[]>();
   private efficiencyById = new Map<number, number>();
   private fieldFarm = new Map<number, number>();
   private farmFields = new Map<number, number[]>();
@@ -72,8 +74,10 @@ export class Economy {
   // ------------------------------------------------------------ caches (recalculés quand la carte change)
 
   private refresh(): void {
-    if (this.cacheVersion === this.sim.mapVersion) return;
-    this.cacheVersion = this.sim.mapVersion;
+    const key = `${this.sim.mapVersion}|${this.sim.population.version}`;
+    if (this.cacheKey === key) return;
+    this.cacheKey = key;
+    this.sim.population.refreshWorkforce();
     this.routes.clear();
     this.efficiencyById.clear();
     for (const b of this.sim.state.buildings) {
@@ -121,12 +125,19 @@ export class Economy {
     for (const [, farmId, k] of pairs) {
       if (this.fieldFarm.has(k)) continue;
       const list = this.farmFields.get(farmId) as number[];
-      const farm = this.sim.building(farmId) as Building;
-      const max = BUILDINGS[farm.type]?.agriculture?.champsMax ?? 0;
-      if (list.length >= max) continue;
+      if (list.length >= this.fieldCapacity(farmId)) continue;
       list.push(k);
       this.fieldFarm.set(k, farmId);
     }
+  }
+
+  /** Champs qu'une ferme peut travailler : 4 par travailleur (selon leur temps de travail), 12 au plus. */
+  fieldCapacity(farmId: number): number {
+    const farm = this.sim.building(farmId);
+    const agri = farm ? BUILDINGS[farm.type]?.agriculture : undefined;
+    if (!agri) return 0;
+    const labor = this.sim.population.labor(farmId);
+    return Math.min(agri.champsMax, Math.floor((agri.champsParTravailleur * labor) / 1000));
   }
 
   efficiency(buildingId: number): number {
@@ -134,22 +145,28 @@ export class Economy {
     return this.efficiencyById.get(buildingId) ?? 0;
   }
 
-  /** Réserves accessibles par la route depuis ce bâtiment, de la plus proche à la plus lointaine. */
-  routesFrom(buildingId: number): Route[] {
+  /**
+   * Destinations accessibles par la route depuis ce bâtiment, de la plus proche à la plus lointaine.
+   * « reserves » : manoir et entrepôts. « provisions » : réserves et marchés (là où les foyers se servent).
+   */
+  routesFrom(buildingId: number, kind: "reserves" | "provisions" = "reserves"): Route[] {
     this.refresh();
-    const cached = this.routes.get(buildingId);
+    const cacheId = `${buildingId}|${kind}`;
+    const cached = this.routes.get(cacheId);
     if (cached) return cached;
     const b = this.sim.building(buildingId);
     if (!b) return [];
     const targets = new Map<number, number[]>();
     for (const s of this.sim.state.buildings) {
-      if (s.id !== b.id && BUILDINGS[s.type]?.stockage) targets.set(s.id, this.sim.perimeter(s));
+      const def = BUILDINGS[s.type];
+      const ok = def?.stockage || (kind === "provisions" && def?.marche);
+      if (s.id !== b.id && ok) targets.set(s.id, this.sim.perimeter(s));
     }
     const found = shortestRoadPaths(this.sim.state.worldWidth, this.sim.roadTiles(), this.sim.perimeter(b), targets);
     const list: Route[] = [...found.entries()]
       .map(([storageId, p]) => ({ storageId, distance: p.distance, path: p.path }))
       .sort((a, c) => a.distance - c.distance || a.storageId - c.storageId);
-    this.routes.set(buildingId, list);
+    this.routes.set(cacheId, list);
     return list;
   }
 
@@ -160,7 +177,7 @@ export class Economy {
       const def = BUILDINGS[farm.type];
       if (!def?.agriculture) continue;
       if (this.sim.distanceToBuilding(farm, x, y) > (def.rayonChamps ?? 4)) continue;
-      if ((this.farmFields.get(farm.id)?.length ?? 0) < def.agriculture.champsMax) return true;
+      if ((this.farmFields.get(farm.id)?.length ?? 0) < this.fieldCapacity(farm.id)) return true;
     }
     return false;
   }
@@ -183,8 +200,62 @@ export class Economy {
   /** Marchandises en route vers une réserve (place déjà réservée). */
   incoming(storageId: number): number {
     let n = 0;
-    for (const d of this.sim.state.deliveries) if (d.toId === storageId && d.status === "aller") n += d.amount;
+    for (const d of this.sim.state.deliveries) {
+      if (d.toId === storageId && d.status === "aller" && d.kind !== "collecte") n += d.amount;
+    }
     return n;
+  }
+
+  /** Marchandises déjà promises à des porteurs en route pour venir les chercher. */
+  pendingCollect(buildingId: number, good: GoodId): number {
+    let n = 0;
+    for (const d of this.sim.state.deliveries) {
+      if (d.toId === buildingId && d.kind === "collecte" && d.status === "aller" && d.good === good) n += d.amount;
+    }
+    return n;
+  }
+
+  /** Marchandises en route vers un marché (collectes chargées sur le chemin du retour). */
+  incomingToMarket(marketId: number, good: GoodId): number {
+    let n = 0;
+    for (const d of this.sim.state.deliveries) {
+      if (d.fromId === marketId && d.kind === "collecte" && d.good === good && d.familyId === undefined) n += d.amount;
+    }
+    return n;
+  }
+
+  /**
+   * Envoie un porteur chercher une marchandise : pour un foyer, à la réserve ou au marché le plus
+   * proche qui en a ; pour un marché, à la réserve la plus proche qui en a. Renvoie la livraison créée.
+   */
+  sendCollect(from: Building, good: GoodId, want: number, tick: number, familyId?: number): Delivery | null {
+    const kind = familyId !== undefined ? "provisions" : "reserves";
+    const route = this.routesFrom(from.id, kind).find((r) => {
+      const s = this.sim.building(r.storageId);
+      return s !== undefined && (s.stock[good] ?? 0) - this.pendingCollect(s.id, good) > 0;
+    });
+    if (!route) return null;
+    const supply = this.sim.building(route.storageId) as Building;
+    const available = (supply.stock[good] ?? 0) - this.pendingCollect(supply.id, good);
+    const amount = Math.min(want, available);
+    if (amount <= 0) return null;
+    const leg = legTicks(route.path.length);
+    const d: Delivery = {
+      id: this.sim.state.nextId++,
+      kind: "collecte",
+      fromId: from.id,
+      toId: supply.id,
+      good,
+      amount,
+      path: [...route.path],
+      departTick: tick,
+      arriveTick: tick + leg,
+      returnTick: tick + 2 * leg,
+      status: "aller",
+    };
+    if (familyId !== undefined) d.familyId = familyId;
+    this.sim.state.deliveries.push(d);
+    return d;
   }
 
   freeSpace(storage: Building): number {
@@ -215,7 +286,7 @@ export class Economy {
   waiting(): Goods {
     const out: Goods = {};
     for (const b of this.sim.state.buildings) {
-      if (this.isStorage(b)) continue;
+      if (this.isStorage(b) || BUILDINGS[b.type]?.marche) continue;
       for (const g of GOOD_IDS) if (b.stock[g]) out[g] = (out[g] ?? 0) + (b.stock[g] ?? 0);
     }
     return out;
@@ -319,7 +390,13 @@ export class Economy {
     for (const d of state.deliveries) {
       if (d.status === "aller" && tick >= d.arriveTick) {
         const dest = this.sim.building(d.toId);
-        if (dest && this.isStorage(dest)) {
+        if (d.kind === "collecte") {
+          // On se sert : la réserve ou le marché donne ce qu'il a encore.
+          const take = dest ? Math.min(d.amount, dest.stock[d.good] ?? 0) : 0;
+          if (dest && take > 0) dest.stock[d.good] = (dest.stock[d.good] ?? 0) - take;
+          d.amount = take;
+          d.status = "retour";
+        } else if (dest && this.isStorage(dest)) {
           dest.stock[d.good] = (dest.stock[d.good] ?? 0) + d.amount;
           d.status = "retour";
         } else {
@@ -327,7 +404,18 @@ export class Economy {
         }
       }
       if (tick >= d.returnTick) {
-        if (d.status === "rapporte") {
+        if (d.kind === "collecte") {
+          if (d.familyId !== undefined) {
+            const fam = this.sim.population.family(d.familyId);
+            if (fam) {
+              if (d.good === "nourriture") fam.food += d.amount * 1000;
+              else if (d.good === "bois") fam.wood += d.amount * 1000;
+            }
+          } else {
+            const market = this.sim.building(d.fromId);
+            if (market) market.stock[d.good] = (market.stock[d.good] ?? 0) + d.amount;
+          }
+        } else if (d.status === "rapporte") {
           const src = this.sim.building(d.fromId);
           if (src) src.stock[d.good] = (src.stock[d.good] ?? 0) + d.amount;
         }
@@ -340,6 +428,7 @@ export class Economy {
   private produce(tick: number): void {
     const season = dateOf(tick).seasonIndex;
     const stats = this.sim.state.yearStats;
+    const morale = this.sim.population.moraleFactor();
     for (const b of this.sim.state.buildings) {
       const def = BUILDINGS[b.type];
       if (!def) continue;
@@ -347,7 +436,11 @@ export class Economy {
         if (goodsTotal(b.stock) >= (def.stockMax ?? 0) || !this.sim.isConnected(b.id)) continue;
         const eff = this.efficiencyById.get(b.id) ?? 0;
         if (eff <= 0) continue;
-        b.progress += eff;
+        // Rendement = terrain × part des emplois occupés (temps de trajet compris) × moral.
+        const maxWorkers = def.travailleurs ?? 0;
+        const labor = maxWorkers > 0 ? Math.floor(this.sim.population.labor(b.id) / maxWorkers) : 1000;
+        if (labor <= 0) continue;
+        b.progress += Math.floor((Math.floor((eff * labor) / 1000) * morale) / 1000);
         const threshold = productionCycle(def) * 1000;
         while (b.progress >= threshold) {
           b.progress -= threshold;
@@ -359,7 +452,9 @@ export class Economy {
       } else if (def.agriculture && season === 2) {
         if (goodsTotal(b.stock) >= (def.stockMax ?? 0) || !this.sim.isConnected(b.id)) continue;
         if (tick - b.lastWork < def.agriculture.ticksParRecolte) continue;
-        const k = (this.farmFields.get(b.id) ?? []).find((f) => this.sim.state.crops[String(f)] === "seme");
+        if (this.sim.population.labor(b.id) <= 0) continue;
+        // On moissonne tout champ semé à portée, même si les emplois ont changé depuis les semailles.
+        const k = this.harvestableField(b, def);
         if (k === undefined) continue;
         const [x, y] = this.sim.xy(k);
         const amount = fieldYield(def, this.sim.fertilityAt(x, y) ?? 50);
@@ -379,6 +474,10 @@ export class Economy {
       const def = BUILDINGS[b.type];
       const transport = def?.transport;
       if (!transport || !this.sim.isConnected(b.id)) continue;
+      if (def?.marche) {
+        this.dispatchMarket(b, tick);
+        continue;
+      }
       let busy = 0;
       for (const d of state.deliveries) if (d.fromId === b.id) busy += 1;
       let idle = transport.porteurs - busy;
@@ -416,6 +515,50 @@ export class Economy {
     }
   }
 
+  /** Champ semé le plus proche de la ferme (d'abord les siens), encore à moissonner. */
+  private harvestableField(farm: Building, def: BuildingDef): number | undefined {
+    const own = (this.farmFields.get(farm.id) ?? []).find((f) => this.sim.state.crops[String(f)] === "seme");
+    if (own !== undefined) return own;
+    const radius = def.rayonChamps ?? 4;
+    let best: number | undefined;
+    let bestDist = Infinity;
+    for (const k of this.sim.state.fields) {
+      if (this.sim.state.crops[String(k)] !== "seme") continue;
+      const [x, y] = this.sim.xy(k);
+      const d = this.sim.distanceToBuilding(farm, x, y);
+      if (d <= radius && (d < bestDist || (d === bestDist && k < (best ?? Infinity)))) {
+        best = k;
+        bestDist = d;
+      }
+    }
+    return best;
+  }
+
+  /** Les marchands vont chercher dans les réserves de quoi remplir les étals jusqu'aux cibles. */
+  private dispatchMarket(b: Building, tick: number): void {
+    const def = BUILDINGS[b.type] as BuildingDef;
+    const market = def.marche;
+    const transport = def.transport;
+    if (!market || !transport) return;
+    const porters = Math.min(transport.porteurs, this.sim.population.workers(b.id).length);
+    let busy = 0;
+    for (const d of this.sim.state.deliveries) if (d.fromId === b.id) busy += 1;
+    let idle = porters - busy;
+    for (const g of GOOD_IDS) {
+      const target = market.cibles[g] ?? 0;
+      while (idle > 0 && target > 0) {
+        let incomingAll = 0;
+        for (const gg of GOOD_IDS) incomingAll += this.incomingToMarket(b.id, gg);
+        const room = market.capacite - goodsTotal(b.stock) - incomingAll;
+        const current = (b.stock[g] ?? 0) + this.incomingToMarket(b.id, g);
+        const want = Math.min(transport.charge, target - current, room);
+        if (want <= 0) break;
+        if (!this.sendCollect(b, g, want, tick)) break;
+        idle -= 1;
+      }
+    }
+  }
+
   // ------------------------------------------------------------ lecture pour l'interface
 
   farmInfo(farmId: number): FarmInfo | null {
@@ -441,7 +584,7 @@ export class Economy {
         expected += fieldYield(def, this.sim.fertilityAt(x, y) ?? 50);
       }
     }
-    return { fields, max: def.agriculture.champsMax, idleNearby, expected };
+    return { fields, max: def.agriculture.champsMax, capacity: this.fieldCapacity(farmId), idleNearby, expected };
   }
 
   /** Nourriture encore attendue des champs cette année (toutes fermes). */
@@ -455,12 +598,31 @@ export class Economy {
     const b = this.sim.building(buildingId);
     const def = b ? BUILDINGS[b.type] : undefined;
     if (!b || !def) return { text: "", tone: "info", blocked: false };
-    if (!this.sim.isConnected(b.id)) return { text: "Non relié au manoir : aucune activité.", tone: "bad", blocked: false };
+    if (!this.sim.isConnected(b.id)) {
+      if (def.logement) return { text: "Non reliée au manoir : ce foyer ne peut pas aller chercher ses provisions.", tone: "bad", blocked: false };
+      return { text: "Non relié au manoir : aucune activité.", tone: "bad", blocked: false };
+    }
     if (def.stockage) {
       const used = goodsTotal(b.stock);
       const cap = def.stockage.capacite;
       if (used >= cap) return { text: `Réserve pleine (${used} / ${cap}).`, tone: "warn", blocked: true };
       return { text: `Réserve : ${used} / ${cap}.`, tone: "ok", blocked: false };
+    }
+    const workers = def.travailleurs ? this.sim.population.workers(b.id).length : -1;
+    if (workers === 0) {
+      return { text: "Aucun travailleur : pas assez de villageois de 14 ans ou plus, ou limite à 0.", tone: "bad", blocked: true };
+    }
+    if (def.marche) {
+      const stock = GOOD_IDS.filter((g) => (b.stock[g] ?? 0) > 0).map((g) => `${b.stock[g]} ${g}`);
+      return { text: stock.length > 0 ? `Étals : ${stock.join(", ")}.` : "Étals vides : les marchands vont aux réserves.", tone: stock.length > 0 ? "ok" : "warn", blocked: false };
+    }
+    if (b.type === "eglise") return { text: `Le prêtre soutient le moral des foyers à ${def.influence ?? 0} cases ou moins.`, tone: "ok", blocked: false };
+    if (def.logement) {
+      const fam = this.sim.population.familyInHouse(b.id);
+      if (!fam) return { text: "Maison libre : un foyer sans abri ou un jeune couple viendra s'y installer.", tone: "info", blocked: false };
+      if (fam.hungryDays > 0) return { text: "Ce foyer a faim : ses provisions sont vides.", tone: "bad", blocked: false };
+      if (fam.coldDays > 0) return { text: "Ce foyer a froid : plus de bois de chauffage.", tone: "bad", blocked: false };
+      return { text: `Foyer de ${this.sim.population.members(fam.id).length} personnes, moral ${fam.morale}.`, tone: "ok", blocked: false };
     }
     const max = def.stockMax ?? 0;
     const full = max > 0 && goodsTotal(b.stock) >= max;

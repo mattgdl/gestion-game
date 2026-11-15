@@ -1,0 +1,72 @@
+{
+  "_doc": "Démographie (J2b). Âges en années de jeu. Taux de mortalité par an (appliqués chaque jour : taux / 120). Consommation par an ; bois de chauffage par foyer et par hiver. Les naissances : une femme mariée en âge d'avoir des enfants a un enfant en moyenne tous les intervalleMoyenJours jours (jamais moins de ecartMinJours après le précédent), modulé par le moral. La faim et le froid ne tuent qu'après joursAvantMortalite jours consécutifs (un trajet en retard ne tue personne). Chaque foyer commence avec provisionsDepartJours jours de nourriture. Un foyer va se ravitailler quand ses provisions ne couvrent plus le trajet aller-retour plus 10 jours, ou moins de la moitié de joursNourriture.",
+  "depart": {
+    "couples": 10,
+    "ageMin": 20,
+    "ageMax": 25,
+    "enfantsMax": 2,
+    "ageEnfantMax": 5
+  },
+  "ageTravail": 14,
+  "ageMariage": 17,
+  "fecondite": {
+    "ageMin": 17,
+    "ageMax": 40,
+    "intervalleMoyenJours": 180,
+    "ecartMinJours": 120
+  },
+  "mortaliteParAn": [
+    {
+      "ageMax": 4,
+      "taux": 0.05
+    },
+    {
+      "ageMax": 49,
+      "taux": 0.01
+    },
+    {
+      "ageMax": 59,
+      "taux": 0.04
+    },
+    {
+      "ageMax": 69,
+      "taux": 0.1
+    },
+    {
+      "ageMax": 200,
+      "taux": 0.25
+    }
+  ],
+  "famineMortaliteParJour": 0.004,
+  "froidMortaliteParJour": 0.004,
+  "consommation": {
+    "nourritureAdulteParAn": 6,
+    "nourritureEnfantParAn": 3,
+    "boisParFoyerParHiver": 4
+  },
+  "provisions": {
+    "joursNourriture": 30,
+    "chargeFoyer": 15
+  },
+  "seuilDefaite": 5,
+  "distanceTravailSansPerte": 10,
+  "pertePourCentParCase": 1.25,
+  "moral": {
+    "base": 50,
+    "nourri": 15,
+    "affame": -30,
+    "chauffe": 5,
+    "froid": -20,
+    "loge": 10,
+    "sansAbri": -20,
+    "eglise": 15,
+    "marche": 10,
+    "impots": {
+      "aucun": 10,
+      "normal": 0,
+      "lourd": -15
+    }
+  },
+  "joursAvantMortalite": 5,
+  "provisionsDepartJours": 10
+}

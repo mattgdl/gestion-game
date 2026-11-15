@@ -11,8 +11,8 @@ describe("début de partie", () => {
     expect(sim.isConnected(manor!.id)).toBe(true);
     expect(sim.state.roads).toHaveLength(5);
     expect(sim.connectedRoads().size).toBe(5);
-    expect(sim.totals()).toEqual({ nourriture: 100, bois: 150, pierre: 60, or: 200 });
-    expect(manorOf(sim).stock).toEqual({ nourriture: 100, bois: 150, pierre: 60 });
+    expect(sim.totals()).toEqual({ nourriture: 180, bois: 150, pierre: 60, or: 200 });
+    expect(manorOf(sim).stock).toEqual({ nourriture: 180, bois: 150, pierre: 60 });
   });
 });
 

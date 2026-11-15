@@ -47,6 +47,8 @@ describe("barrière annuelle", () => {
 
   it("déclenche une barrière par an", () => {
     const { sim, world } = newGame();
+    // Assez de vivres pour que le village survive cinq ans sans ferme.
+    for (const f of sim.state.families) f.food = 1e9;
     expect(runUntil(sim, world, TICKS_PER_YEAR * 5)).toBe(5);
   });
 });

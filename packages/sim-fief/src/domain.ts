@@ -25,9 +25,10 @@ import {
   type WorldDims,
 } from "@jeu/shared";
 import type { CheckResult, Command } from "./commands";
-import { BUILDINGS, ECONOMY, type BuildingDef } from "./data";
+import { BUILDINGS, DEMOGRAPHY, ECONOMY, type BuildingDef } from "./data";
 import { GOOD_IDS, emptyYearStats, type Building, type DomainState, type FiefTiles, type Goods } from "./state";
 import { Economy, goodsTotal } from "./systems/economy";
+import { DAY_TICKS, Population } from "./systems/population";
 import { connectedRoads } from "./systems/roads";
 import { BARRIER_OFFSET, TICKS_PER_SEASON, TICKS_PER_YEAR, dateOf, type GameDate } from "./systems/seasons";
 
@@ -36,7 +37,8 @@ export type Occupant = { kind: "building"; id: number } | { kind: "road" } | { k
 export type SimEvent =
   | { type: "seasonChanged"; date: GameDate }
   | { type: "newYear"; year: number }
-  | { type: "barrier" };
+  | { type: "barrier" }
+  | { type: "gameOver" };
 
 export interface DomainInit {
   ownerId: string;
@@ -54,6 +56,7 @@ export class DomainSim {
   /** Augmente à chaque changement de l'état des cultures (semailles, moisson). */
   cropVersion = 0;
   readonly economy: Economy;
+  readonly population: Population;
 
   private occupancy = new Map<number, Occupant>();
   private buildingsById = new Map<number, Building>();
@@ -63,6 +66,7 @@ export class DomainSim {
 
   private constructor(state: DomainState) {
     this.state = state;
+    this.population = new Population(this);
     this.economy = new Economy(this);
     this.rebuildIndex();
   }
@@ -100,6 +104,10 @@ export class DomainSim {
       crops: {},
       deliveries: [],
       yearStats: emptyYearStats(1),
+      villagers: [],
+      families: [],
+      taxLevel: "normal",
+      gameOver: null,
       nextId: 1,
       log: [],
       awaitingBarrier: false,
@@ -107,9 +115,11 @@ export class DomainSim {
     };
     const sim = new DomainSim(state);
     sim.placeStartingManor(dims);
+    sim.withRng((rng) => sim.population.createStart(rng));
     sim.addLog("Votre lignée s'installe sur ses terres. Printemps de l'an 1.");
     sim.addLog("Conseil : un bûcheron près de la forêt, relié au manoir par une route, fournira du bois.");
     sim.addLog("Conseil : les champs se sèment au printemps et se moissonnent à l'automne.");
+    sim.addLog(`${sim.state.families.length} familles campent autour du manoir : bâtissez-leur des maisons avant l'hiver.`);
     return sim;
   }
 
@@ -287,7 +297,7 @@ export class DomainSim {
     return {
       ownerId: this.state.ownerId,
       fiefIds: Object.keys(this.state.fiefs).sort(),
-      population: 0,
+      population: this.state.villagers.length,
       gold: this.state.treasury,
       prestige: 0,
       lineageAlive: true,
@@ -306,12 +316,34 @@ export class DomainSim {
         return this.checkField(cmd.x, cmd.y);
       case "demolish":
         return this.checkDemolish(cmd.x, cmd.y);
+      case "setWorkers": {
+        const b = this.buildingsById.get(cmd.buildingId);
+        const max = b ? (BUILDINGS[b.type]?.travailleurs ?? 0) : 0;
+        if (!b || max === 0) return { ok: false, reason: "Ce bâtiment n'emploie personne." };
+        if (!Number.isInteger(cmd.count) || cmd.count < 0 || cmd.count > max) return { ok: false, reason: `Entre 0 et ${max} travailleurs.` };
+        return { ok: true };
+      }
+      case "setTax":
+        return ["aucun", "normal", "lourd"].includes(cmd.level) ? { ok: true } : { ok: false, reason: "Niveau d'impôt inconnu." };
     }
   }
 
   apply(cmd: Command): CheckResult {
     const result = this.check(cmd);
     if (!result.ok) return result;
+    if (cmd.type === "setWorkers") {
+      const b = this.buildingsById.get(cmd.buildingId) as Building;
+      const max = BUILDINGS[b.type]?.travailleurs ?? 0;
+      if (cmd.count >= max) delete b.workersLimit;
+      else b.workersLimit = cmd.count;
+      this.population.version += 1;
+      return result;
+    }
+    if (cmd.type === "setTax") {
+      this.state.taxLevel = cmd.level;
+      for (const f of this.state.families) f.morale = this.population.moraleOf(f, this.date.seasonIndex).total;
+      return result;
+    }
     if (result.cost) this.pay(result.cost);
     switch (cmd.type) {
       case "build": {
@@ -422,9 +454,13 @@ export class DomainSim {
       delete this.state.crops[String(k)];
     } else {
       const b = this.buildingsById.get(occ.id);
-      if (b && this.economy.isStorage(b)) {
-        // Le contenu d'une réserve démolie est déménagé dans les autres réserves, si elles ont de la place.
+      if (b && (this.economy.isStorage(b) || BUILDINGS[b.type]?.marche)) {
+        // Le contenu d'une réserve (ou des étals d'un marché) est déménagé dans les autres réserves.
         addLost(this.economy.deposit(b.stock, b.id));
+      }
+      if (b && BUILDINGS[b.type]?.logement) {
+        for (const f of this.state.families) if (f.houseId === b.id) f.houseId = null;
+        this.population.version += 1;
       }
       this.state.buildings = this.state.buildings.filter((other) => other.id !== occ.id);
       if (b?.type === "ferme") this.removeOrphanFields();
@@ -514,9 +550,10 @@ export class DomainSim {
    */
   step(): SimEvent[] {
     const s = this.state;
-    if (s.awaitingBarrier) return [];
+    if (s.awaitingBarrier || s.gameOver) return [];
     if ((s.tick + 1) % TICKS_PER_YEAR === BARRIER_OFFSET && s.lastBarrierTick !== s.tick) {
       s.awaitingBarrier = true;
+      this.population.collectTaxes();
       return [{ type: "barrier" }];
     }
     s.tick += 1;
@@ -531,7 +568,15 @@ export class DomainSim {
       if (date.seasonIndex !== 0) this.addLog(`${date.seasonName} de l'an ${date.year}.`);
     }
     this.economy.step();
-    // Systèmes à venir : population (J2b), dynastie (J3).
+    if (s.tick % DAY_TICKS === 0) {
+      this.withRng((rng) => this.population.daily(rng));
+      if (s.villagers.length < DEMOGRAPHY.seuilDefaite) {
+        s.gameOver = { reason: "depeuple", tick: s.tick };
+        this.addLog(`Il ne reste que ${s.villagers.length} habitant${s.villagers.length > 1 ? "s" : ""} : le domaine se vide. Fin de la partie.`);
+        events.push({ type: "gameOver" });
+      }
+    }
+    // Système à venir : dynastie (J3).
     return events;
   }
 

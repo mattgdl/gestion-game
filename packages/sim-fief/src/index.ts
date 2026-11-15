@@ -5,3 +5,4 @@ export * from "./domain";
 export * from "./systems/seasons";
 export * from "./systems/roads";
 export * from "./systems/economy";
+export * from "./systems/population";

@@ -36,6 +36,8 @@ export interface Building {
   x: number;
   y: number;
   fiefId: string;
+  /** Nombre maximal de travailleurs voulu par le joueur (absent = tous les emplois). */
+  workersLimit?: number;
   /** Marchandises présentes : contenu (réserves) ou production en attente de transport (producteurs). */
   stock: Goods;
   /** Avancement de la production, en millièmes (entier, pour rester déterministe). */
@@ -51,6 +53,14 @@ export interface Building {
  */
 export interface Delivery {
   id: number;
+  /**
+   * livraison : un atelier apporte sa production à une réserve (chargé à l'aller).
+   * collecte : un marché ou un foyer va chercher des marchandises dans une réserve (chargé au retour).
+   * Absent = livraison (sauvegardes v2).
+   */
+  kind?: "livraison" | "collecte";
+  /** Foyer qui a envoyé le porteur (collecte d'un foyer). */
+  familyId?: number;
   fromId: number;
   toId: number;
   good: GoodId;
@@ -82,6 +92,53 @@ export interface YearStats {
   fieldsHarvested: number;
   /** Production des ateliers cette année agricole. */
   produced: Goods;
+  births?: number;
+  deaths?: number;
+  /** Décès dus à la faim ou au froid. */
+  deathsHunger?: number;
+  deathsCold?: number;
+  marriages?: number;
+  /** Nourriture et bois consommés par les foyers. */
+  eaten?: number;
+  burned?: number;
+  taxes?: number;
+}
+
+export type Sex = "F" | "M";
+
+export interface Villager {
+  id: number;
+  name: string;
+  sex: Sex;
+  birthTick: number;
+  familyId: number;
+}
+
+/**
+ * Un foyer : un couple (ou ce qu'il en reste) et ses enfants, dans une maison
+ * (ou sans abri, autour du manoir). Provisions en millièmes d'unité (entiers).
+ */
+export interface Family {
+  id: number;
+  /** Maison occupée, ou null : sans abri, autour du manoir. */
+  houseId: number | null;
+  husbandId: number | null;
+  wifeId: number | null;
+  food: number;
+  wood: number;
+  /** Jours consécutifs sans assez à manger / sans feu en hiver. */
+  hungryDays: number;
+  coldDays: number;
+  lastBirthTick: number;
+  /** Moral de 0 à 100, recalculé chaque jour. */
+  morale: number;
+}
+
+export type TaxLevel = "aucun" | "normal" | "lourd";
+
+export interface GameOver {
+  reason: "depeuple";
+  tick: number;
 }
 
 export interface LogEntry {
@@ -108,6 +165,11 @@ export interface DomainState {
   crops: Record<string, CropState>;
   deliveries: Delivery[];
   yearStats: YearStats;
+  villagers: Villager[];
+  families: Family[];
+  taxLevel: TaxLevel;
+  /** Fin de partie : le temps s'arrête. */
+  gameOver: GameOver | null;
   nextId: number;
   /** Journal des derniers événements (les plus récents à la fin). */
   log: LogEntry[];
@@ -118,5 +180,18 @@ export interface DomainState {
 }
 
 export function emptyYearStats(year: number): YearStats {
-  return { year, harvested: 0, fieldsHarvested: 0, produced: {} };
+  return {
+    year,
+    harvested: 0,
+    fieldsHarvested: 0,
+    produced: {},
+    births: 0,
+    deaths: 0,
+    deathsHunger: 0,
+    deathsCold: 0,
+    marriages: 0,
+    eaten: 0,
+    burned: 0,
+    taxes: 0,
+  };
 }

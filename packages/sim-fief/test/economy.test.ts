@@ -26,14 +26,33 @@ function farWoodcutter() {
 }
 
 describe("ateliers et porteurs", () => {
-  it("produit 40 bois par an à plein rendement et les livre au manoir", () => {
+  it("produit environ 40 bois par an à plein rendement et les livre au manoir", () => {
     const { sim, world, mill } = nearWoodcutter();
     expect(sim.economy.efficiency(mill.id)).toBe(1000);
+    expect(sim.population.workers(mill.id)).toHaveLength(2);
     const start = sim.totals().bois;
-    runUntil(sim, world, YEAR - 1);
-    expect(sim.totals().bois).toBeGreaterThanOrEqual(start + 30);
+    runUntil(sim, world, WINTER - 2);
+    // Trois saisons ; moral de départ 45 (sans abri) : rendement 97,5 %.
+    const produced = sim.state.yearStats.produced.bois ?? 0;
+    expect(produced).toBeGreaterThanOrEqual(28);
+    expect(produced).toBeLessThanOrEqual(30);
+    expect(sim.totals().bois).toBeGreaterThanOrEqual(start + 20);
     // Rien ne se perd : réserves + atelier + porteurs = départ + production.
-    expect(everywhere(sim, "bois")).toBe(start + 39);
+    expect(everywhere(sim, "bois")).toBe(start + produced);
+  });
+
+  it("ne produit rien sans travailleur", () => {
+    const { sim, world, mill } = nearWoodcutter();
+    sim.apply({ type: "setWorkers", buildingId: mill.id, count: 0 });
+    runUntil(sim, world, 600);
+    expect(sim.state.yearStats.produced.bois ?? 0).toBe(0);
+    expect(sim.economy.status(mill.id)).toMatchObject({ blocked: true, tone: "bad" });
+    sim.apply({ type: "setWorkers", buildingId: mill.id, count: 1 });
+    expect(sim.population.workers(mill.id)).toHaveLength(1);
+    runUntil(sim, world, 1200);
+    // Un travailleur sur deux : environ 10 bois en 600 ticks à mi-régime.
+    expect(sim.state.yearStats.produced.bois ?? 0).toBeGreaterThanOrEqual(5);
+    expect(sim.state.yearStats.produced.bois ?? 0).toBeLessThanOrEqual(7);
   });
 
   it("compte dans le bilan d'une année les quatre saisons, hiver précédent compris", () => {
@@ -42,7 +61,8 @@ describe("ateliers et porteurs", () => {
     expect(sim.state.yearStats).toMatchObject({ year: 2, produced: {} });
     runUntil(sim, world, YEAR + WINTER - 2);
     expect(sim.state.yearStats.year).toBe(2);
-    expect(sim.state.yearStats.produced.bois).toBeGreaterThanOrEqual(39);
+    // Quatre saisons ; l'hiver, sans abri et sans feu, le moral baisse (rendement 87,5 %).
+    expect(sim.state.yearStats.produced.bois).toBeGreaterThanOrEqual(36);
     expect(sim.state.yearStats.produced.bois).toBeLessThanOrEqual(40);
   });
 
@@ -80,7 +100,7 @@ describe("ateliers et porteurs", () => {
     runUntil(near.sim, near.world, YEAR - 10);
     const deliveredNear = near.sim.totals().bois - nearStart;
 
-    expect(deliveredNear).toBeGreaterThanOrEqual(deliveredFar + 10);
+    expect(deliveredNear).toBeGreaterThanOrEqual(deliveredFar + 5);
   });
 
   it("s'arrête quand toutes les réserves sont pleines", () => {
@@ -121,7 +141,7 @@ describe("ateliers et porteurs", () => {
 });
 
 describe("agriculture", () => {
-  /** Ferme en (73, 28), reliée par les routes de départ ; champs à fertilité 100 (8 nourriture chacun). */
+  /** Ferme en (73, 28), reliée par les routes de départ ; champs à fertilité 100 (12 nourriture chacun). */
   function farm(fieldsAt: [number, number][], paintAtTick = SPRING) {
     const game = labGame();
     const f = build(game.sim, "ferme", 73, 28);
@@ -143,17 +163,17 @@ describe("agriculture", () => {
 
   it("sème au début de l'été, moissonne à l'automne et livre la récolte", () => {
     const { sim, world, farm: f } = farm(FIVE);
-    expect(sim.economy.farmInfo(f.id)?.expected).toBe(40);
+    expect(sim.economy.farmInfo(f.id)?.expected).toBe(60);
     runUntil(sim, world, SUMMER + 1);
     expect(Object.values(sim.state.crops).filter((c) => c === "seme")).toHaveLength(5);
     runUntil(sim, world, WINTER - 2);
-    expect(sim.state.yearStats).toMatchObject({ year: 1, harvested: 40, fieldsHarvested: 5 });
+    expect(sim.state.yearStats).toMatchObject({ year: 1, harvested: 60, fieldsHarvested: 5 });
     runUntil(sim, world, WINTER + 100);
     expect(sim.state.yearStats).toMatchObject({ year: 2, harvested: 0 });
-    expect(sim.totals().nourriture).toBe(140);
+    expect(sim.totals().nourriture).toBe(160);
     const texts = sim.state.log.map((l) => l.text);
     expect(texts).toContain("Semailles terminées : 5 champs ensemencés.");
-    expect(texts).toContain("Moisson de l'an 1 : 40 nourriture sur 5 champs.");
+    expect(texts).toContain("Moisson de l'an 1 : 60 nourriture sur 5 champs.");
   });
 
   it("ne récolte rien d'un champ créé après le printemps, mais le sème l'année suivante", () => {
@@ -163,7 +183,7 @@ describe("agriculture", () => {
     runUntil(sim, world, WINTER - 2);
     expect(sim.state.yearStats.harvested).toBe(0);
     runUntil(sim, world, YEAR + WINTER + 100);
-    expect(sim.state.log.map((l) => l.text)).toContain("Moisson de l'an 2 : 40 nourriture sur 5 champs.");
+    expect(sim.state.log.map((l) => l.text)).toContain("Moisson de l'an 2 : 60 nourriture sur 5 champs.");
   });
 
   it("ne travaille que 12 champs par ferme", () => {
@@ -171,7 +191,7 @@ describe("agriculture", () => {
     for (let y = 30; y <= 33; y++) for (let x = 75; x <= 78; x++) fields.push([x, y]);
     const { sim, farm: f } = farm(fields);
     const info = sim.economy.farmInfo(f.id);
-    expect(info).toMatchObject({ max: 12, idleNearby: 4, expected: 96 });
+    expect(info).toMatchObject({ max: 12, capacity: 12, idleNearby: 4, expected: 144 });
     expect(info?.fields).toHaveLength(12);
   });
 
@@ -188,7 +208,7 @@ describe("agriculture", () => {
     runUntil(sim, world, SUMMER + 1);
     // On bloque la ferme pendant tout l'automne : son stock est plein et les réserves aussi.
     manorOf(sim).stock = { nourriture: 200, bois: 100, pierre: 100 };
-    f.stock.nourriture = 150;
+    f.stock.nourriture = 300;
     runUntil(sim, world, WINTER + 1);
     expect(sim.state.log.map((l) => l.text).some((t) => t.includes("5 champs non moissonnés"))).toBe(true);
     expect(sim.state.crops).toEqual({});
