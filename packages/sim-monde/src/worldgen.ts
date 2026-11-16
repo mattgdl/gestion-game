@@ -4,7 +4,8 @@
  */
 import worldJson from "@jeu/data/world.json";
 import namesJson from "@jeu/data/names.json";
-import { Rng, deriveSeed, fiefIdOf, hashString, type DominantId } from "@jeu/shared";
+import { Rng, deNom, deriveSeed, fiefIdOf, hashString, type DominantId } from "@jeu/shared";
+import { FIEFS, describeLand } from "./fiefs";
 import type { FiefMeta, Lord, WorldState } from "./state";
 
 export const PLAYER_ID = "joueur";
@@ -48,11 +49,25 @@ export function createWorld(seedText: string, config: WorldConfig = WORLD_CONFIG
         dominant = aiDominants[aiIndex % aiDominants.length] ?? "foret";
         aiIndex += 1;
         ownerId = `ia-${aiIndex}`;
-        lords.push({ id: ownerId, name: `Maison de ${name}`, isPlayer: false, colorIndex: aiIndex });
+        lords.push({ id: ownerId, name: `Maison ${deNom(name)}`, isPlayer: false, colorIndex: aiIndex });
       }
-      fiefs.push({ id: fiefIdOf(col, row), col, row, name, dominant, ownerId });
+      const households = isPlayer ? 0 : rng.int(FIEFS.village.foyersMin, FIEFS.village.foyersMax0);
+      fiefs.push({ id: fiefIdOf(col, row), col, row, name, dominant, ownerId, households, land: { herbe: 0, foret: 0, roche: 0, eau: 0, fertilite: 0 } });
     }
   }
+
+  const dims = {
+    seed,
+    fiefSize: config.fiefSize,
+    cols,
+    rows,
+    dominants: fiefs.map((f) => f.dominant),
+    startFief: { ...playerFief },
+    startClearRadius: config.startClearRadius,
+    startMinForestTiles: config.startMinForestTiles,
+    startMinRockTiles: config.startMinRockTiles,
+  };
+  for (const f of fiefs) f.land = describeLand(dims, f.col, f.row);
 
   return {
     seedText,

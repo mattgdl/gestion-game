@@ -40,3 +40,8 @@ export type DominantId = "plaines" | "foret" | "pierre" | "riviere";
 export function fiefIdOf(col: number, row: number): string {
   return `f-${col}-${row}`;
 }
+
+/** « de Clairfonds », « d'Aigremont » : élision devant une voyelle. */
+export function deNom(name: string): string {
+  return /^[AEIOUYÉÈÊÂÎÔaeiouyéèêâîô]/.test(name) ? `d'${name}` : `de ${name}`;
+}

@@ -695,6 +695,25 @@ textarea {
 #hud[data-view="moyenne"] .fl-terrain {
   display: none;
 }
+.fief-label {
+  box-sizing: border-box;
+}
+.fl-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fief-label.compact {
+  padding: 5px 8px;
+}
+.fief-label.compact .fl-name {
+  font-size: 14px;
+}
+.fief-label.compact .fl-owner,
+.fief-label.compact .fl-terrain {
+  display: none;
+}
 
 /* ------------------------------------------------------------ fenêtre */
 
@@ -1127,4 +1146,74 @@ textarea {
 }
 .chronicle li {
   line-height: 1.35;
+}
+
+/* ------------------------------------------------------------ Expansion (J4) */
+.domain h3 {
+  margin: 10px 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+.sales {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.sale {
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  background: var(--panel-raised);
+}
+.sale-name {
+  justify-self: start;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.sale-name:hover {
+  color: var(--or);
+}
+.sale-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 4px;
+}
+.fl-sale {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  background: var(--or);
+  border-radius: 3px;
+  padding: 0 4px;
+  vertical-align: middle;
+}
+.offer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.offer-row input {
+  width: 8ch;
+  font: inherit;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--edge);
+  background: var(--panel-raised);
+  color: var(--text);
 }

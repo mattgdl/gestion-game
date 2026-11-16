@@ -120,6 +120,12 @@ export function domainSnapshot(sim: DomainSim): Record<string, unknown> {
     })(),
     finDePartie: sim.state.gameOver,
     lignee: lineageSnapshot(sim),
+    expansion: {
+      fiefs: Object.keys(sim.state.fiefs).length,
+      titre: sim.state.dynasty.title,
+      offres: sim.state.offers.map((o) => ({ fief: o.fiefId, prix: o.price })),
+      tresor: sim.state.treasury,
+    },
     ressources: resources,
     reserves: eco.storageUsage(),
     enAttente: eco.waiting() as Goods,

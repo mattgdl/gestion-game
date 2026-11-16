@@ -38,6 +38,7 @@ export class MapScene extends Phaser.Scene {
   private badgeTimer = 0;
   private sessionCounter = 0;
   private boundSession: unknown = null;
+  private ownedCount = 0;
 
   constructor(
     private readonly game_: Game,
@@ -95,6 +96,7 @@ export class MapScene extends Phaser.Scene {
       this.grounds.push({ fiefId: meta.id, key, owned: Boolean(ownedTiles), source, texture, image });
     }
     this.boundSession = session;
+    this.ownedCount = Object.keys(session.sim.state.fiefs).length;
     this.sessionCounter += 1;
     this.drawn = { mapVersion: -1, season: -1, level: "", selection: -2, zoomBucket: -1, session: this.sessionCounter };
     this.drawnFields = { key: "" };
@@ -124,7 +126,8 @@ export class MapScene extends Phaser.Scene {
 
   override update(_time: number, delta: number): void {
     const game = this.game_;
-    if (game.session !== this.boundSession) this.rebuildWorld();
+    // Nouvelle partie, ou fief acheté : le sol est à refaire.
+    if (game.session !== this.boundSession || Object.keys(game.session.sim.state.fiefs).length !== this.ownedCount) this.rebuildWorld();
     this.onFrame(delta);
 
     this.camera.update(delta);

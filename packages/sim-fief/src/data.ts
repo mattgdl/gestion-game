@@ -5,6 +5,7 @@ import logisticsJson from "@jeu/data/logistics.json";
 import demographyJson from "@jeu/data/demography.json";
 import namesJson from "@jeu/data/names.json";
 import dynastyJson from "@jeu/data/dynasty.json";
+import fiefsJson from "@jeu/data/fiefs.json";
 import seasonsJson from "@jeu/data/seasons.json";
 import type { Cost, Resources } from "@jeu/shared";
 import type { GoodId, SuccessionLaw } from "./state";
@@ -127,3 +128,25 @@ export interface SeasonsDef {
   saisons: { id: string; nom: string }[];
 }
 export const SEASONS = seasonsJson as unknown as SeasonsDef;
+
+/** Titres (J4) : du plus bas au plus haut. Données partagées avec le Monde (fiefs.json). */
+export interface TitleDef {
+  id: string;
+  nomM: string;
+  nomF: string;
+  /** Nom du domaine : Seigneurie, Baronnie, Comté, Duché. */
+  domaine: string;
+  fiefs: number;
+  habitants: number;
+  prestige: number;
+  moral: number;
+}
+export const TITLES = (fiefsJson as unknown as { titres: TitleDef[] }).titres;
+export function titleDef(id: string): TitleDef | undefined {
+  return TITLES.find((t) => t.id === id);
+}
+
+/** Village d'un fief acheté (J4). */
+export const BOUGHT_VILLAGE = (fiefsJson as unknown as {
+  villageAchete: { vivresParFoyer: number; boisParFoyer: number; champsParFerme: number; foyersParFerme: number };
+}).villageAchete;

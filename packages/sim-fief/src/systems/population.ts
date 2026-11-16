@@ -7,7 +7,7 @@
  * Les provisions des foyers sont comptées en millièmes d'unité (entiers).
  */
 import { RESOURCE_NAMES, Rng } from "@jeu/shared";
-import { BUILDINGS, DEMOGRAPHY, DYNASTY, ECONOMY, LOGISTICS, NAMES } from "../data";
+import { BUILDINGS, DEMOGRAPHY, DYNASTY, ECONOMY, LOGISTICS, NAMES, titleDef } from "../data";
 import type { DomainSim } from "../domain";
 import type { Building, Delivery, Family, GoodId, ImmigrationLevel, Sex, Villager } from "../state";
 import { legTicks } from "./economy";
@@ -532,24 +532,39 @@ export class Population {
     const house = this.spareHouses(free, homeless, this.waitingCouples())[0];
     if (!house) return;
     const im = D.immigration;
-    const husband = this.newVillager(rng, "M", tick - this.ageTicks(rng, im.ageMin, im.ageMax), 0);
-    const wife = this.newVillager(rng, "F", tick - this.ageTicks(rng, im.ageMin, im.ageMax), 0);
-    const family = this.newFamily(husband.id, wife.id, house.id);
+    const { husband, wife, kids } = this.spawnFamily(rng, house.id, im.ageMin, im.ageMax, im.enfantsMax, im.ageEnfantMax);
+    const stats = this.state.yearStats;
+    stats.immigrants = (stats.immigrants ?? 0) + 1;
+    this.sim.addLog(`Nouveaux venus : ${husband.name} et ${wife.name}${kids > 0 ? `, avec ${kids} enfant${kids > 1 ? "s" : ""},` : ""} s'installent dans une maison libre.`);
+  }
+
+  /**
+   * Un couple (âges entre ageMin et ageMax) et 0 à kidsMax enfants s'installent dans une maison,
+   * avec quelques jours de vivres (nouveaux venus, villages des fiefs achetés).
+   */
+  spawnFamily(
+    rng: Rng,
+    houseId: number | null,
+    ageMin: number,
+    ageMax: number,
+    kidsMax: number,
+    kidAgeMax: number,
+  ): { family: Family; husband: Villager; wife: Villager; kids: number } {
+    const tick = this.state.tick;
+    const husband = this.newVillager(rng, "M", tick - this.ageTicks(rng, ageMin, ageMax), 0);
+    const wife = this.newVillager(rng, "F", tick - this.ageTicks(rng, ageMin, ageMax), 0);
+    const family = this.newFamily(husband.id, wife.id, houseId);
     husband.familyId = family.id;
     wife.familyId = family.id;
-    const kidMax = Math.max(0, Math.min(im.ageEnfantMax, ageOf(wife, tick) - D.ageMariage));
-    const kids = rng.int(0, im.enfantsMax);
+    const kidMax = Math.max(0, Math.min(kidAgeMax, ageOf(wife, tick) - D.ageMariage));
+    const kids = rng.int(0, kidsMax);
     for (let k = 0; k < kids; k++) {
       this.newVillager(rng, rng.chance(0.5) ? "F" : "M", tick - this.ageTicks(rng, 0, kidMax), family.id);
     }
     this.version += 1;
-    let daily = 0;
-    for (const v of this.members(family.id)) daily += dailyFood(v, tick);
-    family.food = daily * D.provisionsDepartJours;
+    family.food = this.familyDailyFood(family.id) * D.provisionsDepartJours;
     family.morale = this.moraleOf(family, dateOf(tick).seasonIndex).total;
-    const stats = this.state.yearStats;
-    stats.immigrants = (stats.immigrants ?? 0) + 1;
-    this.sim.addLog(`Nouveaux venus : ${husband.name} et ${wife.name}${kids > 0 ? `, avec ${kids} enfant${kids > 1 ? "s" : ""},` : ""} s'installent dans une maison libre.`);
+    return { family, husband, wife, kids };
   }
 
   private consume(season: number): void {
@@ -801,6 +816,8 @@ export class Population {
     const tax = m.impots[this.state.taxLevel];
     if (tax !== 0) parts.push({ label: `Impôts ${this.state.taxLevel === "aucun" ? "supprimés" : "lourds"}`, value: tax });
     if (this.state.dynasty.regency) parts.push({ label: "Régence", value: DYNASTY.regence.moral });
+    const title = titleDef(this.state.dynasty.title);
+    if (title && title.moral !== 0) parts.push({ label: `Titre : ${title.nomM}`, value: title.moral });
     const welcome = m.immigration[this.state.immigration] ?? 0;
     if (welcome !== 0) parts.push({ label: "Accueil ouvert aux nouveaux venus", value: welcome });
     const total = Math.max(0, Math.min(100, parts.reduce((s, p) => s + p.value, 0)));

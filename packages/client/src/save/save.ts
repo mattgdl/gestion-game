@@ -7,7 +7,8 @@
  */
 import { SAVE_VERSION } from "@jeu/shared";
 import { DomainSim, emptyDynasty, type DomainState } from "@jeu/sim-fief";
-import { PLAYER_ID, lineageSetupFor, type WorldState } from "@jeu/sim-monde";
+import { FIEFS, PLAYER_ID, describeLand, lineageSetupFor, type WorldState } from "@jeu/sim-monde";
+import { Rng, deriveSeed } from "@jeu/shared";
 
 export interface SaveGame {
   saveVersion: number;
@@ -73,6 +74,23 @@ const MIGRATIONS: Record<number, (save: any) => any> = {
     sim.withRng((rng) => sim.dynasty.createStart(rng, lineageSetupFor(s.world, s.domain.ownerId ?? PLAYER_ID)));
     sim.addLog(`La ${sim.state.dynasty.name} s'installe au manoir.`);
     return { ...s, saveVersion: 5, domain: sim.toJSON() };
+  },
+  /**
+   * v5 → v6 (J4) : les fiefs voisins reçoivent leur village et la description de leur terrain ;
+   * le domaine garde les dimensions du monde (pour les fiefs achetés), ses offres et son titre.
+   * La carte d'une vieille partie ne change pas de taille.
+   */
+  5: (s) => {
+    const world = s.world;
+    const v = FIEFS.village;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    world.fiefs = world.fiefs.map((f: any) => {
+      const rng = new Rng(deriveSeed(world.dims.seed, `village-${f.id}`));
+      const ai = typeof f.ownerId === "string" && f.ownerId.startsWith("ia-");
+      return { ...f, households: ai ? rng.int(v.foyersMin, v.foyersMax0) : 0, land: describeLand(world.dims, f.col, f.row) };
+    });
+    const domain = { ...s.domain, dims: world.dims, offers: [], dynasty: { ...s.domain.dynasty, title: "seigneur" } };
+    return { ...s, saveVersion: 6, world, domain };
   },
 };
 

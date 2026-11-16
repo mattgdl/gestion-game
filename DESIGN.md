@@ -1,7 +1,7 @@
 # DESIGN.md — Jeu de gestion médiéval à dynastie
 
-> **Titre provisoire :** « Seigneurie » (nom de travail, à remplacer) · **Version du document :** 0.7 · **Dernière mise à jour :** 16/11/2026
-> **Statut :** J3 livré (la lignée), à valider en partie test. Prochain jalon : J4 (s'étendre).
+> **Titre provisoire :** « Seigneurie » (nom de travail, à remplacer) · **Version du document :** 0.8 · **Dernière mise à jour :** 16/11/2026
+> **Statut :** J4 livré (s'étendre), à valider en partie test. Prochain jalon : J5 (prototype multi).
 > Ce document est la référence du projet. En cas de doute, c'est lui qui tranche, et chaque décision y est consignée avec sa raison (section 11).
 
 ## Sommaire
@@ -166,11 +166,26 @@ Règles décidées pendant le développement, à contester si elles ne te convie
 
 **Ce que montre l'outil `lignee`** (famille du seigneur seule, vivres illimités, 10 graines, 100 ans) : environ 4 règnes par siècle, soit 25 ans par génération (environ 1 h 15 de jeu à vitesse normale ; la première succession vient vers l'an 30 à 45). Avec la même fécondité que le village, un couple noble a 8 à 12 enfants : en mariant l'héritier au prétendant le plus jeune et quelques cadets, aucune extinction en 100 ans, quelle que soit la loi. En mariant l'héritier au prétendant le plus âgé et en envoyant tous les cadets au loin, 2 à 6 lignées sur 10 s'éteignent vers l'an 70. Si l'on marie tous les enfants, la famille passe à plus de 700 personnes en 60 ans : la faim l'arrêtera, mais les décisions deviendront fastidieuses. Dans l'outil `simulate` (village à 9 fermes au plus), une famine longue a éteint la lignée vers l'an 39 : la famille noble meurt de faim comme le village quand le manoir est vide.
 
+### 4.5 J4 — S'étendre
+
+| Sujet | Règle | Raison |
+|---|---|---|
+| Carte | 5 × 5 fiefs de 48 × 48 cases ; le joueur au centre, 24 seigneurs IA. Les parties commencées avant J4 gardent leur carte de 3 fiefs. | Choix du joueur : grande carte. |
+| Villages voisins | Chaque fief IA a un village de 3 à 7 foyers au départ, qui gagne un foyer avec 35 % de chances à chaque bilan (14 au plus). Les fiefs IA ne sont pas simulés : seuls ces chiffres existent. | Choix du joueur : fief acheté avec son village ; les voisins restent légers à calculer. |
+| Valeur d'un fief | Herbe × 0,2 or × (0,5 + fertilité moyenne) + forêt × 0,12 + roche × 0,15 + 30 or par foyer ; × 1,1 en plaines, × 1,05 en vallée de rivière. Environ 400 à 900 or. Fourchette affichée : 0,85 à 1,35 × la valeur. | Le premier achat vient vers l'an 9 à 12 avec les impôts. |
+| Négociation | On n'achète qu'un fief IA qui touche l'un des siens, une offre par fief. L'or part sous séquestre, et l'offre peut être retirée avant le bilan. Au bilan d'automne, le seigneur accepte si l'offre atteint son prix plancher secret, tiré chaque année entre 0,85 et 1,35 × la valeur. Un refus rend l'or avec un avis : « il hésite » (au moins 90 % du plancher) ou « bien trop basse ». Plusieurs offres sur un même fief (multi) : la plus haute l'emporte. | Choix du joueur : négociation. Le plancher change d'année en année, la patience peut payer. |
+| Fief acheté | Son terrain rejoint le domaine avec le village reconstruit à l'identique de ses chiffres : une maison forte (réserve de 300, point de départ des routes comme le manoir, ni constructible ni démolissable), une rue, des ruelles, une maison par foyer, une ferme pour 6 foyers avec ses 12 champs les plus fertiles, un bûcheron si la forêt est à portée, 25 vivres et 8 bois par foyer. Les foyers sans place campent au manoir. | Choix du joueur : village construit. La maison forte évite de tirer une route depuis le manoir. |
+| Titres | Définitifs une fois atteints : baron (2 fiefs, 100 habitants), comte (4 fiefs, 250), duc (8 fiefs, 500). Prestige +100 / +250 / +500, moral +5 / +10 / +15. Le domaine devient Seigneurie, Baronnie, Comté, Duché. | Choix du joueur : fiefs et population. |
+| Interface | Vue Monde : étiquettes réduites au nom, avec « à vendre » sur les voisins achetables. Panneau « Domaine et voisins » : titre suivant et progression, vos fiefs, voisins à vendre (village, terrain, estimation, offre en cours). Fenêtre d'offre. Bilan d'automne : ligne « Affaires ». Alerte quand le trésor permet une offre. | Rendre l'expansion lisible. |
+| Sauvegardes | Format v6. | Les vieilles parties restent jouables. |
+
+**Ce que montre l'outil `simulate`** (village type, joueur qui offre le haut de l'estimation dès que son trésor le permet en gardant 200 or) : premier achat vers l'an 15, titre de baron vers l'an 16-18, deuxième achat vers l'an 22. Le joueur type n'utilise pas l'or ensuite : il en garde plus de 2000 à l'an 30. Un joueur qui offre au milieu de la fourchette achète plus tôt, au risque d'un refus.
+
 ## 5. Systèmes clés
 
 ### 5.1 Carte et caméra
 
-- **Une seule carte continue**, découpée en fiefs (par exemple des carrés de 48 × 48 tuiles ; taille dans la config). V1 : ton fief + 2 voisins. La génération accepte n'importe quelle grille de fiefs (environ 5 × 5 pour une grande partie à 8).
+- **Une seule carte continue**, découpée en fiefs (par exemple des carrés de 48 × 48 tuiles ; taille dans la config). Depuis J4 : 5 × 5 fiefs, ton fief au centre. La génération accepte n'importe quelle grille de fiefs (environ 5 × 5 pour une grande partie à 8).
 - **Zoom à trois niveaux, qui change ce qui est affiché :**
   - **Proche :** tuiles, bâtiments, routes, porteurs.
   - **Moyen :** bâtiments simplifiés, frontières des fiefs bien marquées.
@@ -353,14 +368,16 @@ jeu-medieval/
 │  │  │     ├─ roads.ts       ← réseau relié au manoir, plus courts chemins
 │  │  │     ├─ economy.ts     ← réserves, production, agriculture, porteurs, marché
 │  │  │     ├─ population.ts  ← villageois, foyers, emplois, provisions, moral, impôts
-│  │  │     └─ dynasty.ts     ← lignée : succession, régence, affaires de famille, prestige, chronique
+│  │  │     ├─ dynasty.ts     ← lignée : succession, régence, affaires de famille, prestige, chronique
+│  │  │     └─ annex.ts       ← fief acheté : terrain et village reconstruit
 │  │  └─ test/                ← tests automatiques
 │  │
 │  ├─ sim-monde/              ← couche Monde, partagée client/serveur
 │  │  ├─ src/
 │  │  │  ├─ state.ts          ← fiefs, seigneurs, année
 │  │  │  ├─ worldgen.ts       ← création du monde à partir d'une graine
-│  │  │  ├─ barrier.ts        ← barrière annuelle
+│  │  │  ├─ barrier.ts        ← barrière annuelle : achats de fiefs, villages voisins
+│  │  │  ├─ fiefs.ts          ← valeur des fiefs, prix plancher, villages des voisins
 │  │  │  └─ ai/neighbors.ts   ← voisins IA (passifs en V1)
 │  │  └─ test/
 │  │
@@ -398,11 +415,10 @@ jeu-medieval/
   - Fécondité de la famille noble : la même que le village (8 à 12 enfants par couple), ou plus faible ?
   - Une décision par défaut pour les cadets (Église au bout d'un an ?) si les affaires de famille deviennent trop nombreuses.
   - Prénoms : médiévaux français pour l'instant (`names.json`) ; flamands ou autres à décider avec l'univers.
-- **Avant J4 (achat de fief) :**
-  - Calcul du prix d'un fief (surface, terrain, population).
-  - Conditions d'acceptation de l'IA vendeuse.
-  - Un fief acheté est-il vide ou livré avec son village ?
-  - Les fiefs IA sont-ils simulés en détail, ou seulement résumés ?
+- ~~Avant J4 : prix d'un fief, acceptation par l'IA, fief vide ou avec village, simulation des fiefs IA~~ : tranchés le 16/11 (section 4.5).
+- **Après la partie test de J4 :**
+  - Voir le village d'un voisin sur la carte avant de l'acheter (instantané visuel).
+  - D'autres usages de l'or (après un premier achat, il s'accumule de nouveau).
 - **Avant J6 (graphismes) :**
   - Taille des tuiles (32 px ? 48 px ?) et style graphique.
 - **Général :**
@@ -446,6 +462,7 @@ jeu-medieval/
 | 15/11/2026 | Journal de partie ajouté à la page publiée, lu par Claude pour analyser les parties de test. | Demande du joueur : suivre ses parties et en tirer des conclusions. |
 | 15/11/2026 | Retours de la première partie test : fiche d'outil, avertissement des champs en trop, reprise automatique, bilan sur quatre saisons. | Analyse du journal de partie et retours du joueur. |
 | 15/11/2026 | J2b : 20 adultes et leurs enfants au départ, naissances tous les 1,5 an par famille, emplois automatiques réglables, foyers qui se ravitaillent eux-mêmes, moral simple. Règles en section 4.3. | Choix du joueur (questions du 15/11), équilibrage avec `simulate`. |
+| 16/11/2026 | J4 : carte 5 × 5, fiefs achetés avec leur village et une maison forte, négociation avec prix plancher secret, titres par fiefs et population. Règles en section 4.5. | Choix du joueur (questions du 16/11). |
 | 16/11/2026 | Partie test n° 3 (chêne-832, 13 ans, 33 min) : famille noble servie dans toutes les réserves ; alertes de déficit de nourriture et de bras inoccupés. | Analyse du journal de partie. |
 | 15/11/2026 | J3 : trois lois de succession au choix, modifiables par décret appliqué un an plus tard ; conjoint choisi parmi 3 prétendants ; régence avec moral −10 ; avenir des cadets décidé par le joueur (mariage au domaine, Église, alliance). Règles en section 4.4. | Choix du joueur (questions du 15/11). |
 | 15/11/2026 | Nouveaux venus : une famille par an au plus (réglable : fermé, normal, ouvert), s'il reste une maison libre que personne n'attend, 120 jours de vivres et un moral d'au moins 50. Corrections d'interface : maison vide expliquée, bâtiment sans travailleur nommé, journal écrit seulement une fois la partie jouée. | Partie test n° 2 (orge-349, ans 3 à 7) : milieu de partie vide, maisons vides, surplus de nourriture sans usage. Validé par le joueur. |

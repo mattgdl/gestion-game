@@ -149,6 +149,15 @@ function start(data: HotData = {}): void {
           hud.showSuccession(ev.deadId, ev.heirId, () => {
             s.paused = wasPaused;
           });
+        } else if (ev.type === "fiefAcquired") {
+          hud.refreshWorld();
+          if (writeSlot("auto", s.toSave())) hud.refreshSaves();
+          game.toast(`${ev.name} rejoint votre domaine.`);
+        } else if (ev.type === "offerRefused") {
+          game.toast(ev.reason);
+        } else if (ev.type === "title") {
+          game.toast(`Nouveau titre : ${s.sim.titleName()} !`);
+          hud.refreshWorld();
         } else if (ev.type === "familyMatter") {
           const m = s.sim.dynasty.member(ev.memberId);
           if (m) game.toast(`Affaire de famille : ${m.name} a ${s.sim.dynasty.ageOf(m)} ans. Décidez de son avenir (panneau Lignée).`);

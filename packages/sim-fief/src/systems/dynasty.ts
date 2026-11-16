@@ -11,8 +11,8 @@
  * Tout est parcouru dans un ordre fixe et tiré au sort avec le générateur à graine.
  */
 import type { LineageSetup } from "@jeu/shared";
-import { Rng } from "@jeu/shared";
-import { DEMOGRAPHY, DYNASTY, NAMES } from "../data";
+import { Rng, deNom } from "@jeu/shared";
+import { DEMOGRAPHY, DYNASTY, NAMES, titleDef } from "../data";
 import type { DomainSim, SimEvent } from "../domain";
 import type { DynastyMember, DynastyState, Sex, SuccessionLaw, Suitor, Villager } from "../state";
 import { DAY_TICKS, ageOf } from "./population";
@@ -51,6 +51,7 @@ export function emptyDynasty(): DynastyState {
     reigns: [],
     chronicle: [],
     prestigeAcquis: 0,
+    title: "seigneur",
     neighbors: [],
   };
 }
@@ -82,7 +83,7 @@ export class Dynasty {
     const tick = this.sim.state.tick;
     const manor = this.sim.state.buildings.find((b) => b.type === "manoir");
     const d = this.d;
-    d.name = `Maison de ${setup.houseName}`;
+    d.name = `Maison ${deNom(setup.houseName)}`;
     d.neighbors = [...setup.neighbors];
     const lord = pop.newVillager(rng, "M", tick - this.ageTicks(rng, f.ageMin, f.ageMax), 0, { noble: true });
     const wife = pop.newVillager(rng, "F", tick - this.ageTicks(rng, f.conjointAgeMin, f.conjointAgeMax), 0, { noble: true });
@@ -119,7 +120,7 @@ export class Dynasty {
 
   private pickHouse(rng: Rng): string {
     if (this.d.neighbors.length > 0) return rng.pick(this.d.neighbors);
-    return `Maison de ${rng.pick(NAMES.fiefs)}`;
+    return `Maison ${deNom(rng.pick(NAMES.fiefs))}`;
   }
 
   private addMember(v: Villager, blood: boolean): DynastyMember {
@@ -527,6 +528,7 @@ export class Dynasty {
       { label: "Ancienneté de la lignée", value: Math.floor((tick - founded) / TICKS_PER_YEAR) * P.parAnDeLignee },
       { label: "Successions", value: Math.max(0, d.reigns.length - 1) * P.parSuccession },
       { label: "Église et alliances", value: d.prestigeAcquis },
+      { label: "Titre", value: titleDef(d.title)?.prestige ?? 0 },
     ];
     return { total: parts.reduce((s, p) => s + p.value, 0), parts };
   }

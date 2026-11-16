@@ -81,9 +81,11 @@ export function fieldColor(crop: "seme" | "recolte" | undefined, season: number,
 export const ROAD_COLORS: Rgb[] = [hex("#b39a6e"), hex("#b39a6e"), hex("#a98f63"), hex("#cbc2b4")];
 
 /** Émaux héraldiques : azur (joueur), gueules, sinople, or, pourpre, sable. */
-export const LORD_COLORS: string[] = ["#2f6fd0", "#c0392b", "#2e8b57", "#d4a017", "#7d3c98", "#3a3a3a"];
+/** Couleur 0 : le joueur (azur). Les seigneurs IA se partagent les autres, sans jamais reprendre l'azur. */
+export const LORD_COLORS: string[] = ["#2f6fd0", "#c0392b", "#2e8b57", "#d4a017", "#7d3c98", "#8a5a2b", "#1f8a8a", "#b0457a", "#6b7d2a", "#4a4a5a"];
 
 export function lordColor(colorIndex: number | undefined): string {
   if (colorIndex === undefined) return "#777777";
-  return LORD_COLORS[colorIndex % LORD_COLORS.length] ?? "#777777";
+  if (colorIndex === 0) return LORD_COLORS[0]!;
+  return LORD_COLORS[1 + ((colorIndex - 1) % (LORD_COLORS.length - 1))] ?? "#777777";
 }

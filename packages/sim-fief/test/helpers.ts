@@ -1,8 +1,11 @@
-import { PLAYER_ID, createWorld, fiefsOwnedBy, lineageSetupFor, resolveBarrier, type WorldState } from "@jeu/sim-monde";
+import { PLAYER_ID, WORLD_CONFIG, createWorld, fiefsOwnedBy, lineageSetupFor, resolveBarrier, type WorldState } from "@jeu/sim-monde";
+
+/** Monde des tests : 3 fiefs en ligne (le joueur au centre), comme avant J4, pour garder les coordonnées. */
+export const SMALL_WORLD = { ...WORLD_CONFIG, cols: 3, rows: 1, playerFief: { col: 1, row: 0 } };
 import { DomainSim, type Building } from "../src";
 
-export function newGame(seed = "test"): { world: WorldState; sim: DomainSim } {
-  const world = createWorld(seed);
+export function newGame(seed = "test", config = SMALL_WORLD): { world: WorldState; sim: DomainSim } {
+  const world = createWorld(seed, config);
   const sim = DomainSim.create({
     ownerId: PLAYER_ID,
     dims: world.dims,
@@ -20,7 +23,7 @@ export function runUntil(sim: DomainSim, world: WorldState, targetTick: number):
     if (events.some((e) => e.type === "barrier")) {
       barriers += 1;
       sim.applyBarrierResult(
-        resolveBarrier(world, [{ ownerId: sim.state.ownerId, summary: sim.summary(), ready: true, actions: [] }]),
+        resolveBarrier(world, [{ ownerId: sim.state.ownerId, summary: sim.summary(), ready: true, actions: sim.barrierActions() }]),
       );
     }
   }

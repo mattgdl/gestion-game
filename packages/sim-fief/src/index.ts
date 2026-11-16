@@ -7,3 +7,4 @@ export * from "./systems/roads";
 export * from "./systems/economy";
 export * from "./systems/population";
 export * from "./systems/dynasty";
+export * from "./systems/annex";

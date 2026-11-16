@@ -131,5 +131,25 @@ describe("sauvegarde", () => {
     play(restored, 20);
     expect(restored.sim.dynasty.lord?.status).toBe("vivant");
   });
+
+  it("convertit une sauvegarde de J3 (v5) : villages voisins, dimensions du monde, offres et titre", () => {
+    const session = Session.newGame("j4");
+    play(session, 20);
+    const v6 = session.toSave();
+    const { dims: _dims, offers: _o, ...domain } = v6.domain;
+    const { title: _t, ...dynasty } = domain.dynasty;
+    const world = { ...v6.world, fiefs: v6.world.fiefs.map(({ households: _h, land: _l, ...f }) => f) };
+    const v5 = { ...v6, saveVersion: 5, world, domain: { ...domain, dynasty } };
+    const migrated = migrateSave(JSON.parse(JSON.stringify(v5)));
+    expect(migrated.saveVersion).toBe(SAVE_VERSION);
+    expect(migrated.domain.dims).toEqual(v6.world.dims);
+    expect(migrated.domain.offers).toEqual([]);
+    expect(migrated.domain.dynasty.title).toBe("seigneur");
+    const ai = migrated.world.fiefs.filter((f) => f.ownerId !== "joueur");
+    expect(ai.every((f) => f.households >= 3 && f.land.herbe > 0)).toBe(true);
+    const restored = Session.fromSave(migrated);
+    play(restored, 20);
+    expect(restored.sim.state.tick).toBeGreaterThan(v6.domain.tick);
+  });
 });
 

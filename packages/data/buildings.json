@@ -188,5 +188,20 @@
     "travailleurs": 1,
     "prioriteEmploi": 5,
     "influence": 15
+  },
+  "maisonforte": {
+    "nom": "Maison forte",
+    "taille": [
+      2,
+      2
+    ],
+    "cout": {},
+    "constructible": false,
+    "couleur": "#7a5a48",
+    "description": "Siège d'un fief acheté : réserve de 300 marchandises, d'où partent ses routes.",
+    "stockage": {
+      "capacite": 300
+    },
+    "utilite": "Vient avec chaque fief acheté. Comme le manoir, elle relie les bâtiments de son fief et sert de réserve. Elle ne se démolit pas."
   }
 }

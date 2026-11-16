@@ -14,21 +14,24 @@ import {
   TERRAIN_KEYS,
   TERRAIN_NAMES,
   Terrain,
+  deNom,
   deriveSeed,
   generateFiefTerrain,
   type BarrierResult,
   type Cost,
   type FiefSummary,
   type LineageSetup,
+  type ProposeAction,
   type ResourceId,
   type Resources,
   type TerrainId,
   type WorldDims,
 } from "@jeu/shared";
 import type { CheckResult, Command } from "./commands";
-import { BUILDINGS, DEMOGRAPHY, ECONOMY, type BuildingDef } from "./data";
+import { BUILDINGS, DEMOGRAPHY, ECONOMY, TITLES, titleDef, type BuildingDef } from "./data";
 import { GOOD_IDS, IMMIGRATION_LEVELS, SUCCESSION_LAWS, emptyYearStats, type Building, type DomainState, type FiefTiles, type Goods } from "./state";
-import { Dynasty, emptyDynasty } from "./systems/dynasty";
+import { Dynasty, bySex, emptyDynasty } from "./systems/dynasty";
+import { annexFief } from "./systems/annex";
 import { Economy, goodsTotal } from "./systems/economy";
 import { DAY_TICKS, Population } from "./systems/population";
 import { connectedRoads } from "./systems/roads";
@@ -44,7 +47,13 @@ export type SimEvent =
   /** Le seigneur est mort et un héritier lui succède. */
   | { type: "succession"; deadId: number; heirId: number }
   /** Un membre de la lignée atteint sa majorité : une décision attend le joueur. */
-  | { type: "familyMatter"; memberId: number };
+  | { type: "familyMatter"; memberId: number }
+  /** Un fief acheté rejoint le domaine (J4). */
+  | { type: "fiefAcquired"; fiefId: string; name: string; price: number }
+  /** Une offre d'achat est refusée : l'or revient au trésor. */
+  | { type: "offerRefused"; fiefId: string; reason: string }
+  /** Un nouveau titre est atteint (J4). */
+  | { type: "title"; title: string };
 
 export interface DomainInit {
   ownerId: string;
@@ -72,6 +81,8 @@ export class DomainSim {
   private roadSet = new Set<number>();
   private fieldSet = new Set<number>();
   private connectedRoadCache: Set<number> | null = null;
+  /** Placement sans coût ni contrôle « constructible » (village d'un fief acheté). */
+  private freeBuild = false;
 
   private constructor(state: DomainState) {
     this.state = state;
@@ -119,6 +130,8 @@ export class DomainSim {
       taxLevel: "normal",
       immigration: "normale",
       dynasty: emptyDynasty(),
+      dims,
+      offers: [],
       gameOver: null,
       nextId: 1,
       log: [],
@@ -253,6 +266,26 @@ export class DomainSim {
   }
 
   /** Cases qui touchent un côté du bâtiment (sans les coins), dans les limites de la carte. */
+  /** Cases qui bordent un bâtiment de ce type posé en (x, y). */
+  perimeterOf(type: string, x: number, y: number): number[] {
+    return this.perimeter({ id: -1, type, x, y, fiefId: "", stock: {}, progress: 0, lastWork: 0 });
+  }
+
+  /** Après l'ajout d'un fief : index et affichage à refaire. */
+  refreshMap(): void {
+    this.rebuildIndex();
+  }
+
+  /** Pose sans coût (village d'un fief acheté). */
+  withFreeBuild<T>(fn: () => T): T {
+    this.freeBuild = true;
+    try {
+      return fn();
+    } finally {
+      this.freeBuild = false;
+    }
+  }
+
   perimeter(b: Building): number[] {
     const def = BUILDINGS[b.type];
     if (!def) return [];
@@ -288,11 +321,12 @@ export class DomainSim {
   /** Routes reliées au manoir. */
   connectedRoads(): Set<number> {
     if (!this.connectedRoadCache) {
-      const manor = this.state.buildings.find((b) => b.type === "manoir");
+      // Le manoir et les maisons fortes des fiefs achetés sont les points de départ des routes.
+      const roots = this.state.buildings.filter((b) => b.type === "manoir" || b.type === "maisonforte");
       this.connectedRoadCache = connectedRoads({
         worldWidth: this.state.worldWidth,
         roads: this.roadSet,
-        rootTiles: manor ? this.footprint(manor.type, manor.x, manor.y) : [],
+        rootTiles: roots.flatMap((b) => this.footprint(b.type, b.x, b.y)),
       });
     }
     return this.connectedRoadCache;
@@ -302,9 +336,54 @@ export class DomainSim {
   isConnected(buildingId: number): boolean {
     const b = this.buildingsById.get(buildingId);
     if (!b) return false;
-    if (b.type === "manoir") return true;
+    if (b.type === "manoir" || b.type === "maisonforte") return true;
     const roads = this.connectedRoads();
     return this.perimeter(b).some((k) => roads.has(k));
+  }
+
+  private checkOffer(fiefId: string, price: number): CheckResult {
+    const m = /^f-(\d+)-(\d+)$/.exec(fiefId);
+    const dims = this.state.dims;
+    if (!m) return { ok: false, reason: "Fief inconnu." };
+    const col = Number(m[1]);
+    const row = Number(m[2]);
+    if (col >= dims.cols || row >= dims.rows) return { ok: false, reason: "Fief inconnu." };
+    if (this.state.fiefs[fiefId]) return { ok: false, reason: "Ce fief est déjà à vous." };
+    const touches = Object.values(this.state.fiefs).some((f) => Math.abs(f.col - col) + Math.abs(f.row - row) === 1);
+    if (!touches) return { ok: false, reason: "On ne peut acheter qu'un fief qui touche l'un des vôtres." };
+    if (this.state.offers.some((o) => o.fiefId === fiefId)) return { ok: false, reason: "Une offre est déjà en cours pour ce fief." };
+    if (!Number.isInteger(price) || price < 1) return { ok: false, reason: "Proposez un prix en or (nombre entier)." };
+    if (price > this.state.treasury) return { ok: false, reason: `Pas assez d'or : vous avez ${this.state.treasury} or.` };
+    return { ok: true };
+  }
+
+  /** Titre atteint selon le nombre de fiefs et d'habitants ; un titre obtenu reste acquis. */
+  checkTitle(): void {
+    const d = this.state.dynasty;
+    const fiefs = Object.keys(this.state.fiefs).length;
+    const people = this.state.villagers.length;
+    const current = TITLES.findIndex((t) => t.id === d.title);
+    let reached = current;
+    for (let i = current + 1; i < TITLES.length; i++) {
+      const t = TITLES[i]!;
+      if (fiefs >= t.fiefs && people >= t.habitants) reached = i;
+    }
+    if (reached <= current) return;
+    const t = TITLES[reached]!;
+    d.title = t.id;
+    const lord = this.dynasty.lord;
+    const name = lord ? bySex(lord.sex, t.nomM, t.nomF) : t.nomM;
+    const text = `${lord ? lord.name : "Le seigneur"} devient ${name} : ${fiefs} fiefs et ${people} habitants (+${t.prestige} prestige, moral +${t.moral}).`;
+    this.addLog(text);
+    this.dynasty.chronicle(text);
+    this.barrierEvents.push({ type: "title", title: t.id });
+  }
+
+  /** Titre actuel du seigneur, accordé à son sexe (« baronne »). */
+  titleName(): string {
+    const t = titleDef(this.state.dynasty.title) ?? TITLES[0]!;
+    const lord = this.dynasty.lord;
+    return lord ? bySex(lord.sex, t.nomM, t.nomF) : t.nomM;
   }
 
   summary(): FiefSummary {
@@ -346,6 +425,10 @@ export class DomainSim {
         return this.dynasty.checkDecree(cmd.law);
       case "familyDecision":
         return this.dynasty.checkDecision(cmd.memberId, cmd.choice);
+      case "makeOffer":
+        return this.checkOffer(cmd.fiefId, cmd.price);
+      case "cancelOffer":
+        return this.state.offers.some((o) => o.fiefId === cmd.fiefId) ? { ok: true } : { ok: false, reason: "Aucune offre en cours pour ce fief." };
     }
   }
 
@@ -366,6 +449,19 @@ export class DomainSim {
     }
     if (cmd.type === "familyDecision") {
       this.dynasty.applyDecision(cmd.memberId, cmd.choice);
+      return result;
+    }
+    if (cmd.type === "makeOffer") {
+      this.state.treasury -= cmd.price;
+      this.state.offers.push({ actionId: `${this.state.ownerId}-${this.state.tick}-${cmd.fiefId}`, fiefId: cmd.fiefId, price: cmd.price, tick: this.state.tick });
+      this.addLog(`Offre de ${cmd.price} or pour un fief voisin : l'or est mis de côté jusqu'au bilan d'automne.`);
+      return result;
+    }
+    if (cmd.type === "cancelOffer") {
+      const offer = this.state.offers.find((o) => o.fiefId === cmd.fiefId) as { price: number };
+      this.state.treasury += offer.price;
+      this.state.offers = this.state.offers.filter((o) => o.fiefId !== cmd.fiefId);
+      this.addLog(`Offre retirée : ${offer.price} or reviennent au trésor.`);
       return result;
     }
     if (cmd.type === "setTax" || cmd.type === "setImmigration") {
@@ -400,7 +496,7 @@ export class DomainSim {
 
   private checkBuild(type: string, x: number, y: number): CheckResult {
     const def = BUILDINGS[type];
-    if (!def || !def.constructible) return { ok: false, reason: "Ce bâtiment ne peut pas être construit." };
+    if (!def || (!def.constructible && !this.freeBuild)) return { ok: false, reason: "Ce bâtiment ne peut pas être construit." };
     if (def.unique && this.state.buildings.some((b) => b.type === type)) {
       return { ok: false, reason: `Un seul exemplaire possible : ${def.nom}.` };
     }
@@ -466,6 +562,7 @@ export class DomainSim {
     const def = b ? BUILDINGS[b.type] : undefined;
     if (!b || !def) return { ok: false, reason: "Rien à démolir ici." };
     if (b.type === "manoir") return { ok: false, reason: "Le manoir ne peut pas être démoli." };
+    if (b.type === "maisonforte") return { ok: false, reason: "La maison forte ne peut pas être démolie." };
     return { ok: true, refund: this.refundOf(def.cout) };
   }
 
@@ -539,6 +636,7 @@ export class DomainSim {
   }
 
   private withCost(cost: Cost): CheckResult {
+    if (this.freeBuild) return { ok: true, cost: {} };
     const have = this.totals();
     for (const id of RESOURCE_IDS) {
       const need = cost[id] ?? 0;
@@ -603,7 +701,9 @@ export class DomainSim {
         this.population.daily(rng);
         this.dynasty.daily(rng);
       });
+      this.checkTitle();
       events.push(...this.dynasty.drainEvents());
+      events.push(...this.barrierEvents.splice(0));
       if (!s.gameOver && s.villagers.length < DEMOGRAPHY.seuilDefaite) {
         s.gameOver = { reason: "depeuple", tick: s.tick };
         this.addLog(`Il ne reste que ${s.villagers.length} habitant${s.villagers.length > 1 ? "s" : ""} : le domaine se vide. Fin de la partie.`);
@@ -614,9 +714,36 @@ export class DomainSim {
   }
 
   /** Applique ce que le Monde a décidé à la barrière, puis libère le temps. */
+  /** Offres d'achat remises au Monde à la barrière. */
+  barrierActions(): ProposeAction[] {
+    return this.state.offers.map((o) => ({ type: "buyFief", actionId: o.actionId, ownerId: this.state.ownerId, fiefId: o.fiefId, price: o.price }));
+  }
+
+  /** Événements produits par la dernière barrière (achats, refus, titres), lus par l'interface. */
+  readonly barrierEvents: SimEvent[] = [];
+
   applyBarrierResult(result: BarrierResult): void {
+    const me = this.state.ownerId;
     for (const e of result.events) {
-      if (e.type === "info" && (e.ownerId === null || e.ownerId === this.state.ownerId)) this.addLog(e.text);
+      if (e.type === "info" && (e.ownerId === null || e.ownerId === me)) this.addLog(e.text);
+      if (e.type === "escrowReleased" && e.ownerId === me) {
+        this.state.offers = this.state.offers.filter((o) => o.actionId !== e.actionId);
+        this.state.treasury += e.gold;
+        this.addLog(`${e.reason} Vos ${e.gold} or reviennent au trésor.`);
+        this.barrierEvents.push({ type: "offerRefused", fiefId: e.fiefId, reason: e.reason });
+      }
+      if (e.type === "fiefTransferred" && e.toOwnerId === me) {
+        this.state.offers = this.state.offers.filter((o) => o.fiefId !== e.fiefId);
+        const report = this.withRng((rng) => annexFief(this, e, rng));
+        const parts = [`${report.families} foyer${report.families > 1 ? "s" : ""}`, `${report.farms} ferme${report.farms > 1 ? "s" : ""}`];
+        if (report.woodcutter) parts.push("un bûcheron");
+        const camp = report.homeless > 0 ? ` ${report.homeless} foyer${report.homeless > 1 ? "s" : ""} sans maison campe${report.homeless > 1 ? "nt" : ""} au manoir : bâtissez-leur des maisons.` : "";
+        const text = `Achat ${deNom(e.name)} pour ${e.price} or : son village (${parts.join(", ")}) rejoint le domaine.${camp}`;
+        this.addLog(text);
+        this.dynasty.chronicle(text);
+        this.barrierEvents.push({ type: "fiefAcquired", fiefId: e.fiefId, name: e.name, price: e.price });
+        this.checkTitle();
+      }
     }
     this.state.awaitingBarrier = false;
     this.state.lastBarrierTick = this.state.tick;

@@ -12,6 +12,10 @@ export interface FiefMeta {
   dominant: DominantId;
   /** null = terre sans seigneur (achetable ou conquérable plus tard). */
   ownerId: string | null;
+  /** Village du fief tant qu'il appartient à une IA : nombre de foyers (J4). */
+  households: number;
+  /** Composition du terrain (cases) et fertilité moyenne de l'herbe, pour estimer sa valeur. */
+  land: { herbe: number; foret: number; roche: number; eau: number; fertilite: number };
 }
 
 export interface Lord {

@@ -93,7 +93,7 @@ export class Session {
   }
 
   private runBarrier(): void {
-    const input = { ownerId: this.sim.state.ownerId, summary: this.sim.summary(), ready: true as const, actions: [] };
+    const input = { ownerId: this.sim.state.ownerId, summary: this.sim.summary(), ready: true as const, actions: this.sim.barrierActions() };
     const result = this.gateway.submitBarrier(input);
     if (result instanceof Promise) {
       this.waitingForWorld = true;

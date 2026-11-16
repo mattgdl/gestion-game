@@ -45,8 +45,20 @@ export interface BarrierInput {
 /** Résultats renvoyés par le Monde. */
 export type WorldEvent =
   | { type: "info"; ownerId: string | null; text: string }
-  | { type: "fiefTransferred"; fiefId: string; fromOwnerId: string | null; toOwnerId: string }
-  | { type: "escrowReleased"; ownerId: string; actionId: string; gold: number }
+  /** Un fief change de seigneur (J4 : achat). Le village (foyers) vient avec lui. */
+  | {
+      type: "fiefTransferred";
+      fiefId: string;
+      col: number;
+      row: number;
+      name: string;
+      fromOwnerId: string | null;
+      toOwnerId: string;
+      price: number;
+      households: number;
+    }
+  /** Une offre est refusée ou annulée : l'or sous séquestre revient, avec la raison. */
+  | { type: "escrowReleased"; ownerId: string; actionId: string; fiefId: string; gold: number; reason: string }
   | { type: "paymentReceived"; ownerId: string; gold: number; reason: string };
 
 export interface YearResolved {

@@ -1,0 +1,78 @@
+{
+  "_doc": "Fiefs voisins et expansion (J4). Chaque fief IA a un village (foyers) qui grandit d'un foyer avec la probabilité croissanceParAn à chaque bilan, jusqu'à foyersMax. Valeur d'un fief (en or) : cases d'herbe × orParCaseHerbe × (0,5 + fertilité moyenne), plus forêt et roche, plus orParFoyer par foyer ; × facteur du terrain dominant. Le seigneur voisin accepte une offre si elle atteint son prix plancher, tiré chaque année entre plancherMin et plancherMax × la valeur. Une offre refusée à plus de seuilHesitation × le plancher est dite « proche ». Le village d'un fief acheté reçoit vivresParFoyer et boisParFoyer dans sa maison forte. Titres : définitifs une fois atteints (fiefs et habitants requis), ils donnent du prestige et du moral.",
+  "village": {
+    "foyersMin": 3,
+    "foyersMax0": 7,
+    "croissanceParAn": 0.35,
+    "foyersMax": 14
+  },
+  "valeur": {
+    "orParCaseHerbe": 0.2,
+    "orParCaseForet": 0.12,
+    "orParCaseRoche": 0.15,
+    "orParFoyer": 30,
+    "dominants": {
+      "plaines": 1.1,
+      "foret": 1.0,
+      "pierre": 1.0,
+      "riviere": 1.05
+    }
+  },
+  "negociation": {
+    "plancherMin": 0.85,
+    "plancherMax": 1.35,
+    "seuilHesitation": 0.9,
+    "fourchetteAffichee": [
+      0.85,
+      1.35
+    ]
+  },
+  "villageAchete": {
+    "vivresParFoyer": 25,
+    "boisParFoyer": 8,
+    "champsParFerme": 12,
+    "foyersParFerme": 6
+  },
+  "titres": [
+    {
+      "id": "seigneur",
+      "nomM": "seigneur",
+      "nomF": "dame",
+      "fiefs": 1,
+      "habitants": 0,
+      "prestige": 0,
+      "moral": 0,
+      "domaine": "Seigneurie"
+    },
+    {
+      "id": "baron",
+      "nomM": "baron",
+      "nomF": "baronne",
+      "fiefs": 2,
+      "habitants": 100,
+      "prestige": 100,
+      "moral": 5,
+      "domaine": "Baronnie"
+    },
+    {
+      "id": "comte",
+      "nomM": "comte",
+      "nomF": "comtesse",
+      "fiefs": 4,
+      "habitants": 250,
+      "prestige": 250,
+      "moral": 10,
+      "domaine": "Comté"
+    },
+    {
+      "id": "duc",
+      "nomM": "duc",
+      "nomF": "duchesse",
+      "fiefs": 8,
+      "habitants": 500,
+      "prestige": 500,
+      "moral": 15,
+      "domaine": "Duché"
+    }
+  ]
+}

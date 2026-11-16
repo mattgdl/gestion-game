@@ -34,6 +34,7 @@ import { readSlot, slotInfo, writeSlot, type SlotId } from "../save/storage";
 import type { Journal } from "../telemetry/journal";
 import { computeAlerts, foodDays } from "./alerts";
 import { chronicleHtml, decisionHtml, lineagePanelHtml, successionHtml } from "./lineage";
+import { domainPanelHtml, neighborFiefs, offerHtml, realmName } from "./expansion";
 import { escapeHtml, formatCost, formatRealDate } from "./format";
 
 export interface HudActions {
@@ -267,7 +268,7 @@ export class Hud {
         </section>
         <section class="panel-section">
           <h2>Domaine et voisins</h2>
-          <ul class="fief-list" data-el="fiefList"></ul>
+          <div class="domain" data-el="fiefList"></div>
         </section>
         <section class="panel-section">
           <h2>Événements</h2>
@@ -323,6 +324,16 @@ export class Hud {
         if (!result.ok && result.reason) this.game.toast(result.reason);
         this.renderLineage();
       } else if (target.dataset.act === "chronicle") this.openChronicle();
+    });
+    this.el.fiefList!.addEventListener("click", (ev) => {
+      const target = (ev.target as HTMLElement).closest<HTMLElement>("[data-fief],[data-offer],[data-cancel]");
+      if (!target) return;
+      if (target.dataset.offer) this.openOffer(target.dataset.offer);
+      else if (target.dataset.cancel) {
+        const result = this.game.command({ type: "cancelOffer", fiefId: target.dataset.cancel });
+        if (!result.ok && result.reason) this.game.toast(result.reason);
+        this.renderDomain();
+      } else if (target.dataset.fief) this.actions.focusFief(target.dataset.fief);
     });
     this.root.querySelectorAll<HTMLButtonElement>("[data-immigration]").forEach((btn) =>
       btn.addEventListener("click", () => {
@@ -803,7 +814,7 @@ export class Hud {
   }
 
   private renderAlerts(): void {
-    const alerts = computeAlerts(this.game.session.sim);
+    const alerts = computeAlerts(this.game.session.sim, this.game.session.world);
     const html = alerts.map((a) => `<li class="alert alert-${a.tone}">${escapeHtml(a.text)}</li>`).join("");
     if (this.el.alerts!.innerHTML !== html) this.el.alerts!.innerHTML = html;
   }
@@ -828,6 +839,7 @@ export class Hud {
         <div><dt>Impôts</dt><dd>${stats.taxes ?? 0} or</dd></div>
         <div><dt>Village</dt><dd>${c.total} habitants, ${c.families} foyers, moral ${sim.population.morale()}</dd></div>
         <div><dt>Lignée</dt><dd>${lineageSummary(sim)}</dd></div>
+        ${affairsRow(sim)}
         <div><dt>Vivres</dt><dd>${days === Infinity ? "—" : `${days} jours d'avance`} pour l'hiver qui vient</dd></div>
       </dl>
       <label class="check"><input id="bilan-pause" type="checkbox" ${pauseAtBilan() ? "checked" : ""} /> Mettre en pause à chaque bilan d'automne</label>
@@ -893,30 +905,51 @@ export class Hud {
 
   private renderDomain(): void {
     const world = this.game.session.world;
-    const playerFiefs = world.fiefs.filter((f) => f.ownerId === PLAYER_ID);
-    const home = playerFiefs[0];
-    this.el.realmName!.textContent = home ? `Fief de ${home.name}` : "Votre lignée";
+    const sim = this.game.session.sim;
+    const start = world.dims.startFief;
+    const home = world.fiefs.find((f) => f.ownerId === PLAYER_ID && (!start || (f.col === start.col && f.row === start.row))) ?? world.fiefs.find((f) => f.ownerId === PLAYER_ID);
+    const realm = home ? realmName(sim, home.name) : "Votre lignée";
+    if (this.el.realmName!.textContent !== realm) this.el.realmName!.textContent = realm;
     this.el.realmSub!.textContent = `Graine « ${world.seedText} »`;
+    const html = domainPanelHtml(world, sim);
+    const box = this.el.fiefList!;
+    if (box.dataset.html !== html) {
+      box.dataset.html = html;
+      box.innerHTML = html;
+    }
+  }
 
-    const items = [...world.fiefs].sort((a, b) => Number(b.ownerId === PLAYER_ID) - Number(a.ownerId === PLAYER_ID));
-    this.el.fiefList!.innerHTML = items
-      .map((f) => {
-        const lord = lordById(world, f.ownerId);
-        const mine = f.ownerId === PLAYER_ID;
-        return `<li>
-          <button type="button" class="fief-item" data-fief="${f.id}">
-            <span class="blazon" style="background:${lordColor(lord?.colorIndex)}"></span>
-            <span class="fief-text">
-              <span class="fief-name">${escapeHtml(f.name)}${mine ? ' <span class="tag">à vous</span>' : ""}</span>
-              <span class="fief-meta">${escapeHtml(DOMINANTS[f.dominant].nom)} · ${escapeHtml(lord?.name ?? "Sans seigneur")}</span>
-            </span>
-          </button>
-        </li>`;
-      })
-      .join("");
-    this.el.fiefList!.querySelectorAll<HTMLButtonElement>("[data-fief]").forEach((b) =>
-      b.addEventListener("click", () => this.actions.focusFief(b.dataset.fief as string)),
-    );
+  /** Le monde a changé (fief acheté) : étiquettes et panneau à refaire. */
+  refreshWorld(): void {
+    this.buildFiefLabels();
+    this.renderDomain();
+  }
+
+  /** Fenêtre d'offre d'achat d'un fief voisin. */
+  openOffer(fiefId: string): void {
+    const session = this.game.session;
+    const view = offerHtml(session.world, session.sim, fiefId);
+    if (!view) return;
+    const body = this.openModal(view.title, view.body);
+    const input = body.querySelector<HTMLInputElement>('[data-el="offerPrice"]')!;
+    const error = body.querySelector<HTMLElement>('[data-el="offerError"]')!;
+    input.focus();
+    input.select();
+    const submit = () => {
+      const result = this.game.command({ type: "makeOffer", fiefId, price: Math.floor(Number(input.value)) });
+      if (!result.ok) {
+        error.hidden = false;
+        error.textContent = result.reason ?? "Offre impossible.";
+        return;
+      }
+      this.closeModal();
+      this.game.toast("Offre faite : réponse au bilan d'automne.");
+      this.renderDomain();
+    };
+    body.querySelector('[data-act="offer"]')?.addEventListener("click", submit);
+    input.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") submit();
+    });
   }
 
   private buildFiefLabels(): void {
@@ -924,14 +957,17 @@ export class Hud {
     layer.innerHTML = "";
     this.fiefLabels.clear();
     const world = this.game.session.world;
+    const neighbors = new Set(neighborFiefs(world, this.game.session.sim).map((n) => n.meta.id));
     for (const f of world.fiefs) {
       const lord = lordById(world, f.ownerId);
       const label = document.createElement("button");
       label.type = "button";
       label.className = "fief-label";
       label.style.setProperty("--lord", lordColor(lord?.colorIndex));
-      label.innerHTML = `<span class="fl-name">${escapeHtml(f.name)}</span>
-        <span class="fl-owner">${escapeHtml(lord?.name ?? "Sans seigneur")}</span>
+      const forSale = neighbors.has(f.id);
+      label.classList.toggle("for-sale", forSale);
+      label.innerHTML = `<span class="fl-name">${escapeHtml(f.name)}</span>${forSale ? '<span class="fl-sale">à vendre</span>' : ""}
+        <span class="fl-owner">${escapeHtml(f.ownerId === PLAYER_ID ? "Votre lignée" : (lord?.name ?? "Sans seigneur"))}</span>
         <span class="fl-terrain">${escapeHtml(DOMINANTS[f.dominant].nom)}</span>`;
       label.addEventListener("click", () => this.actions.focusFief(f.id));
       layer.appendChild(label);
@@ -1114,6 +1150,7 @@ export class Hud {
       this.renderToolCard();
       this.renderVillage();
       this.renderLineage();
+      this.renderDomain();
       this.renderAlerts();
       this.renderLogistics();
       this.renderSelectionLive();
@@ -1241,6 +1278,12 @@ export class Hud {
       }
       label.hidden = false;
       const center = this.camera.worldToScreen((f.col + 0.5) * S, (f.row + 0.5) * S);
+      // Les étiquettes tiennent dans leur fief : en vue Monde sur une grande carte, seul le nom reste.
+      const width = Math.round(this.camera.worldToScreen((f.col + 1) * S, 0).x - this.camera.worldToScreen(f.col * S, 0).x);
+      const compact = width < 230;
+      if (label.classList.contains("compact") !== compact) label.classList.toggle("compact", compact);
+      const max = `${Math.max(60, width - 10)}px`;
+      if (label.style.maxWidth !== max) label.style.maxWidth = max;
       let y = center.y;
       if (level === "moyenne") {
         // Vue des fiefs : l'étiquette se cale en haut de la partie visible du fief, sans masquer la ville.
@@ -1337,4 +1380,16 @@ function lineageSummary(sim: DomainSim): string {
   if (!lord) return "éteinte";
   const n = sim.dynasty.lineOfSuccession().length;
   return `${escapeHtml(lord.name)}, ${sim.dynasty.ageOf(lord)} ans · ${n === 0 ? '<span class="bad">aucun héritier</span>' : `${n} héritier${n > 1 ? "s" : ""}`} · prestige ${sim.dynasty.prestige().total}`;
+}
+
+/** Affaires entre seigneurs réglées à ce bilan (achats, refus, titre). */
+function affairsRow(sim: DomainSim): string {
+  const lines = sim.barrierEvents.map((ev) => {
+    if (ev.type === "fiefAcquired") return `<span class="ok">${escapeHtml(ev.name)} est à vous (${ev.price} or).</span>`;
+    if (ev.type === "offerRefused") return escapeHtml(ev.reason);
+    if (ev.type === "title") return `<strong>Nouveau titre : ${escapeHtml(sim.titleName())}.</strong>`;
+    return "";
+  });
+  const text = lines.filter(Boolean).join("<br />");
+  return text ? `<div><dt>Affaires</dt><dd>${text}</dd></div>` : "";
 }

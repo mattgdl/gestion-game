@@ -11,7 +11,7 @@ import { Terrain } from "@jeu/shared";
 
 declare const process: { argv: string[] };
 import { DomainSim, ageOf, type Building, type ImmigrationLevel } from "@jeu/sim-fief";
-import { PLAYER_ID, createWorld, fiefsOwnedBy, lineageSetupFor, resolveBarrier } from "@jeu/sim-monde";
+import { PLAYER_ID, WORLD_CONFIG, adjacent, createWorld, fiefsOwnedBy, lineageSetupFor, priceRange, resolveBarrier } from "@jeu/sim-monde";
 
 const years = Number(process.argv[2] ?? 20);
 const farms = Number(process.argv[3] ?? 3);
@@ -19,7 +19,8 @@ const fertility = Number(process.argv[4] ?? 70);
 const seed = process.argv[5] ?? "simulation";
 const immigration = (process.argv[7] ?? "normale") as ImmigrationLevel;
 
-const world = createWorld(seed);
+// Le village type est dessiné sur un monde de 3 fiefs en ligne (coordonnées fixes ci-dessous).
+const world = createWorld(seed, { ...WORLD_CONFIG, cols: 3, rows: 1, playerFief: { col: 1, row: 0 } });
 const created = DomainSim.create({
   ownerId: PLAYER_ID,
   dims: world.dims,
@@ -78,6 +79,8 @@ for (let i = 0; i < 2; i++) build("maison", 86 + i, 28);
 const afterBuild = () => {
   manor.stock.bois = Math.min(manor.stock.bois ?? 0, 150);
   manor.stock.pierre = 0;
+  // L'or des constructions de départ était fourni par l'outil : on repart avec l'or d'une partie normale.
+  sim.state.treasury = 200;
 };
 build("marche", 76, 20);
 build("eglise", 80, 19);
@@ -157,6 +160,13 @@ function playerSpring(): string {
   // Une maison pour les nouveaux venus quand seul le logement leur manque.
   const outlook = sim.population.housingOutlook();
   if (outlook.spare === 0 && sim.population.immigrationCheck(1).ready && addHouse()) notes.push("maison(venus)+");
+  // Un voisin s'achète dès que le trésor couvre le haut de son estimation.
+  const mine = world.fiefs.filter((f) => f.ownerId === PLAYER_ID);
+  for (const f of world.fiefs) {
+    if (!f.ownerId?.startsWith("ia-") || !mine.some((m) => adjacent(m, f))) continue;
+    const price = priceRange(f)[1];
+    if (sim.state.treasury - 200 >= price && sim.apply({ type: "makeOffer", fiefId: f.id, price }).ok) notes.push(`offre ${f.name} ${price}`);
+  }
   return notes.join(" ");
 }
 
@@ -203,6 +213,9 @@ const header = [
   "heritiers",
   "nobles",
   "prestige",
+  "fiefs",
+  "titre",
+  "or",
   "actions",
 ];
 console.log(header.join(";"));
@@ -214,7 +227,7 @@ for (let y = 1; y <= years; y++) {
     const ev = sim.step();
     if (sim.state.dynasty.decisions.length > 0) familyMatters();
     if (ev.some((e) => e.type === "barrier")) {
-      sim.applyBarrierResult(resolveBarrier(world, [{ ownerId: sim.state.ownerId, summary: sim.summary(), ready: true, actions: [] }]));
+      sim.applyBarrierResult(resolveBarrier(world, [{ ownerId: sim.state.ownerId, summary: sim.summary(), ready: true, actions: sim.barrierActions() }]));
     }
   }
   const s = sim.state.yearStats;
@@ -254,6 +267,9 @@ for (let y = 1; y <= years; y++) {
       sim.dynasty.lineOfSuccession().length,
       c.nobles,
       sim.dynasty.prestige().total,
+      Object.keys(sim.state.fiefs).length,
+      sim.state.dynasty.title,
+      sim.state.treasury,
       actions,
     ].join(";"),
   );
@@ -266,7 +282,7 @@ for (let y = 1; y <= years; y++) {
     const ev = sim.step();
     if (sim.state.dynasty.decisions.length > 0) familyMatters();
     if (ev.some((e) => e.type === "barrier")) {
-      sim.applyBarrierResult(resolveBarrier(world, [{ ownerId: sim.state.ownerId, summary: sim.summary(), ready: true, actions: [] }]));
+      sim.applyBarrierResult(resolveBarrier(world, [{ ownerId: sim.state.ownerId, summary: sim.summary(), ready: true, actions: sim.barrierActions() }]));
     }
   }
   actions = adaptive ? playerSpring() : "";

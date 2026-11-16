@@ -19,7 +19,11 @@ export type Command =
   /** Décret de succession : la loi change après un délai (revenir à la loi en vigueur annule). */
   | { type: "decreeLaw"; law: SuccessionLaw }
   /** Affaire de famille : épouser un prétendant (son indice), l'Église, une alliance, ou refuser un remariage. */
-  | { type: "familyDecision"; memberId: number; choice: DecisionChoice };
+  | { type: "familyDecision"; memberId: number; choice: DecisionChoice }
+  /** Offre d'achat d'un fief voisin : l'or est mis sous séquestre jusqu'au bilan d'automne. */
+  | { type: "makeOffer"; fiefId: string; price: number }
+  /** Retire une offre en cours (l'or revient). */
+  | { type: "cancelOffer"; fiefId: string };
 
 export interface CheckResult {
   ok: boolean;

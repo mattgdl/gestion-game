@@ -3,6 +3,8 @@
  * jamais une surprise (DESIGN.md, « défaite prévisible »). Lecture seule de la simulation.
  */
 import { BUILDINGS, DAYS_PER_YEAR, DAILY_WOOD, DEMOGRAPHY, type DomainSim } from "@jeu/sim-fief";
+import type { WorldState } from "@jeu/sim-monde";
+import { neighborFiefs } from "./expansion";
 
 export interface Alert {
   tone: "bad" | "warn" | "info";
@@ -16,7 +18,7 @@ export function foodDays(sim: DomainSim): number {
   return Math.floor((sim.population.foodAvailable() * 1000) / need);
 }
 
-export function computeAlerts(sim: DomainSim): Alert[] {
+export function computeAlerts(sim: DomainSim, world?: WorldState): Alert[] {
   const out: Alert[] = [];
   const season = sim.date.seasonIndex;
   const fams = sim.state.families;
@@ -70,6 +72,7 @@ export function computeAlerts(sim: DomainSim): Alert[] {
   const usage = sim.economy.storageUsage();
   if (usage.capacity > 0 && usage.used >= usage.capacity * 0.95) out.push({ tone: "warn", text: "Réserves pleines : bâtissez un entrepôt." });
 
+  if (world) out.push(...expansionAlerts(world, sim));
   out.push(...lineageAlerts(sim));
   out.push(...jobAlerts(sim));
 
@@ -163,4 +166,15 @@ function fertileCouple(sim: DomainSim): boolean {
   const wife = lord.sex === "F" ? lord : spouse;
   const age = sim.dynasty.ageOf(wife);
   return age >= DEMOGRAPHY.fecondite.ageMin && age <= DEMOGRAPHY.fecondite.ageMax;
+}
+
+/** L'or dort au trésor alors qu'un voisin pourrait vendre : on le signale (J4). */
+export function expansionAlerts(world: WorldState, sim: DomainSim): Alert[] {
+  if (sim.state.offers.length > 0) return [];
+  const affordable = neighborFiefs(world, sim)
+    .filter((n) => n.range[0] <= sim.state.treasury)
+    .sort((a, b) => a.range[0] - b.range[0]);
+  const first = affordable[0];
+  if (!first) return [];
+  return [{ tone: "info", text: `Votre trésor (${sim.state.treasury} or) permet de faire une offre pour ${first.meta.name} (estimé ${first.range[0]} à ${first.range[1]} or) : panneau Domaine et voisins.` }];
 }

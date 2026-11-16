@@ -9,6 +9,7 @@
  * Elles sont dans des bâtiments (réserves, ou production en attente) ou sur le dos
  * d'un porteur. Seul l'or reste un total : le trésor.
  */
+import type { WorldDims } from "@jeu/shared";
 
 /** Marchandises physiques, qui se transportent et se stockent. L'or n'en fait pas partie. */
 export type GoodId = "nourriture" | "bois" | "pierre";
@@ -17,6 +18,8 @@ export type Goods = Partial<Record<GoodId, number>>;
 
 export interface FiefTiles {
   id: string;
+  /** Nom du fief (fiefs achetés ; le fief de départ prend celui de la maison). */
+  name?: string;
   col: number;
   row: number;
   /** Coin haut-gauche du fief, en coordonnées globales. */
@@ -224,6 +227,8 @@ export interface DynastyState {
   chronicle: LogEntry[];
   /** Prestige gagné par les actes (Église, alliances). */
   prestigeAcquis: number;
+  /** Titre le plus haut atteint (définitif) : seigneur, baron, comte, duc (J4). */
+  title: string;
   /** Maisons voisines (prétendants, alliances). */
   neighbors: string[];
 }
@@ -259,6 +264,10 @@ export interface DomainState {
   immigration: ImmigrationLevel;
   /** Lignée du seigneur (J3). */
   dynasty: DynastyState;
+  /** Dimensions du monde : pour générer le terrain d'un fief acheté (J4). */
+  dims: WorldDims;
+  /** Offres d'achat en cours : l'or est déjà retiré du trésor (séquestre) jusqu'au bilan d'automne. */
+  offers: Offer[];
   /** Fin de partie : le temps s'arrête. */
   gameOver: GameOver | null;
   nextId: number;
@@ -268,6 +277,14 @@ export interface DomainState {
   awaitingBarrier: boolean;
   /** Tick auquel la dernière barrière a été résolue (-1 au départ). */
   lastBarrierTick: number;
+}
+
+/** Offre d'achat d'un fief voisin, résolue par le Monde au bilan d'automne. */
+export interface Offer {
+  actionId: string;
+  fiefId: string;
+  price: number;
+  tick: number;
 }
 
 export function emptyYearStats(year: number): YearStats {
