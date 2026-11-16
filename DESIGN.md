@@ -1,7 +1,7 @@
 # DESIGN.md — Jeu de gestion médiéval à dynastie
 
 > **Titre provisoire :** « Seigneurie » (nom de travail, à remplacer) · **Version du document :** 0.9 · **Dernière mise à jour :** 16/11/2026
-> **Statut :** J4b validé par le joueur (partie test n° 5). Prochain jalon : J4c (réglages), puis voisins IA et commerce (J5), guerre (J6), événements et traits (J7), multi (J8).
+> **Statut :** J4c livré (réglages), à valider en partie test. Ensuite voisins IA et commerce (J5), guerre (J6), événements et traits (J7), multi (J8).
 > Ce document est la référence du projet. En cas de doute, c'est lui qui tranche, et chaque décision y est consignée avec sa raison (section 11).
 
 ## Sommaire
@@ -194,15 +194,29 @@ Règles décidées pendant le développement, à contester si elles ne te convie
 | Bergerie | 3 × 2 ; 25 bois, 10 or ; 2 bergers. 40 laines par an à plein rendement, selon les prés libres (herbe sans champ, route ni bâtiment) à 3 cases. | Les prés deviennent une ressource. |
 | Tisserand | 2 × 2 ; 20 bois, 10 pierre, 10 or ; 2 tisserands. 2 laines → 1 vêtement, 20 par an. | Une chaîne à deux étapes, lisible. |
 | Guérisseur | 2 × 1 ; 15 bois, 5 pierre, 15 or ; 1 guérisseur. Prépare 20 remèdes par an avec les herbes de la forêt à 4 cases (gardés sur place, 20 au plus). | Choix du joueur : maladie et guérisseur. |
-| Outils | Chaque travailleur en use 0,5 par an, pris dans les réserves sans porteur. Couverture (part des besoins servis, lissée sur 30 jours) : ateliers et fermes produisent jusqu'à +25 %. | Choix du joueur : les ateliers et fermes équipés produisent plus. |
-| Vêtements | Chaque habitant en use 0,5 par an. Couverture d'au moins 60 % : moral +10 (« Bien vêtus ») ; la mortalité du froid baisse jusqu'à moitié. | Choix du joueur : moral +, moins de morts de froid. |
-| Natalité | L'écart moyen entre deux naissances va de 2,5 ans (rien de satisfait) à 1,5 an (moral, vêtements et outils au plus haut ; le moral compte double). Remplace l'ancien effet du moral. La famille noble suit la même règle. | Choix du joueur : natalité selon le moral et les besoins. La population grandissait plus vite que les emplois. |
+| Outils | Chaque travailleur en use 0,5 par an, pris dans les réserves sans porteur. Couverture (part des besoins servis, proportionnelle depuis J4c, lissée sur 30 jours) : ateliers et fermes produisent jusqu'à +25 %. | Choix du joueur : les ateliers et fermes équipés produisent plus. |
+| Vêtements | Chaque habitant en use 0,4 par an (0,5 avant J4c). Couverture d'au moins 60 % : moral +10 (« Bien vêtus ») ; la mortalité du froid baisse jusqu'à moitié. | Choix du joueur : moral +, moins de morts de froid. |
+| Natalité | L'écart moyen entre deux naissances va de 2,5 ans (rien de satisfait) à 1,5 an (moral, vêtements et outils au plus haut). Depuis J4c, le moral est multiplié par les besoins : sans vêtements ni outils il n'en reste que 40 %. Remplace l'ancien effet du moral. La famille noble suit la même règle. | Choix du joueur : natalité selon le moral et les besoins. La population grandissait plus vite que les emplois. |
 | Maladie | Pas avant l'an 4. Chaque jour, une épidémie peut se déclarer (15 % par an, +5 % par tranche de 100 habitants, 50 % au plus) autour d'une maison, dans un rayon de 10 cases, pour 40 jours. Chaque malade meurt avec 0,15 % de chances par jour (double avant 5 ans et après 60 ans), quatre fois moins s'il habite à 12 cases d'un guérisseur qui a un travailleur et des remèdes (1 remède pour 10 jours de soins d'un foyer). Alerte rouge pendant l'épidémie. | Choix du joueur. Pas de défaite par un seul tirage : environ 6 % des malades meurent sans soins. |
-| Foire d'automne | Tout l'automne (et depuis le bilan) : achat et vente à prix fixes (nourriture 3 / 1 or, bois 2 / 1, pierre 3 / 1, laine 3 / 1, outils 8 / 4, vêtements 10 / 5), 80 unités de chaque marchandise par an et par sens. La partie se met en pause pendant la foire. | Choix du joueur : un usage de l'or au-delà des fiefs. |
+| Foire d'automne | Tout l'automne (et depuis le bilan) : achat et vente à prix fixes (depuis J4c : nourriture 4 / 2 or, bois 3 / 2, pierre 4 / 2, laine 4 / 2, outils 10 / 5, vêtements 14 / 7), 80 unités de chaque marchandise par an et par sens. La partie se met en pause pendant la foire. | Choix du joueur : un usage de l'or au-delà des fiefs. |
 | Interface | Panneau Village : outils, vêtements, laine, rythme des naissances, bouton Foire. Bouton « Foire d'automne » au bilan. Alertes : épidémie, manque d'outils ou de vêtements (à partir de 60 habitants). Barre d'outils sur deux lignes. Touches K forge, U bergerie, T tisserand, J guérisseur. | |
 | Sauvegardes | Format v7. | Les vieilles parties restent jouables. |
 
 **Ce que montre l'outil `simulate`** (joueur type qui ajoute forge, bergeries et tisserands à partir de 50 habitants) : la population passe d'environ 35 à 150-210 habitants en 30 ans (contre plus de 300 avant J4b), le chômage reste sous 30 personnes, une épidémie tue 0 à 10 personnes. Les ateliers manquent de bras tant que le village est petit : les outils arrivent vers l'an 6-15, les vêtements restent rares chez le joueur type (il construit trop de bergeries pour ses tisserands, la laine s'entasse).
+
+### 4.7 J4c — Réglages (après la partie test n° 5)
+
+| Sujet | Règle | Raison |
+|---|---|---|
+| Couverture des besoins | Proportionnelle : chaque jour, la part des unités dues réellement servie (une dette réglée compte), lissée sur 30 jours. Un jour sans unité due compte comme servi s'il en reste en réserve. | Partie n° 5 : « tout ou rien » affichait 0 % quand un tiers des besoins était servi ; l'effort du joueur ne se voyait pas. |
+| Chaîne expliquée | Panneau Village et alertes : besoin par an, production de la forge, de la laine et des tisserands au rythme actuel, et ce qui bloque (laine, tisserands, ateliers sans bras). | Partie n° 5 : 4 tisserands pour 1 bergerie, sans que le jeu dise que la laine manquait. |
+| Vêtements | 0,4 par habitant et par an : environ 3 bergeries et 3 à 4 tisserands pour 170 habitants. | Une chaîne à la portée d'un village moyen. |
+| Bras inoccupés | Au-delà de 15 % de travailleurs sans emploi, le moral perd 1 point par point de pourcentage (15 au plus), à partir de l'an 6. Le moral pèse sur la production et les naissances : le chômage freine la natalité. | Partie n° 5 : moral à 99 sans tension, natalité rapide, chômage qui revient. |
+| Natalité | Bien-être = moral × besoins (vêtements et outils pèsent 60 %, à parts égales). Les naissances ralentissent sans vêtements. | Retour de partie : les vêtements ne freinaient rien. |
+| Guérisseur | Ses remèdes restent chez lui ; plein, il est « prêt » et ne déclenche plus l'alerte « porteurs ». | Fausse alerte dans la partie n° 5. |
+| Foire | Prix de vente doublés environ (voir 4.6). Le bilan affiche l'or qu'on tirerait des surplus (vivres : au-delà de 120 jours d'avance). Le journal note la dernière foire avec son année. | Partie n° 5 : foire presque jamais utilisée, 1 360 vivres et 199 outils dormants. |
+
+**Ce que montre l'outil `simulate`** (graine-a, 30 ans) : les vêtements sont servis à 40-90 % dès que la chaîne tourne (contre 0-20 % avant) ; population et chômage proches d'avant (environ 190 habitants, 15 sans emploi), le malus de chômage n'apparaît qu'en fin de partie.
 
 ## 5. Systèmes clés
 
@@ -488,6 +502,7 @@ jeu-medieval/
 | 16/11/2026 | J4b, intercalé avant le multi : besoins outils et vêtements (forge, bergerie, tisserand), maladie et guérisseur, natalité selon le moral et les besoins, foire d'automne. Règles en section 4.6. | Partie test n° 4 : chômage massif et ennui en fin de partie ; choix du joueur (questions du 16/11). |
 | 16/11/2026 | J4b validé (partie test n° 5, 22 ans, environ 70 min, baron à l'an 21). Points à reprendre notés dans ROADMAP : couverture des vêtements tout ou rien, outils trop faciles, alerte des guérisseurs, foire peu utilisée, moral plafonné et natalité rapide. | Retour du joueur et analyse du journal. |
 | 16/11/2026 | Roadmap revue : J4c (réglages), puis voisins IA et commerce (J5), guerre et conquête (J6), événements et traits (J7) avant le multi (J8) ; équilibrage et graphismes en J9 ; mariages diplomatiques, branche cadette et multi à 3-8 après. Garde-fou : chaque nouveauté se résout au bilan et passe par les messages entre couches. | Choix du joueur : la V2 compte plus que le multi et nourrit l'équilibrage. |
+| 16/11/2026 | J4c : couverture des besoins proportionnelle, chaîne expliquée, vêtements 0,4 par an, malus de moral « Bras inoccupés », natalité = moral × besoins, guérisseur sans fausse alerte, foire plus rentable. Règles en section 4.7. | Partie test n° 5. |
 | 16/11/2026 | Partie test n° 4 (orge-349 en 5 × 5, 25 ans, environ 45 min) : église par fief, routes en or et pierre, correction du ravitaillement entre fiefs, alerte de vivres lointains. Chômage et ennui de fin de partie notés pour la suite. | Retours du joueur et analyse du journal. |
 | 16/11/2026 | J4 : carte 5 × 5, fiefs achetés avec leur village et une maison forte, négociation avec prix plancher secret, titres par fiefs et population. Règles en section 4.5. | Choix du joueur (questions du 16/11). |
 | 16/11/2026 | Partie test n° 3 (chêne-832, 13 ans, 33 min) : famille noble servie dans toutes les réserves ; alertes de déficit de nourriture et de bras inoccupés. | Analyse du journal de partie. |

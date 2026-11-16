@@ -2,7 +2,7 @@
  * Interface des besoins (J4b) : outils, vêtements, épidémie, foire d'automne.
  * Lecture seule : les échanges passent par la commande « trade ».
  */
-import { GOOD_NAMES, NEEDS, type DomainSim, type GoodId } from "@jeu/sim-fief";
+import { DEMOGRAPHY, GOOD_NAMES, NEEDS, type DomainSim, type GoodId } from "@jeu/sim-fief";
 import { escapeHtml } from "./format";
 
 const pct = (permille: number) => `${Math.round(permille / 10)} %`;
@@ -11,17 +11,40 @@ const pct = (permille: number) => `${Math.round(permille / 10)} %`;
 export function needsFacts(sim: DomainSim): string[] {
   const eco = sim.economy;
   const n = sim.state.needs;
-  const tools = `${eco.stockOf("outils")} en réserve · besoins servis ${pct(n.outils.coverage)} <span class="muted">(production +${Math.round((eco.toolFactor() - 1000) / 10)} %)</span>`;
-  const clothes = `${eco.stockOf("vetements")} en réserve · besoins servis ${pct(n.vetements.coverage)}${n.vetements.coverage >= NEEDS.seuilMoralPourMille ? ' <span class="ok">(moral +10)</span>' : ""}`;
+  const chain = sim.needs.chain();
+  const toolsTip = sim.needs.toolsAdvice();
+  const clothesTip = sim.needs.clothesAdvice();
+  const tools = `${eco.stockOf("outils")} en réserve · besoins servis ${pct(n.outils.coverage)} <span class="muted">(production +${Math.round((eco.toolFactor() - 1000) / 10)} %)</span>
+    <br><span class="muted small">Il en faut ${chain.besoinOutils} par an ; la forge en fait ${chain.outils}.</span>${toolsTip ? `<br><span class="warn small">${escapeHtml(toolsTip)}</span>` : ""}`;
+  const clothes = `${eco.stockOf("vetements")} en réserve · besoins servis ${pct(n.vetements.coverage)}${n.vetements.coverage >= NEEDS.seuilMoralPourMille ? ' <span class="ok">(moral +10)</span>' : ` <span class="muted">(moral +10 à partir de ${pct(NEEDS.seuilMoralPourMille)})</span>`}
+    <br><span class="muted small">Il en faut ${chain.besoinVetements} par an ; laine : ${chain.laine} par an, tisserands : ${chain.tissage} vêtements par an${eco.stockOf("laine") > 0 ? `, ${eco.stockOf("laine")} laines en réserve` : ""}.</span>${clothesTip ? `<br><span class="warn small">${escapeHtml(clothesTip)}</span>` : ""}`;
   const days = sim.needs.birthInterval(sim.population.morale());
+  const idle = sim.population.idleMalus();
   return [
     `<div><dt>Outils</dt><dd>${tools}</dd></div>`,
-    `<div><dt>Vêtements</dt><dd>${clothes}${eco.stockOf("laine") > 0 ? ` <span class="muted">· laine ${eco.stockOf("laine")}</span>` : ""}</dd></div>`,
-    `<div><dt>Naissances</dt><dd>une tous les ${(days / 120).toFixed(1).replace(".", ",")} ans par foyer <span class="muted">(1,5 à 2,5 ans selon moral, vêtements et outils)</span></dd></div>`,
+    `<div><dt>Vêtements</dt><dd>${clothes}</dd></div>`,
+    `<div><dt>Naissances</dt><dd>une tous les ${(days / 120).toFixed(1).replace(".", ",")} ans par foyer <span class="muted">(1,5 à 2,5 ans : le moral, multiplié par les vêtements et les outils)</span></dd></div>`,
+    `<div><dt>Sans emploi</dt><dd>${idle.pct} % des travailleurs${idle.malus < 0 ? ` <span class="warn">(moral ${idle.malus})</span>` : ` <span class="muted">(moral touché au-delà de ${DEMOGRAPHY.moral.chomage.toleranceParCent} %)</span>`}</dd></div>`,
   ];
 }
 
 const FAIR_GOODS: GoodId[] = ["nourriture", "bois", "pierre", "laine", "outils", "vetements"];
+
+/** Jours de vivres gardés de côté quand on estime ce qu'on peut vendre. */
+const FOOD_KEPT_DAYS = 120;
+
+/** Or qu'on tirerait de la foire en vendant ses surplus (vivres : au-delà de 120 jours d'avance). */
+export function fairPotential(sim: DomainSim): number {
+  let gold = 0;
+  for (const g of FAIR_GOODS) {
+    const price = NEEDS.foire.prix[g];
+    if (!price) continue;
+    let stock = sim.economy.stockOf(g);
+    if (g === "nourriture") stock = Math.max(0, stock - Math.ceil((sim.population.dailyFoodNeed() * FOOD_KEPT_DAYS) / 1000));
+    gold += Math.min(stock, sim.needs.fairLeft(g, "vente")) * price.vente;
+  }
+  return gold;
+}
 
 /** Fenêtre de la foire d'automne. */
 export function fairHtml(sim: DomainSim): string {

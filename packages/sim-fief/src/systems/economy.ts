@@ -711,6 +711,15 @@ export class Economy {
       if (fam.coldDays > 0) return { text: "Ce foyer a froid : plus de bois de chauffage.", tone: "bad", blocked: false };
       return { text: `Foyer de ${this.sim.population.members(fam.id).length} personnes, moral ${fam.morale}.`, tone: "ok", blocked: false };
     }
+    if (b.type === "guerisseur") {
+      // Les remèdes restent chez le guérisseur : ils soignent sur place pendant une épidémie.
+      const n = b.stock.remedes ?? 0;
+      const max = def.stockMax ?? 0;
+      if (n >= max) return { text: `Remèdes prêts : ${n} / ${max}. Il soigne les maisons à ${def.influence ?? 0} cases ou moins pendant une épidémie.`, tone: "ok", blocked: false };
+      const eff = this.efficiency(b.id);
+      if (eff <= 0) return { text: "Pas de forêt à portée : pas d'herbes, pas de remèdes.", tone: "bad", blocked: true };
+      return { text: `Prépare des remèdes : ${n} / ${max}.`, tone: "ok", blocked: false };
+    }
     const max = def.stockMax ?? 0;
     const full = max > 0 && goodsTotal(b.stock) >= max;
     const noDestination = goodsTotal(b.stock) > 0 && !this.routesFrom(b.id).some((r) => {

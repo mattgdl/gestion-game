@@ -98,6 +98,7 @@ export interface DemographyDef {
     marche: number;
     impots: Record<"aucun" | "normal" | "lourd", number>;
     immigration: Record<"fermee" | "normale" | "ouverte", number>;
+    chomage: { toleranceParCent: number; malusMax: number; graceAnnees: number };
   };
   immigration: {
     famillesParAn: Record<"fermee" | "normale" | "ouverte", number>;
@@ -164,7 +165,7 @@ export interface NeedsDef {
   seuilMoralPourMille: number;
   moralVetus: number;
   protectionFroidPourMille: number;
-  natalite: { lentJours: number; rapideJours: number };
+  natalite: { lentJours: number; rapideJours: number; partBesoinsPourMille: number };
   maladie: {
     chanceParAn: number;
     parCentHabitants: number;

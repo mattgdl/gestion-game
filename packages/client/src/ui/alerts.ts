@@ -223,8 +223,10 @@ export function needsAlerts(sim: DomainSim): Alert[] {
   }
   if (sim.state.villagers.length >= 60) {
     const n = sim.state.needs;
-    if (n.outils.coverage < 300) out.push({ tone: "info", text: "Le village manque d'outils : une forge (bois + pierre) rendrait ateliers et fermes plus productifs." });
-    if (n.vetements.coverage < 300) out.push({ tone: "info", text: "Le village manque de vêtements : bergerie puis tisserand (moral, froid moins mortel, plus de naissances)." });
+    const tools = sim.needs.toolsAdvice();
+    const clothes = sim.needs.clothesAdvice();
+    if (n.outils.coverage < 600 && tools) out.push({ tone: "info", text: `Le village manque d'outils (servis à ${Math.round(n.outils.coverage / 10)} %). ${tools}` });
+    if (n.vetements.coverage < 600 && clothes) out.push({ tone: "info", text: `Le village manque de vêtements (servis à ${Math.round(n.vetements.coverage / 10)} %). ${clothes}` });
   }
   return out;
 }

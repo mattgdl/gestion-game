@@ -851,8 +851,29 @@ export class Population {
     if (title && title.moral !== 0) parts.push({ label: `Titre : ${title.nomM}`, value: title.moral });
     const welcome = m.immigration[this.state.immigration] ?? 0;
     if (welcome !== 0) parts.push({ label: "Accueil ouvert aux nouveaux venus", value: welcome });
+    const idle = this.idleMalus();
+    if (idle.malus !== 0) parts.push({ label: `Bras inoccupés (${idle.pct} %)`, value: idle.malus });
     const total = Math.max(0, Math.min(100, parts.reduce((s, p) => s + p.value, 0)));
     return { total, parts };
+  }
+
+  private idleCache: { key: string; pct: number; malus: number } | null = null;
+
+  /**
+   * Bras inoccupés (J4c) : part des travailleurs sans emploi et malus de moral qui en découle
+   * (1 point par point au-delà de la tolérance, plafonné). Rien pendant les premières années.
+   */
+  idleMalus(): { pct: number; malus: number } {
+    const key = `${this.version}:${Math.floor(this.state.tick / DAY_TICKS)}`;
+    if (this.idleCache?.key === key) return this.idleCache;
+    const c = D.moral.chomage;
+    const counts = this.counts();
+    const idle = Math.max(0, counts.workers - counts.employed);
+    const pct = counts.workers > 0 ? Math.floor((idle * 100) / counts.workers) : 0;
+    const early = this.state.tick < c.graceAnnees * TICKS_PER_YEAR;
+    const malus = early ? 0 : -Math.min(c.malusMax, Math.max(0, pct - c.toleranceParCent));
+    this.idleCache = { key, pct, malus };
+    return this.idleCache;
   }
 
   /** Une église (ou un marché) avec au moins un travailleur, à portée de ce domicile. */

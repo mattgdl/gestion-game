@@ -37,7 +37,7 @@ import type { Journal } from "../telemetry/journal";
 import { computeAlerts, foodDays } from "./alerts";
 import { chronicleHtml, decisionHtml, lineagePanelHtml, successionHtml } from "./lineage";
 import { domainPanelHtml, neighborFiefs, offerHtml, realmName } from "./expansion";
-import { fairHtml, needsFacts } from "./needs";
+import { fairHtml, fairPotential, needsFacts } from "./needs";
 import { escapeHtml, formatCost, formatRealDate } from "./format";
 
 export interface HudActions {
@@ -864,7 +864,7 @@ export class Hud {
         <div><dt>Vivres</dt><dd>${days === Infinity ? "—" : `${days} jours d'avance`} pour l'hiver qui vient</dd></div>
       </dl>
       <label class="check"><input id="bilan-pause" type="checkbox" ${pauseAtBilan() ? "checked" : ""} /> Mettre en pause à chaque bilan d'automne</label>
-      <div class="modal-actions"><button type="button" class="btn" data-act="bilan-fair">Foire d'automne</button><button type="button" class="btn btn-primary" data-act="bilan-ok">Continuer</button></div>`,
+      <div class="modal-actions"><button type="button" class="btn" data-act="bilan-fair">Foire d'automne${fairPotential(sim) >= 20 ? ` · surplus à vendre : ${fairPotential(sim)} or` : ""}</button><button type="button" class="btn btn-primary" data-act="bilan-ok">Continuer</button></div>`,
       onClose,
     );
     body.querySelector<HTMLInputElement>("#bilan-pause")?.addEventListener("change", (e) => setPauseAtBilan((e.target as HTMLInputElement).checked));

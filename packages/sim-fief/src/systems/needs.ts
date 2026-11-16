@@ -52,9 +52,83 @@ export class Needs {
     need.owed -= taken * 1000;
     // Servi si l'on a pu prendre ce qui était dû, ou s'il en reste en réserve pour les jours suivants.
     // La dette ne dépasse pas une semaine.
-    const ok = units > 0 ? taken === units : this.sim.economy.stockOf(good) > 0;
     need.owed = Math.min(need.owed, daily * 7 + 999);
-    need.coverage = Math.floor((need.coverage * 29 + (ok ? 1000 : 0)) / 30);
+    if (daily <= 0) return;
+    // Part des besoins servis aujourd'hui (une dette réglée compte : servir un tiers des besoins
+    // donne environ 33 %), lissée sur 30 jours. Un jour sans unité due compte comme servi s'il
+    // en reste en réserve, et ne change rien sinon (la dette le dira le jour suivant).
+    let served: number;
+    if (units > 0) served = Math.floor((taken * 1000 * 1000) / daily);
+    else if (this.sim.economy.stockOf(good) > 0) served = 1000;
+    else return;
+    need.coverage = Math.max(0, Math.min(1000, Math.floor((need.coverage * 29 + served) / 30)));
+  }
+
+  /**
+   * La chaîne de production des besoins, en unités par an au rythme actuel (emplois occupés,
+   * terrain, moral et outils compris) : de quoi dire au joueur où elle bloque.
+   */
+  chain(): {
+    besoinOutils: number;
+    besoinVetements: number;
+    outils: number;
+    laine: number;
+    tissage: number;
+    /** Ateliers bâtis mais sans personne pour y travailler. */
+    sansBras: { forge: number; bergerie: number; tisserand: number };
+  } {
+    const eco = this.sim.economy;
+    const pop = this.sim.population;
+    const factor = Math.floor((pop.moraleFactor() * eco.toolFactor()) / 1000);
+    const idle = { forge: 0, bergerie: 0, tisserand: 0 };
+    const rate = (type: "forge" | "bergerie" | "tisserand"): number => {
+      let perMille = 0;
+      for (const b of this.state.buildings) {
+        if (b.type !== type || !this.sim.isConnected(b.id)) continue;
+        const def = BUILDINGS[type];
+        if (!def) continue;
+        const max = def.travailleurs ?? 0;
+        if (max > 0 && pop.workers(b.id).length === 0) idle[type] += 1;
+        const labor = max > 0 ? Math.floor(pop.labor(b.id) / max) : 1000;
+        const parAn = def.production?.parAn ?? def.transformation?.parAn ?? 0;
+        const eff = def.production ? eco.efficiency(b.id) : 1000;
+        perMille += Math.floor((parAn * Math.floor((eff * labor) / 1000) * factor) / 1000);
+      }
+      return Math.floor(perMille / 1000);
+    };
+    const counts = pop.counts();
+    return {
+      besoinOutils: Math.ceil(counts.employed * NEEDS.outilsParTravailleurParAn),
+      besoinVetements: Math.ceil(this.state.villagers.length * NEEDS.vetementsParHabitantParAn),
+      outils: rate("forge"),
+      laine: rate("bergerie"),
+      tissage: rate("tisserand"),
+      sansBras: idle,
+    };
+  }
+
+  /** Ce qui manque à la chaîne des vêtements, en une phrase (null si elle suffit). */
+  clothesAdvice(): string | null {
+    const c = this.chain();
+    const madeFromWool = Math.floor(c.laine / 2);
+    const made = Math.min(madeFromWool, c.tissage);
+    if (made >= c.besoinVetements) return null;
+    if (c.tissage === 0 && c.laine === 0) return `Il faut ${c.besoinVetements} vêtements par an : bergerie puis tisserand.`;
+    if (madeFromWool < c.tissage) {
+      if (c.sansBras.bergerie > 0) return `${c.sansBras.bergerie > 1 ? `${c.sansBras.bergerie} bergeries n'ont` : "Une bergerie n'a"} personne pour garder les moutons : il manque des bras.`;
+      return `Il manque de la laine : ${c.laine} par an pour ${2 * c.besoinVetements} (${c.besoinVetements} vêtements). Une bergerie de plus, entourée de prés libres.`;
+    }
+    if (c.sansBras.tisserand > 0) return `${c.sansBras.tisserand > 1 ? `${c.sansBras.tisserand} tisserands n'ont` : "Un tisserand n'a"} personne au métier : il manque des bras${c.laine > 2 * c.tissage ? " (la laine attend)" : ""}.`;
+    return `Il manque des tisserands : ils font ${c.tissage} vêtements par an pour ${c.besoinVetements} nécessaires${c.laine > 2 * c.tissage ? " (la laine attend)" : ""}.`;
+  }
+
+  /** Ce qui manque à la chaîne des outils, en une phrase (null si elle suffit). */
+  toolsAdvice(): string | null {
+    const c = this.chain();
+    if (c.outils >= c.besoinOutils) return null;
+    if (c.sansBras.forge > 0) return `${c.sansBras.forge > 1 ? `${c.sansBras.forge} forges n'ont` : "Une forge n'a"} pas de forgeron : il manque des bras.`;
+    if (c.outils === 0) return `Il faut ${c.besoinOutils} outils par an : une forge (bois + pierre).`;
+    return `La forge fait ${c.outils} outils par an pour ${c.besoinOutils} nécessaires : une forge de plus, ou des forgerons.`;
   }
 
   /** Les vêtements protègent du froid : facteur de mortalité par le froid, en millièmes. */
@@ -62,11 +136,17 @@ export class Needs {
     return 1000 - Math.floor((NEEDS.protectionFroidPourMille * this.state.needs.vetements.coverage) / 1000);
   }
 
-  /** Bien-être d'un foyer (‰) pour les naissances : moral (compte double), vêtements et outils. */
+  /**
+   * Bien-être d'un foyer (‰) pour les naissances : le moral, multiplié par les besoins servis.
+   * Sans vêtements ni outils, il reste (1000 - partBesoins) ‰ du moral ; vêtements et outils
+   * se partagent le reste à parts égales.
+   */
   wellbeing(morale: number): number {
     const moraleScore = Math.max(0, Math.min(1000, (morale - 50) * 20));
     const n = this.state.needs;
-    return Math.floor((2 * moraleScore + n.vetements.coverage + n.outils.coverage) / 4);
+    const part = NEEDS.natalite.partBesoinsPourMille;
+    const needs = 1000 - part + Math.floor((part * (n.vetements.coverage + n.outils.coverage)) / 2000);
+    return Math.floor((moraleScore * needs) / 1000);
   }
 
   /** Écart moyen entre deux naissances (jours) selon le bien-être. */

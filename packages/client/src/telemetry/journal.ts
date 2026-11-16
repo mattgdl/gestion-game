@@ -125,7 +125,11 @@ export function domainSnapshot(sim: DomainSim): Record<string, unknown> {
       vetements: { stock: sim.economy.stockOf("vetements"), couverture: sim.state.needs.vetements.coverage },
       laine: sim.economy.stockOf("laine"),
       epidemie: sim.state.epidemic ? { fief: sim.state.epidemic.fiefId, morts: sim.state.epidemic.deaths } : null,
-      foire: sim.state.fair,
+      // Dernière foire où l'on a commercé, avec son année : les achats faits pendant le bilan
+      // arrivent après ce relevé, et apparaissent donc au bilan suivant.
+      derniereFoire: { annee: sim.state.fair.year, achats: sim.state.fair.bought, ventes: sim.state.fair.sold },
+      chaine: sim.needs.chain(),
+      sansEmploi: sim.population.idleMalus(),
     },
     expansion: {
       fiefs: Object.keys(sim.state.fiefs).length,

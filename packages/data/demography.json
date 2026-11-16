@@ -70,6 +70,12 @@
       "fermee": 0,
       "normale": 0,
       "ouverte": -10
+    },
+    "chomage": {
+      "_doc": "Bras inoccupés (J4c) : au-delà de toleranceParCent % de travailleurs sans emploi, le moral perd 1 point par point de pourcentage, au plus malusMax. Pas avant graceAnnees (le village s'installe).",
+      "toleranceParCent": 15,
+      "malusMax": 15,
+      "graceAnnees": 5
     }
   },
   "joursAvantMortalite": 5,
