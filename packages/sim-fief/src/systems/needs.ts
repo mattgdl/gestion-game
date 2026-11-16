@@ -189,7 +189,7 @@ export class Needs {
     };
     const touched = this.touchedFamilies().length;
     const name = st.fiefs[house.fiefId]?.name;
-    const text = `Une maladie se déclare${name ? ` à ${name}` : ""} : ${touched} foyer${touched > 1 ? "s" : ""} touché${touched > 1 ? "s" : ""}. Un guérisseur à portée, avec des remèdes, sauve des vies.`;
+    const text = `Une maladie se déclare${name ? ` à ${name}` : ""} : ${touched} foyer${touched > 1 ? "s" : ""} touché${touched > 1 ? "s" : ""}. Un guérisseur dans le fief, avec des remèdes, sauve des vies.`;
     this.sim.addLog(text);
     this.events.push({ type: "epidemic", fiefId: house.fiefId });
   }
@@ -205,16 +205,21 @@ export class Needs {
     });
   }
 
-  /** Guérisseur qui soigne ce domicile : à portée, avec un travailleur et des remèdes. */
+  /**
+   * Guérisseur qui soigne ce domicile : n'importe lequel du même fief, avec un travailleur et des
+   * remèdes (J4c : la portée de 12 cases obligeait à le placer à la fois près de la forêt et des
+   * maisons). S'il y en a plusieurs, celui qui a le plus de remèdes, pour que leurs réserves servent toutes.
+   */
   private healerFor(home: Building): Building | undefined {
+    let best: Building | undefined;
     for (const b of this.state.buildings) {
-      if (b.type !== "guerisseur") continue;
-      const def = BUILDINGS[b.type];
+      if (b.type !== "guerisseur" || b.fiefId !== home.fiefId) continue;
       if (this.sim.population.workers(b.id).length === 0) continue;
-      if ((b.stock.remedes ?? 0) <= 0) continue;
-      if (this.sim.distanceToBuilding(b, home.x, home.y) <= (def?.influence ?? 0)) return b;
+      const n = b.stock.remedes ?? 0;
+      if (n <= 0) continue;
+      if (!best || n > (best.stock.remedes ?? 0)) best = b;
     }
-    return undefined;
+    return best;
   }
 
   /**

@@ -134,14 +134,16 @@ describe("bras inoccupés", () => {
 });
 
 describe("épidémie", () => {
-  it("un guérisseur à portée, avec des remèdes, divise la mortalité par quatre et use ses remèdes", () => {
-    const { sim, world } = village([{ terrain: 1, x: 80, y: 18, w: 6, h: 6 }]);
+  it("un guérisseur du fief, même loin des maisons, avec des remèdes, divise la mortalité par quatre", () => {
+    const { sim, world } = village([{ terrain: 1, x: 88, y: 18, w: 6, h: 6 }]);
     houses(sim, 6);
-    const healer = build(sim, "guerisseur", 80, 26);
+    const healer = build(sim, "guerisseur", 89, 26);
     runUntil(sim, world, DAY_TICKS + 1);
     healer.stock.remedes = 0;
     sim.state.epidemic = { fiefId: "f-1-0", x: 75, y: 28, radius: 10, untilTick: sim.state.tick + 40 * DAY_TICKS, deaths: 0, care: {} };
     const housed = sim.state.families.find((f) => !f.noble && f.houseId !== null)!;
+    // Plus de 12 cases entre la maison et le guérisseur : l'ancienne portée ne l'aurait pas soignée.
+    expect(sim.distanceToBuilding(healer, sim.building(housed.houseId!)!.x, sim.building(housed.houseId!)!.y)).toBeGreaterThan(12);
     const adult = sim.population.members(housed.id).find((v) => sim.state.tick - v.birthTick > 20 * 1800)!;
     const sick = sim.needs.diseaseRisks(sim.state.tick).get(adult.id);
     expect(sick).toBe(NEEDS.maladie.mortaliteParJour);

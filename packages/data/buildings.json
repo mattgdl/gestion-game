@@ -321,10 +321,9 @@
       "parAn": 20,
       "casesPleinRendement": 20
     },
-    "utilite": "Prépare des remèdes avec les herbes de la forêt voisine (20 par an, gardés sur place). Pendant une épidémie, les maisons à 12 cases ou moins meurent quatre fois moins.",
+    "utilite": "Prépare des remèdes avec les herbes de la forêt voisine (20 par an, gardés sur place). Pendant une épidémie, il soigne tout son fief : les malades meurent quatre fois moins.",
     "stockMax": 20,
     "travailleurs": 1,
-    "prioriteEmploi": 5,
-    "influence": 12
+    "prioriteEmploi": 5
   }
 }

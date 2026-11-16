@@ -5,7 +5,7 @@
 
 ## En cours
 
-- **Partie test de J4c — Réglages** (critère ci-dessous). Puis **J5 — Voisins IA et commerce**. Critère J3 (deux successions) encore à vérifier dans une partie longue.
+- Rien. Prochain jalon : **J5 — Voisins IA et commerce**. Critère J3 (deux successions) encore à vérifier dans une partie longue.
 
 ## À faire
 
@@ -51,7 +51,7 @@
 - *(vide)*
 
 ## Fait
-- 16/11/2026 : **J4c — Réglages** livré, à valider en partie test : couverture proportionnelle et chaîne expliquée, malus « Bras inoccupés », natalité freinée sans vêtements, guérisseur, foire plus rentable.
+- 16/11/2026 : **J4c — Réglages** validé par le joueur (guérisseur : soigne tout son fief) : couverture proportionnelle et chaîne expliquée, malus « Bras inoccupés », natalité freinée sans vêtements, guérisseur, foire plus rentable.
 - 16/11/2026 : **J4b — Métiers et besoins** validé par le joueur (partie test n° 5, 22 ans).
   - Forge (outils, production +25 %), bergerie et tisserand (vêtements : moral, froid), guérisseur (remèdes).
   - Natalité de 1,5 à 2,5 ans selon le moral et les besoins.

@@ -715,7 +715,7 @@ export class Economy {
       // Les remèdes restent chez le guérisseur : ils soignent sur place pendant une épidémie.
       const n = b.stock.remedes ?? 0;
       const max = def.stockMax ?? 0;
-      if (n >= max) return { text: `Remèdes prêts : ${n} / ${max}. Il soigne les maisons à ${def.influence ?? 0} cases ou moins pendant une épidémie.`, tone: "ok", blocked: false };
+      if (n >= max) return { text: `Remèdes prêts : ${n} / ${max}. Il soigne tout le fief pendant une épidémie.`, tone: "ok", blocked: false };
       const eff = this.efficiency(b.id);
       if (eff <= 0) return { text: "Pas de forêt à portée : pas d'herbes, pas de remèdes.", tone: "bad", blocked: true };
       return { text: `Prépare des remèdes : ${n} / ${max}.`, tone: "ok", blocked: false };

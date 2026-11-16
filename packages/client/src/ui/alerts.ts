@@ -218,7 +218,7 @@ export function needsAlerts(sim: DomainSim): Alert[] {
     const healer = sim.state.buildings.some((b) => b.type === "guerisseur" && b.fiefId === ep.fiefId);
     out.push({
       tone: "bad",
-      text: `Épidémie : ${touched} foyer${touched > 1 ? "s" : ""} touché${touched > 1 ? "s" : ""}, ${ep.deaths} mort${ep.deaths > 1 ? "s" : ""}.${healer ? " Gardez au guérisseur un travailleur et des remèdes." : " Un guérisseur près de la forêt, à 12 cases des maisons, soignerait les malades."}`,
+      text: `Épidémie : ${touched} foyer${touched > 1 ? "s" : ""} touché${touched > 1 ? "s" : ""}, ${ep.deaths} mort${ep.deaths > 1 ? "s" : ""}.${healer ? " Gardez au guérisseur un travailleur et des remèdes." : " Un guérisseur près de la forêt, dans ce fief, soignerait les malades."}`,
     });
   }
   if (sim.state.villagers.length >= 60) {
