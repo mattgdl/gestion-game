@@ -1,7 +1,7 @@
 # DESIGN.md — Jeu de gestion médiéval à dynastie
 
 > **Titre provisoire :** « Seigneurie » (nom de travail, à remplacer) · **Version du document :** 0.9 · **Dernière mise à jour :** 16/11/2026
-> **Statut :** J4b livré (métiers et besoins), à valider en partie test. Prochain jalon : J5 (prototype multi).
+> **Statut :** J4b validé par le joueur (partie test n° 5). Prochain jalon : J5 (prototype multi).
 > Ce document est la référence du projet. En cas de doute, c'est lui qui tranche, et chaque décision y est consignée avec sa raison (section 11).
 
 ## Sommaire
@@ -486,6 +486,7 @@ jeu-medieval/
 | 15/11/2026 | Retours de la première partie test : fiche d'outil, avertissement des champs en trop, reprise automatique, bilan sur quatre saisons. | Analyse du journal de partie et retours du joueur. |
 | 15/11/2026 | J2b : 20 adultes et leurs enfants au départ, naissances tous les 1,5 an par famille, emplois automatiques réglables, foyers qui se ravitaillent eux-mêmes, moral simple. Règles en section 4.3. | Choix du joueur (questions du 15/11), équilibrage avec `simulate`. |
 | 16/11/2026 | J4b, intercalé avant le multi : besoins outils et vêtements (forge, bergerie, tisserand), maladie et guérisseur, natalité selon le moral et les besoins, foire d'automne. Règles en section 4.6. | Partie test n° 4 : chômage massif et ennui en fin de partie ; choix du joueur (questions du 16/11). |
+| 16/11/2026 | J4b validé (partie test n° 5, 22 ans, environ 70 min, baron à l'an 21). Points à reprendre notés dans ROADMAP : couverture des vêtements tout ou rien, outils trop faciles, alerte des guérisseurs, foire peu utilisée, moral plafonné et natalité rapide. | Retour du joueur et analyse du journal. |
 | 16/11/2026 | Partie test n° 4 (orge-349 en 5 × 5, 25 ans, environ 45 min) : église par fief, routes en or et pierre, correction du ravitaillement entre fiefs, alerte de vivres lointains. Chômage et ennui de fin de partie notés pour la suite. | Retours du joueur et analyse du journal. |
 | 16/11/2026 | J4 : carte 5 × 5, fiefs achetés avec leur village et une maison forte, négociation avec prix plancher secret, titres par fiefs et population. Règles en section 4.5. | Choix du joueur (questions du 16/11). |
 | 16/11/2026 | Partie test n° 3 (chêne-832, 13 ans, 33 min) : famille noble servie dans toutes les réserves ; alertes de déficit de nourriture et de bras inoccupés. | Analyse du journal de partie. |

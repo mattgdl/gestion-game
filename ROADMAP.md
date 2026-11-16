@@ -5,7 +5,7 @@
 
 ## En cours
 
-- **Partie test de J4b — Métiers et besoins** (critère : faire tourner forge et chaîne laine → vêtements, traverser une épidémie, commercer à la foire, sans chômage massif ni temps mort). Critères de J3 (deux successions) et J4 (titre) à vérifier dans la même partie longue. Puis **J5 — Prototype multi**.
+- Rien. Prochain jalon : **J5 — Prototype multi**, à lancer quand le joueur le décide. Critère J3 (deux successions) encore à vérifier dans une partie longue.
 
 ## À faire
 
@@ -35,7 +35,7 @@
 - *(vide)*
 
 ## Fait
-- 16/11/2026 : **J4b — Métiers et besoins** livré, à valider en partie test.
+- 16/11/2026 : **J4b — Métiers et besoins** validé par le joueur (partie test n° 5, 22 ans).
   - Forge (outils, production +25 %), bergerie et tisserand (vêtements : moral, froid), guérisseur (remèdes).
   - Natalité de 1,5 à 2,5 ans selon le moral et les besoins.
   - Épidémies rares et annoncées ; un guérisseur à portée divise la mortalité par quatre.
@@ -98,6 +98,13 @@
 - 12/11/2026 : brief fondateur, DESIGN.md v0.1 à v0.3, réponses aux questions Q1 à Q8, création de cette ROADMAP.
 
 ## Idées notées (à trier)
+- **Retours de la partie test n° 5 (J4b, 22 ans, environ 70 min)** :
+  - Vêtements : couverture à 0 % de l'an 16 à la fin. Une seule bergerie (≈ 60 laines par an) pour 4 tisserands, quand il en faut 2 à 3 pour 170 habitants. L'écran ne dit pas où la chaîne bloque. Et la couverture compte « tout ou rien » chaque jour : un tiers des besoins servis s'affiche 0 %. À rendre proportionnelle, et à expliquer (« il manque de la laine : une bergerie de plus »).
+  - Outils trop faciles : une forge suffit pour toute la partie, 199 outils en stock dormant.
+  - Guérisseurs signalés « porteurs ne suivent pas » alors que leurs remèdes doivent rester chez eux : ne pas les livrer, ne pas alerter.
+  - Réserves pleines (1 360 vivres) et foire presque jamais utilisée (bois les ans 1 et 3, pierre l'an 11, aucune vente) : la vente rapporte peu face aux impôts. Le journal recopie aussi l'ancienne foire d'une année sur l'autre (à corriger).
+  - Moral à 90-99 dès l'an 12 (église puis titre) : plus de tension ; la natalité reste rapide même sans vêtements (le moral compte double). Résultat : 116 enfants sur 178 habitants à l'an 20, et le chômage revient (28 sans emploi à l'an 22) quand ils grandiront.
+  - Premier achat de fief seulement à l'an 21 (900 or) : 20 ans sur un seul fief.
 - (Traité en partie par J4b ; à revoir après la partie test.) **Chômage massif** (partie test n° 4 : 72 villageois sans emploi sur 143 à l'an 25) et **ennui en fin de partie** (1 à 12 actions par an, tout en vitesse ×3) : il faut des métiers et des besoins nouveaux. Idée du joueur : les événements (maladies, guerres) créeront des métiers (guérisseurs, soldats) qui absorberont ce chômage. À cadrer avant ou avec la V2 ; la natalité (une naissance tous les 1,5 an par foyer) gonfle aussi la population plus vite que les emplois.
 - Remariage des veufs et veuves (aujourd'hui un foyer qui perd un parent ne se reforme pas).
 - Arrivées des nouveaux venus selon la tendance des vivres (récolte attendue), pas seulement les réserves.
