@@ -29,10 +29,11 @@ import {
 } from "@jeu/shared";
 import type { CheckResult, Command } from "./commands";
 import { BUILDINGS, DEMOGRAPHY, ECONOMY, TITLES, titleDef, type BuildingDef } from "./data";
-import { BUILD_GOODS, GOOD_IDS, GOOD_NAMES, IMMIGRATION_LEVELS, SUCCESSION_LAWS, emptyYearStats, type Building, type DomainState, type FiefTiles, type Goods } from "./state";
+import { BUILD_GOODS, GOOD_IDS, GOOD_NAMES, IMMIGRATION_LEVELS, SUCCESSION_LAWS, emptyTrade, emptyYearStats, type Building, type DomainState, type FiefTiles, type Goods } from "./state";
 import { Dynasty, bySex, emptyDynasty } from "./systems/dynasty";
 import { annexFief } from "./systems/annex";
 import { Needs } from "./systems/needs";
+import { Trade } from "./systems/trade";
 import { Economy, goodsTotal } from "./systems/economy";
 import { DAY_TICKS, Population } from "./systems/population";
 import { connectedRoads } from "./systems/roads";
@@ -56,7 +57,9 @@ export type SimEvent =
   /** Un nouveau titre est atteint (J4). */
   | { type: "title"; title: string }
   /** Une épidémie se déclare (J4b). */
-  | { type: "epidemic"; fiefId: string };
+  | { type: "epidemic"; fiefId: string }
+  /** Nouvelle du commerce au bilan (accord accepté, refusé, réglé) (J5). */
+  | { type: "tradeNews"; text: string };
 
 export interface DomainInit {
   ownerId: string;
@@ -79,6 +82,7 @@ export class DomainSim {
   readonly population: Population;
   readonly dynasty: Dynasty;
   readonly needs: Needs;
+  readonly trade: Trade;
 
   private occupancy = new Map<number, Occupant>();
   private buildingsById = new Map<number, Building>();
@@ -93,6 +97,7 @@ export class DomainSim {
     this.population = new Population(this);
     this.dynasty = new Dynasty(this);
     this.needs = new Needs(this);
+    this.trade = new Trade(this);
     this.economy = new Economy(this);
     this.rebuildIndex();
   }
@@ -138,6 +143,7 @@ export class DomainSim {
       dims,
       offers: [],
       needs: { outils: { owed: 0, coverage: 0 }, vetements: { owed: 0, coverage: 0 } },
+      trade: emptyTrade(),
       epidemic: null,
       fair: { year: 0, bought: {}, sold: {} },
       gameOver: null,
@@ -439,6 +445,12 @@ export class DomainSim {
         return this.needs.checkTrade(cmd.good, cmd.qty, cmd.side);
       case "cancelOffer":
         return this.state.offers.some((o) => o.fiefId === cmd.fiefId) ? { ok: true } : { ok: false, reason: "Aucune offre en cours pour ce fief." };
+      case "acceptTradeProposal":
+      case "refuseTradeProposal":
+      case "proposeTrade":
+      case "withdrawTradeProposal":
+      case "cancelTrade":
+        return this.trade.check(cmd);
     }
   }
 
@@ -469,6 +481,10 @@ export class DomainSim {
     }
     if (cmd.type === "trade") {
       this.needs.applyTrade(cmd.good, cmd.qty, cmd.side);
+      return result;
+    }
+    if (cmd.type === "acceptTradeProposal" || cmd.type === "refuseTradeProposal" || cmd.type === "proposeTrade" || cmd.type === "withdrawTradeProposal" || cmd.type === "cancelTrade") {
+      this.trade.apply(cmd);
       return result;
     }
     if (cmd.type === "cancelOffer") {
@@ -601,7 +617,8 @@ export class DomainSim {
       delete this.state.crops[String(k)];
     } else {
       const b = this.buildingsById.get(occ.id);
-      if (b && (this.economy.isStorage(b) || BUILDINGS[b.type]?.marche)) {
+      if (b && BUILDINGS[b.type]?.relais) this.trade.forgetRelay(b.id);
+      if (b && (this.economy.isStorage(b) || BUILDINGS[b.type]?.marche || BUILDINGS[b.type]?.relais)) {
         // Le contenu d'une réserve (ou des étals d'un marché) est déménagé dans les autres réserves.
         addLost(this.economy.deposit(b.stock, b.id));
       }
@@ -722,6 +739,7 @@ export class DomainSim {
         this.dynasty.daily(rng);
         this.needs.daily(rng);
       });
+      this.trade.daily();
       this.checkTitle();
       events.push(...this.dynasty.drainEvents());
       events.push(...this.needs.drainEvents());
@@ -738,7 +756,8 @@ export class DomainSim {
   /** Applique ce que le Monde a décidé à la barrière, puis libère le temps. */
   /** Offres d'achat remises au Monde à la barrière. */
   barrierActions(): ProposeAction[] {
-    return this.state.offers.map((o) => ({ type: "buyFief", actionId: o.actionId, ownerId: this.state.ownerId, fiefId: o.fiefId, price: o.price }));
+    const offers: ProposeAction[] = this.state.offers.map((o) => ({ type: "buyFief", actionId: o.actionId, ownerId: this.state.ownerId, fiefId: o.fiefId, price: o.price }));
+    return [...offers, ...this.trade.barrierActions()];
   }
 
   /** Événements produits par la dernière barrière (achats, refus, titres), lus par l'interface. */
@@ -747,6 +766,8 @@ export class DomainSim {
   applyBarrierResult(result: BarrierResult): void {
     const me = this.state.ownerId;
     for (const e of result.events) {
+      const news = this.trade.applyEvent(e);
+      if (news) this.barrierEvents.push({ type: "tradeNews", text: news });
       if (e.type === "info" && (e.ownerId === null || e.ownerId === me)) this.addLog(e.text);
       if (e.type === "escrowReleased" && e.ownerId === me) {
         this.state.offers = this.state.offers.filter((o) => o.actionId !== e.actionId);
@@ -767,6 +788,7 @@ export class DomainSim {
         this.checkTitle();
       }
     }
+    this.trade.afterBarrier(result.resolved.year);
     this.state.awaitingBarrier = false;
     this.state.lastBarrierTick = this.state.tick;
   }

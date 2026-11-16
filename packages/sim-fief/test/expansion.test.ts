@@ -50,7 +50,7 @@ describe("annexion d'un fief acheté", () => {
     const { sim, world } = newGame("annexion");
     const meta = fiefById(world, "f-0-0")!;
     const households = meta.households;
-    const price = floorPrice(world, meta);
+    const price = floorPrice(world, meta, sim.state.ownerId);
     sim.state.treasury = price;
     const families = sim.state.families.length;
     expect(sim.apply({ type: "makeOffer", fiefId: "f-0-0", price }).ok).toBe(true);

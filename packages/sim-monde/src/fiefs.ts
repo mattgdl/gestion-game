@@ -4,6 +4,7 @@
  */
 import fiefsJson from "@jeu/data/fiefs.json";
 import { Rng, Terrain, deriveSeed, generateFiefTerrain, type WorldDims } from "@jeu/shared";
+import { IA, archetypeOf } from "./ai/archetypes";
 import type { FiefMeta, WorldState } from "./state";
 
 export interface FiefsDef {
@@ -41,19 +42,34 @@ export function fiefValue(meta: FiefMeta): number {
   return Math.round((land + meta.households * v.orParFoyer) * (v.dominants[meta.dominant] ?? 1));
 }
 
+/**
+ * Ce qui fait monter ou baisser le prix d'un seigneur IA (J5), en millièmes : son archétype
+ * (un avare vend cher) et sa relation avec l'acheteur (une bonne relation fait baisser le prix).
+ */
+export function sellerFactor(world: WorldState, meta: FiefMeta, buyerId?: string): number {
+  const lord = world.lords.find((l) => l.id === meta.ownerId);
+  if (!lord?.ai) return 1000;
+  const arch = archetypeOf(lord.ai.archetype);
+  const relation = buyerId ? (lord.ai.relations[buyerId] ?? 0) : 0;
+  return Math.max(500, Math.floor((arch.plancher * (1000 - relation * IA.commerce.relationPourMilleParPoint)) / 1000));
+}
+
 /** Fourchette montrée au joueur : il ne connaît pas le prix plancher exact. */
-export function priceRange(meta: FiefMeta): [number, number] {
+export function priceRange(world: WorldState, meta: FiefMeta, buyerId?: string): [number, number] {
   const [lo, hi] = FIEFS.negociation.fourchetteAffichee;
-  const v = fiefValue(meta);
+  const v = (fiefValue(meta) * sellerFactor(world, meta, buyerId)) / 1000;
   return [Math.round((v * lo) / 10) * 10, Math.round((v * hi) / 10) * 10];
 }
 
-/** Prix plancher secret du seigneur IA, tiré pour ce fief et cette année (indépendant de l'ordre des offres). */
-export function floorPrice(world: WorldState, meta: FiefMeta): number {
+/**
+ * Prix plancher secret du seigneur IA, tiré pour ce fief et cette année (indépendant de l'ordre
+ * des offres), selon son archétype et sa relation avec l'acheteur.
+ */
+export function floorPrice(world: WorldState, meta: FiefMeta, buyerId?: string): number {
   const n = FIEFS.negociation;
   const rng = new Rng(deriveSeed(world.dims.seed, `plancher-${meta.id}-${world.year}`));
   const factor = n.plancherMin + rng.next() * (n.plancherMax - n.plancherMin);
-  return Math.round(fiefValue(meta) * factor);
+  return Math.round(((fiefValue(meta) * sellerFactor(world, meta, buyerId)) / 1000) * factor);
 }
 
 /** Deux fiefs se touchent par un côté. */
@@ -61,11 +77,3 @@ export function adjacent(a: { col: number; row: number }, b: { col: number; row:
   return Math.abs(a.col - b.col) + Math.abs(a.row - b.row) === 1;
 }
 
-/** Chaque année, les villages des seigneurs IA grandissent un peu. */
-export function growVillages(world: WorldState, rng: Rng): void {
-  const v = FIEFS.village;
-  for (const f of world.fiefs) {
-    if (f.ownerId === null || !f.ownerId.startsWith("ia-")) continue;
-    if (f.households < v.foyersMax && rng.chance(v.croissanceParAn)) f.households += 1;
-  }
-}

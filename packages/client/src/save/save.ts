@@ -6,8 +6,8 @@
  * sauvegardes restent lisibles.
  */
 import { SAVE_VERSION } from "@jeu/shared";
-import { DomainSim, emptyDynasty, type DomainState } from "@jeu/sim-fief";
-import { FIEFS, PLAYER_ID, describeLand, lineageSetupFor, type WorldState } from "@jeu/sim-monde";
+import { DomainSim, emptyDynasty, emptyTrade, type DomainState } from "@jeu/sim-fief";
+import { FIEFS, PLAYER_ID, describeLand, lineageSetupFor, setupAiLords, type WorldState } from "@jeu/sim-monde";
 import { Rng, deriveSeed } from "@jeu/shared";
 
 export interface SaveGame {
@@ -103,6 +103,15 @@ const MIGRATIONS: Record<number, (save: any) => any> = {
       fair: { year: 0, bought: {}, sold: {} },
     },
   }),
+  /**
+   * v7 → v8 (J5) : les seigneurs IA reçoivent leur archétype, leur or, leurs réserves et leur
+   * relation avec le joueur (tirés de la graine du monde) ; le commerce commence vide.
+   */
+  7: (s) => {
+    const world = { ...s.world, agreements: [], proposals: [] };
+    setupAiLords(world);
+    return { ...s, saveVersion: 8, world, domain: { ...s.domain, trade: emptyTrade() } };
+  },
 };
 
 export function makeSave(world: WorldState, domain: DomainState, now: Date = new Date(), gameId?: string): SaveGame {

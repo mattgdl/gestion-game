@@ -521,6 +521,10 @@ export class Economy {
         this.dispatchMarket(b, tick);
         continue;
       }
+      if (def?.relais) {
+        this.dispatchRelay(b, tick);
+        continue;
+      }
       let busy = 0;
       for (const d of state.deliveries) if (d.fromId === b.id) busy += 1;
       let idle = transport.porteurs - busy;
@@ -559,6 +563,69 @@ export class Economy {
         state.deliveries.push(delivery);
         idle -= 1;
       }
+    }
+  }
+
+  /**
+   * Porteurs du relais (J5) : ils rangent dans les réserves ce que les charrettes ont acheté,
+   * puis vont chercher ce qu'il faut livrer (la marchandise qui manque le plus).
+   */
+  private dispatchRelay(b: Building, tick: number): void {
+    const def = BUILDINGS[b.type] as BuildingDef;
+    const transport = def.transport;
+    if (!transport) return;
+    const state = this.sim.state;
+    let busy = 0;
+    for (const d of state.deliveries) if (d.fromId === b.id) busy += 1;
+    let idle = transport.porteurs - busy;
+    const sale = this.sim.trade.saleGoods();
+    // 1. Ce qui a été acheté part en réserve.
+    for (const g of GOOD_IDS) {
+      if (idle <= 0) return;
+      if (sale.has(g as never) || (b.stock[g] ?? 0) <= 0) continue;
+      const route = this.routesFrom(b.id).find((r) => {
+        const s = this.sim.building(r.storageId);
+        return s !== undefined && this.freeSpace(s) > 0;
+      });
+      if (!route) break;
+      const storage = this.sim.building(route.storageId) as Building;
+      const amount = Math.min(b.stock[g] ?? 0, transport.charge, this.freeSpace(storage));
+      const leg = legTicks(route.path.length);
+      state.deliveries.push({
+        id: state.nextId++,
+        fromId: b.id,
+        toId: storage.id,
+        good: g,
+        amount,
+        path: [...route.path],
+        departTick: tick,
+        arriveTick: tick + leg,
+        returnTick: tick + 2 * leg,
+        status: "aller",
+      });
+      b.stock[g] = (b.stock[g] ?? 0) - amount;
+      idle -= 1;
+    }
+    // 2. Ce qu'il faut livrer est rassemblé au relais.
+    const targets = this.sim.trade.relayTargets(b);
+    const room = (def.stockMax ?? 0) - goodsTotal(b.stock);
+    while (idle > 0) {
+      let best: GoodId | null = null;
+      let bestLack = 0;
+      for (const g of GOOD_IDS) {
+        const target = targets[g as keyof typeof targets] ?? 0;
+        const lack = target - (b.stock[g] ?? 0) - this.incomingToMarket(b.id, g);
+        if (lack > bestLack && this.stockOf(g) > 0) {
+          best = g;
+          bestLack = lack;
+        }
+      }
+      if (best === null) return;
+      let incoming = 0;
+      for (const g of GOOD_IDS) incoming += this.incomingToMarket(b.id, g);
+      const want = Math.min(transport.charge, bestLack, room - incoming);
+      if (want <= 0 || this.sendCollect(b, best, want, tick) === null) return;
+      idle -= 1;
     }
   }
 
@@ -710,6 +777,9 @@ export class Economy {
       if (fam.hungryDays > 0) return { text: "Ce foyer a faim : ses provisions sont vides.", tone: "bad", blocked: false };
       if (fam.coldDays > 0) return { text: "Ce foyer a froid : plus de bois de chauffage.", tone: "bad", blocked: false };
       return { text: `Foyer de ${this.sim.population.members(fam.id).length} personnes, moral ${fam.morale}.`, tone: "ok", blocked: false };
+    }
+    if (def.relais) {
+      return { text: this.sim.trade.relayStatus(b), tone: "ok", blocked: false };
     }
     if (b.type === "guerisseur") {
       // Les remèdes restent chez le guérisseur : ils soignent sur place pendant une épidémie.

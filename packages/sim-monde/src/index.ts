@@ -2,3 +2,6 @@ export * from "./state";
 export * from "./worldgen";
 export * from "./barrier";
 export * from "./fiefs";
+export * from "./trade";
+export * from "./ai/archetypes";
+export * from "./ai/neighbors";

@@ -5,36 +5,46 @@
  * Quand tout le monde est prêt, le Monde résout tout dans un ordre fixe, puis
  * renvoie les événements et le signal "année résolue".
  *
- * Ordre de résolution (déterministe) : transactions, puis IA voisines, puis éliminations.
- * J4 : offres d'achat de fiefs. Chaque fief va à la meilleure offre (à égalité, au premier
- * seigneur dans l'ordre des identifiants), si elle atteint le prix plancher de son seigneur IA ;
- * les autres offres sont rendues avec la raison.
+ * Ordre de résolution (déterministe) :
+ * 1. commerce : accords acceptés ou rompus, règlement de l'année, réponses aux propositions ;
+ * 2. achats de fiefs (domaines et seigneurs IA ensemble : la meilleure offre l'emporte) ;
+ * 3. vie des seigneurs IA : production, consommation, croissance des villages ;
+ * 4. projets des seigneurs IA : achats préparés (rumeurs) et propositions d'accords.
  */
 import { Rng, type BarrierInput, type BarrierResult, type ProposeAction, type WorldEvent } from "@jeu/shared";
-import { aiActions } from "./ai/neighbors";
-import { FIEFS, adjacent, floorPrice, growVillages } from "./fiefs";
+import { aiEconomy, aiOffers, aiPlans, settleAiGold } from "./ai/neighbors";
+import { FIEFS, adjacent, floorPrice } from "./fiefs";
 import { fiefById, type WorldState } from "./state";
+import { aiProposals, resolveTrade } from "./trade";
 
 export function resolveBarrier(world: WorldState, inputs: BarrierInput[]): BarrierResult {
   const rng = new Rng(world.rngState);
-  const events: WorldEvent[] = [];
+  let events: WorldEvent[] = [];
   const sorted = [...inputs].sort((a, b) => (a.ownerId < b.ownerId ? -1 : a.ownerId > b.ownerId ? 1 : 0));
 
   for (const input of sorted) {
     world.lastSummaries[input.ownerId] = input.summary;
   }
-
-  // 1. Transactions : achats de fiefs.
   const playerActions = sorted.flatMap((i) => i.actions);
-  resolveOffers(world, playerActions, events);
-  // 2. Actions des voisins IA (passifs en V1).
-  const ai = aiActions(world, rng);
-  if (playerActions.length === 0 && ai.length === 0) {
-    events.push({ type: "info", ownerId: null, text: `Bilan de l'an ${world.year} : aucune affaire entre seigneurs.` });
-  }
-  // 3. Éliminations (à venir).
-  // 4. Les villages des voisins grandissent.
-  growVillages(world, rng);
+
+  // 1. Commerce.
+  resolveTrade(world, playerActions, rng, events);
+  // 2. Achats de fiefs : offres des domaines et des seigneurs IA.
+  const offers = [...playerActions, ...aiOffers(world)];
+  resolveOffers(world, offers, events);
+  events = settleAiGold(world, events);
+  // 3. Vie des seigneurs IA.
+  aiEconomy(world, rng);
+  // 4. Projets des seigneurs IA pour l'an prochain.
+  const players = world.lords.filter((l) => l.isPlayer).map((l) => l.id);
+  aiPlans(world, rng, events);
+  aiProposals(world, rng, players, events);
+
+  events.unshift({
+    type: "info",
+    ownerId: null,
+    text: events.length === 0 ? `Bilan de l'an ${world.year} : aucune affaire entre seigneurs.` : `Bilan de l'an ${world.year} : affaires entre seigneurs.`,
+  });
 
   const resolvedYear = world.year;
   world.year += 1;
@@ -43,9 +53,9 @@ export function resolveBarrier(world: WorldState, inputs: BarrierInput[]): Barri
 }
 
 function resolveOffers(world: WorldState, actions: ProposeAction[], events: WorldEvent[]): void {
-  const release = (a: ProposeAction, reason: string) =>
+  const release = (a: Extract<ProposeAction, { type: "buyFief" }>, reason: string) =>
     events.push({ type: "escrowReleased", ownerId: a.ownerId, actionId: a.actionId, fiefId: a.fiefId, gold: a.price, reason });
-  const byFief = new Map<string, ProposeAction[]>();
+  const byFief = new Map<string, Extract<ProposeAction, { type: "buyFief" }>[]>();
   for (const a of [...actions].sort((x, y) => (x.actionId < y.actionId ? -1 : x.actionId > y.actionId ? 1 : 0))) {
     if (a.type !== "buyFief") continue;
     const list = byFief.get(a.fiefId) ?? [];
@@ -59,11 +69,12 @@ function resolveOffers(world: WorldState, actions: ProposeAction[], events: Worl
       for (const a of offers) release(a, "Ce fief n'existe pas.");
       continue;
     }
-    const sellerIsAi = meta.ownerId !== null && meta.ownerId.startsWith("ia-");
     let sold = false;
     for (const a of offers) {
+      const sellerIsAi = meta.ownerId !== null && meta.ownerId.startsWith("ia-");
       if (sold) {
-        release(a, `Un autre seigneur a offert davantage pour ${meta.name}.`);
+        const winner = world.lords.find((l) => l.id === meta.ownerId);
+        release(a, `${winner && !winner.isPlayer ? `La ${winner.name}` : "Un autre seigneur"} a offert davantage pour ${meta.name}.`);
         continue;
       }
       const mine = world.fiefs.filter((f) => f.ownerId === a.ownerId);
@@ -71,8 +82,9 @@ function resolveOffers(world: WorldState, actions: ProposeAction[], events: Worl
       else if (!sellerIsAi) release(a, `${meta.name} n'est pas à vendre.`);
       else if (!mine.some((f) => adjacent(f, meta))) release(a, `${meta.name} ne touche plus aucun de vos fiefs.`);
       else {
-        const floor = floorPrice(world, meta);
+        const floor = floorPrice(world, meta, a.ownerId);
         if (a.price >= floor) {
+          const buyerIsAi = a.ownerId.startsWith("ia-");
           events.push({
             type: "fiefTransferred",
             fiefId,
@@ -85,7 +97,8 @@ function resolveOffers(world: WorldState, actions: ProposeAction[], events: Worl
             households: meta.households,
           });
           meta.ownerId = a.ownerId;
-          meta.households = 0;
+          // Un domaine reconstruit le village chez lui ; un seigneur IA le garde tel quel.
+          if (!buyerIsAi) meta.households = 0;
           sold = true;
         } else {
           const close = a.price >= floor * FIEFS.negociation.seuilHesitation;

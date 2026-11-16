@@ -5,6 +5,7 @@
 import worldJson from "@jeu/data/world.json";
 import namesJson from "@jeu/data/names.json";
 import { Rng, deNom, deriveSeed, fiefIdOf, hashString, type DominantId } from "@jeu/shared";
+import { setupAiLords } from "./ai/archetypes";
 import { FIEFS, describeLand } from "./fiefs";
 import type { FiefMeta, Lord, WorldState } from "./state";
 
@@ -69,7 +70,7 @@ export function createWorld(seedText: string, config: WorldConfig = WORLD_CONFIG
   };
   for (const f of fiefs) f.land = describeLand(dims, f.col, f.row);
 
-  return {
+  const world: WorldState = {
     seedText,
     dims: {
       seed,
@@ -87,5 +88,9 @@ export function createWorld(seedText: string, config: WorldConfig = WORLD_CONFIG
     year: 1,
     rngState: rng.state,
     lastSummaries: {},
+    agreements: [],
+    proposals: [],
   };
+  setupAiLords(world);
+  return world;
 }

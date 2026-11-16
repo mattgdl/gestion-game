@@ -45,6 +45,8 @@ export interface BuildingDef {
   marche?: { capacite: number; cibles: Partial<Record<GoodId, number>> };
   /** Rayon (cases) dans lequel les foyers profitent du bâtiment pour leur moral. */
   influence?: number;
+  /** Relais de convoi (J5) : charge d'une charrette, jours de route par fief de distance (aller). */
+  relais?: { chargeConvoi: number; joursParFief: number };
   /** Porteurs attachés au bâtiment. */
   transport?: { porteurs: number; charge: number };
   /** Production en attente au-delà de laquelle le bâtiment s'arrête. */

@@ -9,3 +9,4 @@ export * from "./systems/population";
 export * from "./systems/dynasty";
 export * from "./systems/annex";
 export * from "./systems/needs";
+export * from "./systems/trade";

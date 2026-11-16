@@ -20,7 +20,7 @@ export function neighborFiefs(world: WorldState, sim: DomainSim): NeighborFief[]
   const mine = world.fiefs.filter((f) => f.ownerId === PLAYER_ID);
   return world.fiefs
     .filter((f) => f.ownerId !== null && f.ownerId !== PLAYER_ID && f.ownerId.startsWith("ia-") && mine.some((m) => adjacent(m, f)))
-    .map((meta) => ({ meta, range: priceRange(meta), offer: sim.state.offers.find((o) => o.fiefId === meta.id)?.price ?? null }));
+    .map((meta) => ({ meta, range: priceRange(world, meta, sim.state.ownerId), offer: sim.state.offers.find((o) => o.fiefId === meta.id)?.price ?? null }));
 }
 
 function landText(meta: FiefMeta): string {

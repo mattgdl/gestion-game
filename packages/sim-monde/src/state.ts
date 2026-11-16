@@ -2,7 +2,7 @@
  * État de la couche Monde : qui possède quel fief, les seigneurs, l'année en cours.
  * Sérialisable en JSON. En solo il vit dans le navigateur ; en multi (J8) dans le serveur.
  */
-import type { DominantId, FiefSummary, LineageSetup, WorldDims } from "@jeu/shared";
+import type { DominantId, FiefSummary, LineageSetup, TradeGood, TradeTerms, WorldDims } from "@jeu/shared";
 
 export interface FiefMeta {
   id: string;
@@ -24,6 +24,29 @@ export interface Lord {
   isPlayer: boolean;
   /** Index de couleur pour l'affichage (vue Monde). */
   colorIndex: number;
+  /** Seigneur IA (J5) : son archétype, son or, ses réserves, ses relations. */
+  ai?: AiLord;
+}
+
+/** Ce que sait et possède un seigneur IA (J5). Il ne bâtit rien : tout se joue au bilan. */
+export interface AiLord {
+  /** Identifiant de l'archétype (packages/data/ia.json). */
+  archetype: string;
+  gold: number;
+  stock: Partial<Record<TradeGood, number>>;
+  /** Relation avec chaque domaine joueur, de -100 à 100. */
+  relations: Record<string, number>;
+  /** Achat préparé : la rumeur court un an, l'offre part au bilan de l'année indiquée. */
+  plan: { fiefId: string; year: number } | null;
+  /** A manqué de vivres au dernier bilan. */
+  hungry: boolean;
+}
+
+/** Accord proposé par un seigneur IA, en attente de la réponse du domaine (J5). */
+export interface TradeProposal {
+  terms: TradeTerms;
+  /** Dernière année où le domaine peut l'accepter. */
+  expiresYear: number;
 }
 
 export interface WorldState {
@@ -39,6 +62,10 @@ export interface WorldState {
   rngState: number;
   /** Derniers résumés publics reçus à la barrière, par seigneur. */
   lastSummaries: Record<string, FiefSummary>;
+  /** Accords de commerce en cours (J5). */
+  agreements: TradeTerms[];
+  /** Accords proposés par les seigneurs IA, pas encore acceptés (J5). */
+  proposals: TradeProposal[];
 }
 
 export function fiefById(world: WorldState, id: string): FiefMeta | undefined {

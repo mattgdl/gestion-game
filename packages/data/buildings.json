@@ -325,5 +325,32 @@
     "stockMax": 20,
     "travailleurs": 1,
     "prioriteEmploi": 5
+  },
+  "relais": {
+    "nom": "Relais",
+    "taille": [
+      3,
+      2
+    ],
+    "cout": {
+      "bois": 40,
+      "pierre": 20,
+      "or": 20
+    },
+    "constructible": true,
+    "couleur": "#b07a3a",
+    "description": "Les charretiers y rassemblent les marchandises des accords et partent en convoi chez les seigneurs voisins.",
+    "utilite": "Sert les accords de commerce : ses porteurs y apportent ce qu'il faut livrer, ses 3 charretiers partent en convoi (30 marchandises par charrette) et rapportent ce que vous achetez. Un voisin lointain, c'est moins d'allers-retours par an.",
+    "transport": {
+      "porteurs": 3,
+      "charge": 10
+    },
+    "stockMax": 90,
+    "travailleurs": 3,
+    "prioriteEmploi": 4,
+    "relais": {
+      "chargeConvoi": 30,
+      "joursParFief": 10
+    }
   }
 }

@@ -9,7 +9,7 @@
  * Elles sont dans des bâtiments (réserves, ou production en attente) ou sur le dos
  * d'un porteur. Seul l'or reste un total : le trésor.
  */
-import type { WorldDims } from "@jeu/shared";
+import type { TradeGood, TradeTerms, WorldDims } from "@jeu/shared";
 
 /** Marchandises physiques, qui se transportent et se stockent. L'or n'en fait pas partie. */
 export type GoodId = "nourriture" | "bois" | "pierre" | "laine" | "outils" | "vetements" | "remedes";
@@ -288,6 +288,8 @@ export interface DomainState {
   epidemic: Epidemic | null;
   /** Achats et ventes à la foire d'automne de l'année (plafonds). */
   fair: { year: number; bought: Goods; sold: Goods };
+  /** Commerce avec les seigneurs IA (J5) : propositions, accords, convois. */
+  trade: TradeState;
   /** Fin de partie : le temps s'arrête. */
   gameOver: GameOver | null;
   nextId: number;
@@ -317,12 +319,67 @@ export interface Epidemic {
   care: Record<string, number>;
 }
 
+/** Commerce avec les seigneurs IA (J5). */
+export interface TradeState {
+  /** Accords proposés par les seigneurs IA, en attente de réponse. */
+  proposals: { terms: TradeTerms; expiresYear: number }[];
+  /** Accords en cours (ou qui commencent l'an prochain). */
+  agreements: Agreement[];
+  /** Propositions du domaine, remises au Monde au prochain bilan. */
+  pending: PendingTrade[];
+  /** Propositions IA acceptées et accords rompus depuis le dernier bilan (à dire au Monde). */
+  accepted: string[];
+  cancelled: string[];
+  /** Charrettes en route. */
+  convoys: Convoy[];
+}
+
+export interface Agreement {
+  terms: TradeTerms;
+  /** Quantité livrée (vente) ou reçue (achat) cette année, et or payé sur place (achat). */
+  done: number;
+  paid: number;
+  /** Tick de l'acceptation, si l'accord a commencé en cours d'année (sinon null). */
+  startTick: number | null;
+}
+
+export interface PendingTrade {
+  actionId: string;
+  partnerId: string;
+  good: TradeGood;
+  side: "vente" | "achat";
+  perYear: number;
+  price: number;
+  years: number;
+}
+
+/** Un convoi : une charrette qui part du relais vers le fief d'un partenaire, puis revient. */
+export interface Convoy {
+  id: number;
+  agreementId: string;
+  relayId: number;
+  good: TradeGood;
+  /** Chargement : à l'aller pour une vente, au retour pour un achat. */
+  qty: number;
+  side: "vente" | "achat";
+  /** Fief du partenaire (pour l'affichage sur la carte du monde). */
+  partnerFiefId: string;
+  departTick: number;
+  arriveTick: number;
+  returnTick: number;
+  status: "aller" | "retour";
+}
+
 /** Offre d'achat d'un fief voisin, résolue par le Monde au bilan d'automne. */
 export interface Offer {
   actionId: string;
   fiefId: string;
   price: number;
   tick: number;
+}
+
+export function emptyTrade(): TradeState {
+  return { proposals: [], agreements: [], pending: [], accepted: [], cancelled: [], convoys: [] };
 }
 
 export function emptyYearStats(year: number): YearStats {

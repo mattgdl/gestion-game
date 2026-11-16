@@ -1,0 +1,230 @@
+{
+  "_doc": "Seigneurs IA (J5). Chaque seigneur IA suit un archétype : une fiche de réglages, en millièmes (‰) sauf mention. ambition : chance par an de préparer l'achat d'un fief voisin quand il en a les moyens ; epargne : part de son or qu'il garde de côté ; croissance : multiplie la croissance de ses villages ; plancher : multiplie son prix de vente (au-dessus de 1000 il vend cher) ; marge : ce qu'il ajoute à ses prix de vente et retire à ses prix d'achat ; commerce : chance par an de proposer un accord ; fiabilite : sa parole (chaque année, il rompt un accord avec la chance (1000 - fiabilite) / 2 ‰) ; relationDepart : relation avec le joueur au départ (-100 à 100) ; gainRelation : multiplie les gains de relation ; guerre : goût de la guerre (J6, pas encore utilisé) ; bonusProduction : production en plus (‰) d'une marchandise. Économie d'un fief IA, par foyer et par an : production selon le terrain dominant, consommation, impôts en or. Réserves plafonnées à reserveMax par marchandise.",
+  "archetypes": [
+    {
+      "id": "batisseur",
+      "nom": "le Bâtisseur",
+      "description": "Son village grandit vite ; il achète peu de terres.",
+      "ambition": 200,
+      "epargne": 300,
+      "croissance": 1600,
+      "plancher": 1100,
+      "marge": 100,
+      "commerce": 300,
+      "fiabilite": 900,
+      "relationDepart": 10,
+      "gainRelation": 1000,
+      "guerre": 200
+    },
+    {
+      "id": "marchand",
+      "nom": "le Marchand",
+      "description": "Il propose volontiers des accords, avec de petites marges, et tient parole.",
+      "ambition": 300,
+      "epargne": 200,
+      "croissance": 1000,
+      "plancher": 1000,
+      "marge": 50,
+      "commerce": 900,
+      "fiabilite": 950,
+      "relationDepart": 20,
+      "gainRelation": 1000,
+      "guerre": 100
+    },
+    {
+      "id": "avare",
+      "nom": "l'Avare",
+      "description": "Il vend cher, achète rarement et garde son or.",
+      "ambition": 100,
+      "epargne": 700,
+      "croissance": 900,
+      "plancher": 1300,
+      "marge": 300,
+      "commerce": 300,
+      "fiabilite": 900,
+      "relationDepart": 0,
+      "gainRelation": 700,
+      "guerre": 200
+    },
+    {
+      "id": "conquerant",
+      "nom": "le Conquérant",
+      "description": "Il achète toutes les terres qu'il peut et ne vend presque jamais les siennes.",
+      "ambition": 900,
+      "epargne": 100,
+      "croissance": 1000,
+      "plancher": 1300,
+      "marge": 200,
+      "commerce": 200,
+      "fiabilite": 800,
+      "relationDepart": -20,
+      "gainRelation": 700,
+      "guerre": 900
+    },
+    {
+      "id": "pieux",
+      "nom": "le Pieux",
+      "description": "Fiable et bienveillant, il fait peu d'affaires mais les tient.",
+      "ambition": 150,
+      "epargne": 300,
+      "croissance": 1100,
+      "plancher": 1000,
+      "marge": 100,
+      "commerce": 400,
+      "fiabilite": 1000,
+      "relationDepart": 30,
+      "gainRelation": 1200,
+      "guerre": 50
+    },
+    {
+      "id": "prodigue",
+      "nom": "le Prodigue",
+      "description": "Il dépense tout, vend ses terres à bas prix et oublie parfois ses accords.",
+      "ambition": 400,
+      "epargne": 0,
+      "croissance": 1000,
+      "plancher": 800,
+      "marge": 150,
+      "commerce": 600,
+      "fiabilite": 600,
+      "relationDepart": 10,
+      "gainRelation": 1000,
+      "guerre": 300
+    },
+    {
+      "id": "reclus",
+      "nom": "le Reclus",
+      "description": "Il ne commerce presque pas et ne vend rien.",
+      "ambition": 50,
+      "epargne": 500,
+      "croissance": 800,
+      "plancher": 1500,
+      "marge": 300,
+      "commerce": 50,
+      "fiabilite": 900,
+      "relationDepart": -10,
+      "gainRelation": 600,
+      "guerre": 100
+    },
+    {
+      "id": "opportuniste",
+      "nom": "l'Opportuniste",
+      "description": "Il rachète les fiefs faibles et rompt un accord s'il y gagne.",
+      "ambition": 600,
+      "epargne": 200,
+      "croissance": 1000,
+      "plancher": 950,
+      "marge": 200,
+      "commerce": 600,
+      "fiabilite": 650,
+      "relationDepart": 0,
+      "gainRelation": 800,
+      "guerre": 500
+    },
+    {
+      "id": "laboureur",
+      "nom": "le Laboureur",
+      "description": "Ses champs nourrissent bien du monde : il a toujours des vivres à vendre.",
+      "ambition": 150,
+      "epargne": 300,
+      "croissance": 1300,
+      "plancher": 1000,
+      "marge": 100,
+      "commerce": 500,
+      "fiabilite": 900,
+      "relationDepart": 15,
+      "gainRelation": 1000,
+      "guerre": 150,
+      "bonusProduction": {
+        "nourriture": 500
+      }
+    },
+    {
+      "id": "diplomate",
+      "nom": "le Diplomate",
+      "description": "Il soigne ses relations : elles montent vite, ses accords durent.",
+      "ambition": 250,
+      "epargne": 300,
+      "croissance": 1000,
+      "plancher": 1050,
+      "marge": 100,
+      "commerce": 700,
+      "fiabilite": 950,
+      "relationDepart": 40,
+      "gainRelation": 2000,
+      "guerre": 50
+    }
+  ],
+  "relationAleatoire": 10,
+  "orDepart": [
+    100,
+    300
+  ],
+  "economie": {
+    "productionParFoyer": {
+      "plaines": {
+        "nourriture": 22
+      },
+      "foret": {
+        "nourriture": 16,
+        "bois": 12
+      },
+      "pierre": {
+        "nourriture": 16,
+        "pierre": 8
+      },
+      "riviere": {
+        "nourriture": 18,
+        "laine": 5
+      }
+    },
+    "consommationParFoyer": {
+      "nourriture": 16,
+      "bois": 4,
+      "outils": 1,
+      "vetements": 2
+    },
+    "impotsParFoyer": 4,
+    "reserveMax": 400,
+    "reserveDepartAnnees": 1
+  },
+  "expansion": {
+    "_doc": "Un seigneur IA dont l'or disponible (au-delà de sa part d'épargne) couvre la valeur d'un fief voisin peut préparer son achat : la rumeur court pendant un an. Au bilan suivant, il offre la valeur × un facteur entre surenchereMin et surenchereMax (‰), selon son ambition, s'il a toujours l'or.",
+    "surenchereMin": 950,
+    "surenchereMax": 1250
+  },
+  "croissance": {
+    "_doc": "Un village IA gagne un foyer avec la chance chanceParAn × croissance de l'archétype, s'il a eu assez de vivres ; il en perd un avec la chance famineParAn s'il a manqué de vivres.",
+    "chanceParAn": 350,
+    "famineParAn": 500
+  },
+  "commerce": {
+    "_doc": "Accords de commerce (J5). Prix d'une unité = prixBase × facteur du terrain du partenaire (produitPourMille s'il produit cette marchandise, manquePourMille s'il en consomme sans en produire, 1000 sinon), ± la marge de son archétype (il vend plus cher, achète moins cher), ± relationPourMilleParPoint par point de relation (une bonne relation donne de meilleurs prix). Un accord dure entre dureeAns ; une proposition d'un seigneur IA reste valable expirationAns an ; au plus propositionsMax propositions en attente par domaine et accordsMaxParSeigneur accords par seigneur IA. Au bilan, un accord livré à seuilPartiel ‰ ou plus est honoré (relation + honore), en dessous il est partiel (relation + partiel) ; une rupture coûte rompu.",
+    "prixBase": {
+      "nourriture": 3,
+      "bois": 2,
+      "pierre": 3,
+      "laine": 3,
+      "outils": 8,
+      "vetements": 11
+    },
+    "produitPourMille": 750,
+    "manquePourMille": 1300,
+    "relationPourMilleParPoint": 2,
+    "dureeAns": [
+      2,
+      4
+    ],
+    "expirationAns": 1,
+    "propositionsMax": 3,
+    "relation": {
+      "honore": 5,
+      "partiel": -3,
+      "rompu": -15,
+      "min": -100,
+      "max": 100
+    },
+    "seuilPartiel": 800,
+    "accordsMaxParSeigneur": 2
+  }
+}

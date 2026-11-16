@@ -190,7 +190,7 @@ function playerSpring(): string {
   const mine = world.fiefs.filter((f) => f.ownerId === PLAYER_ID);
   for (const f of world.fiefs) {
     if (!f.ownerId?.startsWith("ia-") || !mine.some((m) => adjacent(m, f))) continue;
-    const price = priceRange(f)[1];
+    const price = priceRange(world, f, PLAYER_ID)[1];
     if (sim.state.treasury - 200 >= price && sim.apply({ type: "makeOffer", fiefId: f.id, price }).ok) notes.push(`offre ${f.name} ${price}`);
   }
   return notes.join(" ");
