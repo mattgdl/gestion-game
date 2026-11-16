@@ -1,6 +1,6 @@
 # ROADMAP.md
 
-> Mise à jour : 15/11/2026 · Référence des règles : DESIGN.md (v0.7)
+> Mise à jour : 16/11/2026 · Référence des règles : DESIGN.md (v0.7)
 > Chaque jalon se termine par un jeu qui se lance et se joue. Une idée qui sort du jalon en cours est notée ici, pas codée.
 
 ## En cours
@@ -41,6 +41,7 @@
 - *(vide)*
 
 ## Fait
+- 16/11/2026 : **Retours de la partie test n° 3** (graine chêne-832, 13 ans, 33 min) : la famille noble se sert dans toutes les réserves (elle mourait de faim manoir vide) ; alertes « le village mange plus qu'il ne récolte » et « villageois sans emploi ». 103 tests.
 - 15/11/2026 : **J3 — La lignée** livré, à valider en partie test.
   - Famille du seigneur au manoir (fondateur, épouse, enfant), qui vit, mange, a des enfants et meurt avec le village, sans travailler ni payer d'impôts.
   - Trois lois de succession (masculine seule, les fils d'abord, aînesse absolue), changées par décret appliqué un an plus tard ; ordre de succession complet (petits-enfants, frères et sœurs, neveux).
@@ -91,6 +92,8 @@
 ## Idées notées (à trier)
 - Remariage des veufs et veuves (aujourd'hui un foyer qui perd un parent ne se reforme pas).
 - Arrivées des nouveaux venus selon la tendance des vivres (récolte attendue), pas seulement les réserves.
+- L'or et la pierre s'accumulent sans usage (872 or, 188 pierre à l'an 14) : leur donner un débouché avant ou avec J4 (achat de fief, bâtiments en pierre, achat de vivres).
+- Début de partie rude sur terre pauvre (famine des ans 2 à 4) : conseiller la carte de fertilité à la pose de la première ferme.
 - Lignée : contrepartie pour la loi masculine seule ; décision par défaut pour les cadets ; fécondité propre à la noblesse ; arbre généalogique dessiné.
 - Export de sauvegarde (fichier) inopérant dans la page publiée sur claude.ai : passer par la capacité de téléchargement de l'artefact.
 - Villageois visibles sur la carte (aller au travail, au marché).

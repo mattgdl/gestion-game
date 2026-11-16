@@ -1,6 +1,6 @@
 # DESIGN.md — Jeu de gestion médiéval à dynastie
 
-> **Titre provisoire :** « Seigneurie » (nom de travail, à remplacer) · **Version du document :** 0.7 · **Dernière mise à jour :** 15/11/2026
+> **Titre provisoire :** « Seigneurie » (nom de travail, à remplacer) · **Version du document :** 0.7 · **Dernière mise à jour :** 16/11/2026
 > **Statut :** J3 livré (la lignée), à valider en partie test. Prochain jalon : J4 (s'étendre).
 > Ce document est la référence du projet. En cas de doute, c'est lui qui tranche, et chaque décision y est consignée avec sa raison (section 11).
 
@@ -161,6 +161,8 @@ Règles décidées pendant le développement, à contester si elles ne te convie
 | Prestige | Population (1 par habitant) + or (1 pour 10) + ancienneté de la lignée (2 par an) + successions (20 chacune) + Église et alliances. Affiché dans le bandeau, détaillé dans le panneau Lignée, envoyé au Monde dans le résumé de la barrière. | Premier calcul, prévu au jalon. Titres en J4. |
 | Chronique | Fondation, naissances, mariages, morts, successions, régences, décrets, Église et alliances, datés ; règnes. Fenêtre « Chronique de la lignée » et écran de fin de partie (les deux défaites). | Pilier Transmettre. |
 | Sauvegardes | Format v5. Une partie de J2b reçoit la lignée de départ à son ouverture. | Les vieilles parties restent jouables. |
+| Vivres de la famille noble (correction) | Elle est servie au manoir d'abord, puis dans les entrepôts et les marchés. | Partie test n° 3 : deux épouses et trois enfants du seigneur morts de faim ou de froid, manoir vide à côté d'entrepôts garnis. |
+| Alertes (partie test n° 3) | « Le village mange plus que les champs ne donnent » dès que la récolte attendue est sous la consommation de l'année, même avec des réserves ; « N villageois sans emploi » à partir de 3 bras inoccupés. | La récolte est restée à 330 pendant 8 ans, la consommation est passée de 175 à 441, 14 adultes étaient sans emploi, et rien ne le disait. |
 
 **Ce que montre l'outil `lignee`** (famille du seigneur seule, vivres illimités, 10 graines, 100 ans) : environ 4 règnes par siècle, soit 25 ans par génération (environ 1 h 15 de jeu à vitesse normale ; la première succession vient vers l'an 30 à 45). Avec la même fécondité que le village, un couple noble a 8 à 12 enfants : en mariant l'héritier au prétendant le plus jeune et quelques cadets, aucune extinction en 100 ans, quelle que soit la loi. En mariant l'héritier au prétendant le plus âgé et en envoyant tous les cadets au loin, 2 à 6 lignées sur 10 s'éteignent vers l'an 70. Si l'on marie tous les enfants, la famille passe à plus de 700 personnes en 60 ans : la faim l'arrêtera, mais les décisions deviendront fastidieuses. Dans l'outil `simulate` (village à 9 fermes au plus), une famine longue a éteint la lignée vers l'an 39 : la famille noble meurt de faim comme le village quand le manoir est vide.
 
@@ -444,5 +446,6 @@ jeu-medieval/
 | 15/11/2026 | Journal de partie ajouté à la page publiée, lu par Claude pour analyser les parties de test. | Demande du joueur : suivre ses parties et en tirer des conclusions. |
 | 15/11/2026 | Retours de la première partie test : fiche d'outil, avertissement des champs en trop, reprise automatique, bilan sur quatre saisons. | Analyse du journal de partie et retours du joueur. |
 | 15/11/2026 | J2b : 20 adultes et leurs enfants au départ, naissances tous les 1,5 an par famille, emplois automatiques réglables, foyers qui se ravitaillent eux-mêmes, moral simple. Règles en section 4.3. | Choix du joueur (questions du 15/11), équilibrage avec `simulate`. |
+| 16/11/2026 | Partie test n° 3 (chêne-832, 13 ans, 33 min) : famille noble servie dans toutes les réserves ; alertes de déficit de nourriture et de bras inoccupés. | Analyse du journal de partie. |
 | 15/11/2026 | J3 : trois lois de succession au choix, modifiables par décret appliqué un an plus tard ; conjoint choisi parmi 3 prétendants ; régence avec moral −10 ; avenir des cadets décidé par le joueur (mariage au domaine, Église, alliance). Règles en section 4.4. | Choix du joueur (questions du 15/11). |
 | 15/11/2026 | Nouveaux venus : une famille par an au plus (réglable : fermé, normal, ouvert), s'il reste une maison libre que personne n'attend, 120 jours de vivres et un moral d'au moins 50. Corrections d'interface : maison vide expliquée, bâtiment sans travailleur nommé, journal écrit seulement une fois la partie jouée. | Partie test n° 2 (orge-349, ans 3 à 7) : milieu de partie vide, maisons vides, surplus de nourriture sans usage. Validé par le joueur. |

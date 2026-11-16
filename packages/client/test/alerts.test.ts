@@ -34,9 +34,12 @@ describe("alertes", () => {
     expect(computeAlerts(sim).map((a) => a.text)).toContain(alerts[0]!.text);
   });
 
-  it("ne signale rien quand chaque poste est pourvu", () => {
+  it("signale les bras inoccupés quand chaque poste est pourvu", () => {
     const session = Session.newGame("alertes-ok");
     buildNearStartRoad(session, "eglise");
-    expect(jobAlerts(session.sim)).toEqual([]);
+    const alerts = jobAlerts(session.sim);
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]!.tone).toBe("info");
+    expect(alerts[0]!.text).toContain("sans emploi");
   });
 });

@@ -608,7 +608,7 @@ export class Population {
       if (this.members(f.id).length === 0) continue;
       const target = this.targets(f, season);
       if (f.noble) {
-        // Famille noble : elle se sert directement dans les réserves du manoir.
+        // Famille noble : servie directement, au manoir puis dans les autres réserves.
         if (manor) this.serveFromManor(f, manor, target);
         continue;
       }
@@ -661,21 +661,26 @@ export class Population {
     if (manor) this.serveFromManor(f, manor, this.targets(f, dateOf(this.state.tick).seasonIndex));
   }
 
+  /**
+   * La famille noble se sert au manoir d'abord, puis dans les entrepôts et les marchés :
+   * on lui porte ses vivres, où qu'ils soient rangés (partie test n° 3 : elle mourait de faim
+   * à côté d'entrepôts pleins).
+   */
   private serveFromManor(f: Family, manor: Building, target: { food: number; wood: number }): void {
-    if (f.food < target.food / 2) {
-      const take = Math.min(Math.ceil((target.food - f.food) / 1000), manor.stock.nourriture ?? 0);
-      if (take > 0) {
-        manor.stock.nourriture = (manor.stock.nourriture ?? 0) - take;
-        f.food += take * 1000;
+    const sources = [manor, ...this.state.buildings.filter((b) => b.id !== manor.id && (BUILDINGS[b.type]?.stockage || BUILDINGS[b.type]?.marche))];
+    const draw = (good: "nourriture" | "bois", want: number): number => {
+      let got = 0;
+      for (const src of sources) {
+        if (got >= want) break;
+        const take = Math.min(want - got, src.stock[good] ?? 0);
+        if (take <= 0) continue;
+        src.stock[good] = (src.stock[good] ?? 0) - take;
+        got += take;
       }
-    }
-    if (target.wood > 0 && f.wood < target.wood / 2) {
-      const take = Math.min(Math.ceil((target.wood - f.wood) / 1000), manor.stock.bois ?? 0);
-      if (take > 0) {
-        manor.stock.bois = (manor.stock.bois ?? 0) - take;
-        f.wood += take * 1000;
-      }
-    }
+      return got;
+    };
+    if (f.food < target.food / 2) f.food += draw("nourriture", Math.ceil((target.food - f.food) / 1000)) * 1000;
+    if (target.wood > 0 && f.wood < target.wood / 2) f.wood += draw("bois", Math.ceil((target.wood - f.wood) / 1000)) * 1000;
   }
 
   private deathRate(age: number): number {

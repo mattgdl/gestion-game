@@ -31,6 +31,9 @@ export function computeAlerts(sim: DomainSim): Alert[] {
     const expected = sim.economy.expectedHarvest();
     if (pop.foodAvailable() + expected < yearly) {
       out.push({ tone: "warn", text: `Récolte attendue (${expected}) trop faible pour l'année (${Math.round(yearly)} à manger) : ajoutez une ferme ou des champs.` });
+    } else if (expected < yearly) {
+      // Les réserves cachent le déficit : on prévient avant qu'elles soient vides.
+      out.push({ tone: "warn", text: `Le village mange plus (${Math.round(yearly)} par an) que les champs ne donnent (${expected}) : les réserves fondent. Ajoutez une ferme.` });
     }
   }
 
@@ -120,6 +123,11 @@ export function jobAlerts(sim: DomainSim): Alert[] {
     });
   }
   if (partial.length > 0) out.push({ tone: "info", text: `Postes vacants, faute de bras : ${partial.join(", ")}.` });
+  const c = pop.counts();
+  const idle = c.workers - c.employed;
+  if (idle >= 3 && stopped.size === 0 && partial.length === 0) {
+    out.push({ tone: "info", text: `${idle} villageois en âge de travailler sont sans emploi : bâtissez de quoi les occuper (ferme, bûcheron…).` });
+  }
   return out;
 }
 

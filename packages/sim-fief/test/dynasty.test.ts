@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DAY_TICKS, type DomainSim, type DynastyMember, type Sex, type Villager } from "../src";
-import { labGame, manorOf, newGame, runUntil } from "./helpers";
+import { build, labGame, manorOf, newGame, road, runUntil } from "./helpers";
 
 const YEAR = 1800;
 
@@ -74,6 +74,19 @@ describe("fondation de la lignée", () => {
     const nobles = sim.state.villagers.filter((v) => v.noble).map((v) => v.id);
     for (const id of nobles) expect(sim.population.jobOf(id)).toBeNull();
     expect(sim.population.counts().nobles).toBe(3);
+  });
+
+  it("est servie dans les entrepôts quand le manoir est vide", () => {
+    const { sim, world } = labGame();
+    road(sim, 73, 27, 76, 27);
+    const depot = build(sim, "entrepot", 74, 28);
+    depot.stock = { nourriture: 50 };
+    manorOf(sim).stock.nourriture = 0;
+    const fam = sim.state.families.find((f) => f.noble)!;
+    fam.food = 0;
+    runUntil(sim, world, DAY_TICKS + 1);
+    expect(fam.food).toBeGreaterThan(0);
+    expect(depot.stock.nourriture).toBeLessThan(50);
   });
 
   it("est la même pour la même graine", () => {
