@@ -1,6 +1,6 @@
 import type { GoodId } from "@jeu/sim-fief";
 /**
- * Couleurs de la carte (placeholders jusqu'à J6). Aucune règle de jeu ici.
+ * Couleurs de la carte (placeholders jusqu'à J9). Aucune règle de jeu ici.
  * Les couleurs des seigneurs reprennent les émaux de l'héraldique.
  */
 import { Terrain } from "@jeu/shared";

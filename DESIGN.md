@@ -1,7 +1,7 @@
 # DESIGN.md — Jeu de gestion médiéval à dynastie
 
 > **Titre provisoire :** « Seigneurie » (nom de travail, à remplacer) · **Version du document :** 0.9 · **Dernière mise à jour :** 16/11/2026
-> **Statut :** J4b validé par le joueur (partie test n° 5). Prochain jalon : J5 (prototype multi).
+> **Statut :** J4b validé par le joueur (partie test n° 5). Prochain jalon : J4c (réglages), puis voisins IA et commerce (J5), guerre (J6), événements et traits (J7), multi (J8).
 > Ce document est la référence du projet. En cas de doute, c'est lui qui tranche, et chaque décision y est consignée avec sa raison (section 11).
 
 ## Sommaire
@@ -61,7 +61,7 @@ Une fonctionnalité qui ne sert aucun pilier va dans la ROADMAP, rubrique « peu
 | Chronique | Écran « Chronique de la dynastie » en fin de partie. | Pilier Transmettre. |
 | Multijoueur | Sessions synchrones, Cloudflare Workers + Durable Objects, barrière annuelle. | Évite la synchronisation complète des simulations. |
 | Architecture | Couches Fief et Monde séparées, simulation en TypeScript pur, état en JSON, commandes, ticks à pas fixe, aléatoire à graine. | Permet le multi et les tests sans réécriture. |
-| Graphismes | Formes simples (placeholders) jusqu'à J6. | Valider le fun avant de dessiner. |
+| Graphismes | Formes simples (placeholders) jusqu'à J9. | Valider le fun avant de dessiner. |
 
 ---
 
@@ -83,7 +83,7 @@ Règles décidées pendant le développement, à contester si elles ne te convie
 | Exigences de terrain | Bûcheron à moins de 4 cases d'une forêt, carrière à moins de 3 cases d'une roche. | Lisibilité : le terrain dicte l'emplacement. |
 | Départ | Manoir au centre du fief, 5 routes, 100 nourriture, 150 bois, 60 pierre, 200 or. Centre dégagé, forêt et roche garanties dans le fief de départ. | Un départ jouable quelle que soit la graine. |
 | Sauvegarde | Emplacement manuel + sauvegarde automatique à chaque bilan d'automne, export et import en texte. | Les fichiers à télécharger ne fonctionnent pas dans la version publiée. |
-| Interface | Une seule ambiance sombre ; couleurs des seigneurs tirées des émaux héraldiques (azur pour le joueur). | Placeholder cohérent jusqu'à J6. |
+| Interface | Une seule ambiance sombre ; couleurs des seigneurs tirées des émaux héraldiques (azur pour le joueur). | Placeholder cohérent jusqu'à J9. |
 
 ### 4.2 J2a — L'économie circule
 
@@ -224,7 +224,7 @@ Principe : les marchandises circulent vraiment sur les routes, avec un temps de 
 
 - **Le réseau de routes est un graphe.** Les itinéraires (bâtiment ↔ entrepôt, maison ↔ lieu de travail) sont calculés une fois, puis recalculés seulement quand une route est construite ou détruite.
 - **Une livraison est un trajet planifié** : départ, durée (selon la longueur de l'itinéraire), quantité, capacité du porteur ou de la charrette. La simulation sait où en est chaque livraison sans la faire avancer tuile par tuile.
-- **Ce que tu vois est ce qui est simulé.** L'affichage anime les porteurs le long des itinéraires à partir de ces trajets : de simples points en J2, de vrais porteurs et charrettes en J6.
+- **Ce que tu vois est ce qui est simulé.** L'affichage anime les porteurs le long des itinéraires à partir de ces trajets : de simples points en J2, de vrais porteurs et charrettes en J9.
 - **Livré en J2a :** porteurs des ateliers et des fermes vers le manoir et les entrepôts. Chiffres et règles en section 4.2.
 - **Trajet domicile-travail :** temps de marche calculé de la même façon, qui réduit le temps de travail effectif. Une maison éloignée de la ferme rend la ferme moins productive.
 - **Effets de gameplay :** l'emplacement des entrepôts et des routes compte vraiment ; un village étalé est moins efficace ; les goulots d'étranglement se voient.
@@ -413,12 +413,12 @@ jeu-medieval/
 │  │  │  ├─ camera/           ← zoom à trois niveaux, souris et clavier
 │  │  │  ├─ render/           ← couleurs et sol (aucune règle de jeu)
 │  │  │  ├─ ui/               ← interface : bandeau, outils, panneau, fenêtres
-│  │  │  ├─ world-gateway/    ← LocalWorld (solo) ; RemoteWorld en J5
+│  │  │  ├─ world-gateway/    ← LocalWorld (solo) ; RemoteWorld en J8
 │  │  │  ├─ telemetry/        ← journal de partie (base de l'artefact claude.ai)
 │  │  │  └─ save/             ← format de sauvegarde, migrations, emplacements
 │  │  └─ test/                ← sauvegarde et déterminisme
 │  │
-│  └─ server/                 ← à partir de J5 : Cloudflare Worker + Durable Object
+│  └─ server/                 ← à partir de J8 : Cloudflare Worker + Durable Object
 │
 └─ tools/
    ├─ artifact.mjs            ← prépare la version publiable du jeu
@@ -426,7 +426,7 @@ jeu-medieval/
    └─ simulate.ts             ← N années d'un village type sans affichage → CSV
 ```
 
-**Outils :** Vitest (tests), tsx (scripts TypeScript), Vite + vite-plugin-singlefile (jeu en un seul fichier HTML). Wrangler (déploiement Cloudflare) à partir de J5.
+**Outils :** Vitest (tests), tsx (scripts TypeScript), Vite + vite-plugin-singlefile (jeu en un seul fichier HTML). Wrangler (déploiement Cloudflare) à partir de J8.
 
 ---
 
@@ -442,7 +442,7 @@ jeu-medieval/
 - **Après la partie test de J4 :**
   - Voir le village d'un voisin sur la carte avant de l'acheter (instantané visuel).
   - D'autres usages de l'or (après un premier achat, il s'accumule de nouveau).
-- **Avant J6 (graphismes) :**
+- **Avant J9 (graphismes) :**
   - Taille des tuiles (32 px ? 48 px ?) et style graphique.
 - **Général :**
   - Titre du jeu.
@@ -487,6 +487,7 @@ jeu-medieval/
 | 15/11/2026 | J2b : 20 adultes et leurs enfants au départ, naissances tous les 1,5 an par famille, emplois automatiques réglables, foyers qui se ravitaillent eux-mêmes, moral simple. Règles en section 4.3. | Choix du joueur (questions du 15/11), équilibrage avec `simulate`. |
 | 16/11/2026 | J4b, intercalé avant le multi : besoins outils et vêtements (forge, bergerie, tisserand), maladie et guérisseur, natalité selon le moral et les besoins, foire d'automne. Règles en section 4.6. | Partie test n° 4 : chômage massif et ennui en fin de partie ; choix du joueur (questions du 16/11). |
 | 16/11/2026 | J4b validé (partie test n° 5, 22 ans, environ 70 min, baron à l'an 21). Points à reprendre notés dans ROADMAP : couverture des vêtements tout ou rien, outils trop faciles, alerte des guérisseurs, foire peu utilisée, moral plafonné et natalité rapide. | Retour du joueur et analyse du journal. |
+| 16/11/2026 | Roadmap revue : J4c (réglages), puis voisins IA et commerce (J5), guerre et conquête (J6), événements et traits (J7) avant le multi (J8) ; équilibrage et graphismes en J9 ; mariages diplomatiques, branche cadette et multi à 3-8 après. Garde-fou : chaque nouveauté se résout au bilan et passe par les messages entre couches. | Choix du joueur : la V2 compte plus que le multi et nourrit l'équilibrage. |
 | 16/11/2026 | Partie test n° 4 (orge-349 en 5 × 5, 25 ans, environ 45 min) : église par fief, routes en or et pierre, correction du ravitaillement entre fiefs, alerte de vivres lointains. Chômage et ennui de fin de partie notés pour la suite. | Retours du joueur et analyse du journal. |
 | 16/11/2026 | J4 : carte 5 × 5, fiefs achetés avec leur village et une maison forte, négociation avec prix plancher secret, titres par fiefs et population. Règles en section 4.5. | Choix du joueur (questions du 16/11). |
 | 16/11/2026 | Partie test n° 3 (chêne-832, 13 ans, 33 min) : famille noble servie dans toutes les réserves ; alertes de déficit de nourriture et de bras inoccupés. | Analyse du journal de partie. |

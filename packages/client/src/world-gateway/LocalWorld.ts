@@ -1,7 +1,7 @@
 /**
  * Passerelle vers la couche Monde.
  * - Solo : LocalWorld, le Monde tourne dans le navigateur et répond tout de suite.
- * - Multi (J5) : RemoteWorld, même interface, mais la réponse arrive du serveur par WebSocket.
+ * - Multi (J8) : RemoteWorld, même interface, mais la réponse arrive du serveur par WebSocket.
  */
 import type { BarrierInput, BarrierResult } from "@jeu/shared";
 import { resolveBarrier, type WorldState } from "@jeu/sim-monde";

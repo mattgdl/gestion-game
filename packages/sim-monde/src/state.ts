@@ -1,6 +1,6 @@
 /**
  * État de la couche Monde : qui possède quel fief, les seigneurs, l'année en cours.
- * Sérialisable en JSON. En solo il vit dans le navigateur ; en multi (J5) dans le serveur.
+ * Sérialisable en JSON. En solo il vit dans le navigateur ; en multi (J8) dans le serveur.
  */
 import type { DominantId, FiefSummary, LineageSetup, WorldDims } from "@jeu/shared";
 

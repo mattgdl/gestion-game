@@ -1,15 +1,36 @@
 # ROADMAP.md
 
-> Mise à jour : 16/11/2026 · Référence des règles : DESIGN.md (v0.8)
+> Mise à jour : 16/11/2026 · Référence des règles : DESIGN.md (v0.9)
 > Chaque jalon se termine par un jeu qui se lance et se joue. Une idée qui sort du jalon en cours est notée ici, pas codée.
 
 ## En cours
 
-- Rien. Prochain jalon : **J5 — Prototype multi**, à lancer quand le joueur le décide. Critère J3 (deux successions) encore à vérifier dans une partie longue.
+- Rien. Prochain jalon : **J4c — Réglages**. Critère J3 (deux successions) encore à vérifier dans une partie longue.
 
 ## À faire
 
-### J5 — Prototype multi (2 joueurs)
+> **Ordre revu le 16/11/2026** (choix du joueur) : une partie de la V2 passe avant le multi. Elle donne plus de jeu au solo et de la matière pour l'équilibrage. Garde-fou : chaque nouveauté se résout au bilan d'automne, passe par les messages de `shared/src/messages.ts` et reste déterministe, pour que le multi n'ait rien à réécrire.
+
+### J4c — Réglages (courte passe)
+- Vêtements : couverture proportionnelle (plus de « tout ou rien ») et message qui dit où la chaîne bloque (laine, tisserand).
+- Guérisseurs : remèdes gardés sur place, plus d'alerte « porteurs ».
+- Foire : la vente doit valoir le clic ; journal de la foire de l'année seulement.
+- Moral et natalité : moins de plafond à 99, naissances freinées sans vêtements.
+- **Critère de fin :** une partie de 20 ans où les vêtements sont couverts avec 2 ou 3 bergeries, la foire sert, et le chômage reste contenu.
+
+### J5 — Voisins IA et commerce
+- Seigneurs IA qui vivent : leurs villages grandissent, ils achètent des fiefs libres, vendent, refusent.
+- Commerce entre fiefs : convois et accords récurrents (débouché des surplus).
+- Nouveaux métiers liés au commerce.
+
+### J6 — Guerre et conquête
+- Soldats (métier qui absorbe le chômage), conquête résolue par calcul au bilan d'automne.
+
+### J7 — Événements et traits
+- Événements saisonniers annoncés, choix au bilan d'automne.
+- Traits des personnages (seigneur, héritiers, conjoints).
+
+### J8 — Prototype multi (2 joueurs)
 - Cloudflare Worker + Durable Object (une salle par partie), RemoteWorld, WebSockets.
 - Barrière annuelle en réseau, délai maximal pour un joueur absent.
 - Instantanés visuels des voisins (`NeighborView`), achat de terres entre joueurs.
@@ -17,19 +38,14 @@
 - Architecture prête pour 8 joueurs ; tests à 2.
 - **Critère de fin :** deux joueurs sur deux PC finissent une partie de 30 ans.
 
-### J6 — Équilibrage et graphismes
-- Équilibrage avec `simulate` et des parties tests.
+### J9 — Équilibrage et graphismes
+- Équilibrage avec `simulate` et des parties tests (solo et multi).
 - Vrais visuels (vue 3/4), animations des porteurs et charrettes, sons.
 
-## V2 — Candidats
+## V2 — Candidats (après le multi)
 - Mariages diplomatiques et héritage de fiefs.
-- Guerre et conquête (résolues par calcul).
-- Maladies et événements saisonniers (choix au bilan d'automne).
-- Voisins IA actifs.
-- Commerce entre fiefs : convois et accords récurrents.
 - Branche cadette pour un joueur éliminé (option de partie).
 - Multi à 3-4 joueurs équilibré, puis mode « grande partie » à 8.
-- Traits de personnages.
 
 ## Peut-être (idées sans pilier validé)
 - *(vide)*
