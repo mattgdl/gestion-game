@@ -14,6 +14,7 @@
  */
 import { RESOURCE_IDS, SAVE_VERSION } from "@jeu/shared";
 import { BUILDINGS, type CheckResult, type Command, type DomainSim, type Goods } from "@jeu/sim-fief";
+import type { WorldState } from "@jeu/sim-monde";
 import type { Session } from "../game/Session";
 import { serializeSave } from "../save/save";
 
@@ -148,6 +149,36 @@ export function domainSnapshot(sim: DomainSim): Record<string, unknown> {
     fermes: farms,
     routes: sim.state.roads.length,
     champs: sim.state.fields.length,
+  };
+}
+
+/** Commerce et seigneurs IA (J5), au bilan : accords, convois, voisins, achats entre seigneurs. */
+export function worldSnapshot(world: WorldState, sim: DomainSim): Record<string, unknown> {
+  const t = sim.state.trade;
+  const ais = world.lords.filter((l) => l.ai && world.fiefs.some((f) => f.ownerId === l.id));
+  return {
+    commerce: {
+      relais: sim.trade.relays().length,
+      propositions: t.proposals.map((p) => ({ seigneur: p.terms.partnerId, marchandise: p.terms.good, sens: p.terms.side, parAn: p.terms.perYear, prix: p.terms.price })),
+      accords: t.agreements.map((a) => ({
+        seigneur: a.terms.partnerId,
+        marchandise: a.terms.good,
+        sens: a.terms.side,
+        parAn: a.terms.perYear,
+        prix: a.terms.price,
+        fait: a.done,
+        du: sim.trade.due(a),
+        jusqua: a.terms.lastYear,
+      })),
+      convois: t.convoys.length,
+      enAttente: t.pending.length,
+    },
+    seigneursIA: ais.length,
+    plusGrands: ais
+      .map((l) => ({ nom: l.name, archetype: l.ai!.archetype, fiefs: world.fiefs.filter((f) => f.ownerId === l.id).length, or: l.ai!.gold, relation: l.ai!.relations[sim.state.ownerId] ?? 0 }))
+      .sort((a, b) => b.fiefs - a.fiefs || b.or - a.or)
+      .slice(0, 5),
+    rumeurs: ais.filter((l) => l.ai!.plan).map((l) => ({ seigneur: l.name, cible: l.ai!.plan!.fiefId })),
   };
 }
 
@@ -290,6 +321,7 @@ export class Journal {
       annee: year,
       ecritLe: new Date().toISOString(),
       ...domainSnapshot(sim),
+      monde: worldSnapshot(this.session.world, sim),
       production: stats.produced,
       moisson: { nourriture: stats.harvested, champs: stats.fieldsHarvested },
       demographie: {

@@ -45,6 +45,7 @@ export interface IaDef {
     dureeAns: [number, number];
     expirationAns: number;
     propositionsMax: number;
+    propositionsParAn: number;
     relation: { honore: number; partiel: number; rompu: number; min: number; max: number };
     seuilPartiel: number;
     accordsMaxParSeigneur: number;

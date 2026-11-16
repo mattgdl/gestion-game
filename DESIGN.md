@@ -1,7 +1,7 @@
 # DESIGN.md — Jeu de gestion médiéval à dynastie
 
 > **Titre provisoire :** « Seigneurie » (nom de travail, à remplacer) · **Version du document :** 0.9 · **Dernière mise à jour :** 16/11/2026
-> **Statut :** J4c validé par le joueur. Prochain jalon : voisins IA et commerce (J5), guerre (J6), événements et traits (J7), multi (J8).
+> **Statut :** J5 livré (voisins IA et commerce), à valider en partie test. Ensuite : guerre (J6), événements et traits (J7), multi (J8).
 > Ce document est la référence du projet. En cas de doute, c'est lui qui tranche, et chaque décision y est consignée avec sa raison (section 11).
 
 ## Sommaire
@@ -218,6 +218,23 @@ Règles décidées pendant le développement, à contester si elles ne te convie
 
 **Ce que montre l'outil `simulate`** (graine-a, 30 ans) : les vêtements sont servis à 40-90 % dès que la chaîne tourne (contre 0-20 % avant) ; population et chômage proches d'avant (environ 190 habitants, 15 sans emploi), le malus de chômage n'apparaît qu'en fin de partie.
 
+### 4.8 J5 — Voisins IA et commerce
+
+| Sujet | Règle | Raison |
+|---|---|---|
+| Archétypes | 10 archétypes de seigneurs IA (Bâtisseur, Marchand, Avare, Conquérant, Pieux, Prodigue, Reclus, Opportuniste, Laboureur, Diplomate), fiches dans `packages/data/ia.json` : ambition, épargne, croissance, prix de vente des terres, marge commerciale, envie de commercer, fiabilité, relation de départ, gain de relation, goût de la guerre (pour J6), production en plus. Tirés à tour de rôle avec une graine dérivée : chacun est présent 2 ou 3 fois sur une carte 5 × 5. | Choix du joueur : une dizaine d'archétypes, IA légères (utiles pour la guerre). |
+| Vie d'un seigneur IA | Rien n'est bâti : à chaque bilan, ses villages produisent selon le terrain (par foyer et par an : plaines 22 vivres ; forêt 16 vivres + 12 bois ; pierre 16 vivres + 8 pierre ; rivière 18 vivres + 5 laine), mangent 16 vivres et usent 4 bois, 1 outil et 2 vêtements (qu'ils ne fabriquent pas), paient 6 or d'impôt. Réserves plafonnées à 400 par marchandise et par fief. Un village bien nourri gagne un foyer avec 35 % de chances × croissance de l'archétype (14 au plus) ; affamé, il en perd un une fois sur deux. Or de départ 300 à 700. | Un monde qui vit sans coûter de calcul ; des besoins (outils, vêtements) qui font du joueur un fournisseur. |
+| Relation | De −100 à +100 avec chaque domaine joueur. Départ selon l'archétype (± 10). Accord honoré (80 % livré ou plus) : +5 × gain de l'archétype ; en dessous : −3 ; rupture par le joueur : −15. Elle change le prix des terres et du commerce (2 ‰ par point) ; à −50 ou moins, le seigneur refuse de traiter. | Préparer la diplomatie et la guerre (J6). |
+| Achats entre seigneurs | Un seigneur IA qui peut payer un fief voisin (son or moins son épargne) prépare l'achat selon son ambition : le moins cher (le plus cher pour un conquérant). La **rumeur** court un an (alerte et chronique si la cible touche le domaine), puis il offre la valeur × 0,95 à 1,25 selon son ambition. Ses offres passent avec celles du joueur : la plus haute l'emporte, si elle atteint le plancher du vendeur. Un seigneur IA ne vend jamais un fief à un joueur qui ne le touche pas, et n'achète jamais un fief de joueur. Le vendeur IA encaisse le prix ; un seigneur sans terre disparaît de la carte. | Choix du joueur : concurrence pour les terres, lisible et contrable (surenchère). |
+| Prix des terres | Plancher secret = valeur × tirage annuel (0,85 à 1,35) × facteur du vendeur (plancher de l'archétype, corrigé par la relation). La fourchette des conseillers inclut ce facteur. | Un avare vend cher, un prodigue brade, une bonne relation aide. |
+| Prix du commerce | Prix de base (vivres 3, bois 2, pierre 3, laine 3, outils 8, vêtements 11) × terrain du partenaire (0,75 s'il produit la marchandise, 1,3 s'il en consomme sans en produire) ± marge de l'archétype ± relation. | Choix du joueur : prix selon la géographie. Les outils et vêtements se vendent bien partout. |
+| Accords | Un accord = marchandise, sens, quantité par an, prix unitaire, durée (2 à 4 ans, 5 pour un diplomate). Le seigneur IA propose au plus 1 accord par bilan (2 en attente au plus, valables un an) s'il est à 2 fiefs ou moins ; accepté, il court tout de suite (dû au prorata de l'année restante). Le joueur peut proposer : réponse au bilan, livraisons l'an suivant ; refus si le prix est moins bon que le sien, la quantité au-delà de ses besoins (vente) ou de son surplus (achat), ou s'il ne peut payer. Pas d'achat et de vente de la même marchandise en même temps. 2 accords au plus par seigneur. Un seigneur IA rompt un accord avec la chance (1000 − fiabilité) / 2 ‰ par an. | Choix du joueur : accords annuels + relais. |
+| Relais | 3 × 2 ; 40 bois, 20 pierre, 20 or ; 3 charretiers, 3 porteurs (10 par voyage). Les porteurs y rassemblent ce qu'il faut livrer et rangent ce qui a été acheté. Une charrette par charretier, 30 marchandises au plus, 10 jours de route par fief de distance (aller), autant au retour. Vente : comptée à l'arrivée, payée au bilan (par l'or du seigneur IA). Achat : la charrette ne part que si le trésor peut payer, paie sur place. | Choix du joueur : convois visibles et temps de trajet. Un voisin lointain = moins d'allers-retours par an ; des emplois. |
+| Interface | Panneau Commerce : propositions (accepter, refuser), accords en cours (livré / dû, charrettes, rompre en deux clics), vos propositions (retirer), fenêtre « Proposer un accord » avec le marché du seigneur (ce qu'il vend, ce qui lui manque, ses prix). Domaine et voisins : archétype et relation de chaque voisin, rumeurs. Étiquettes de la vue Monde : archétype, relation, « convoite … ». Charrettes dessinées sur la carte à tous les zooms. Alertes : rumeur, proposition en attente, accord sans relais ou sans charretier, accord en retard à l'automne. Bilan : accords réglés dans « Affaires ». Touche Y : relais. | |
+| Sauvegardes | Format v8 : les seigneurs IA des vieilles parties reçoivent leur archétype (tiré de la graine du monde). | |
+
+**Ce que montre un monde sans joueur sur 40 ans** (graines orge-349, a, b) : aucun achat les 5 premières années, puis 1 à 3 achats entre seigneurs vers l'an 10, 5 à 14 vers l'an 20 ; il reste 9 à 16 seigneurs à l'an 40 (24 au départ). Le joueur reçoit environ une proposition par an. L'or des seigneurs IA s'accumule (3 000 à 6 000 à l'an 40) : à surveiller à l'équilibrage (J9).
+
 ## 5. Systèmes clés
 
 ### 5.1 Carte et caméra
@@ -413,9 +430,11 @@ jeu-medieval/
 │  │  ├─ src/
 │  │  │  ├─ state.ts          ← fiefs, seigneurs, année
 │  │  │  ├─ worldgen.ts       ← création du monde à partir d'une graine
-│  │  │  ├─ barrier.ts        ← barrière annuelle : achats de fiefs, villages voisins
-│  │  │  ├─ fiefs.ts          ← valeur des fiefs, prix plancher, villages des voisins
-│  │  │  └─ ai/neighbors.ts   ← voisins IA (passifs en V1)
+│  │  │  ├─ barrier.ts        ← barrière annuelle : commerce, achats de fiefs, vie des IA
+│  │  │  ├─ fiefs.ts          ← valeur des fiefs, prix plancher
+│  │  │  ├─ trade.ts          ← prix, propositions et règlement des accords (J5)
+│  │  │  ├─ ai/archetypes.ts  ← archétypes des seigneurs IA (J5)
+│  │  │  └─ ai/neighbors.ts   ← vie des seigneurs IA : économie, croissance, achats (J5)
 │  │  └─ test/
 │  │
 │  ├─ client/                 ← le jeu affiché : Phaser 4 + Vite
@@ -504,6 +523,7 @@ jeu-medieval/
 | 16/11/2026 | Roadmap revue : J4c (réglages), puis voisins IA et commerce (J5), guerre et conquête (J6), événements et traits (J7) avant le multi (J8) ; équilibrage et graphismes en J9 ; mariages diplomatiques, branche cadette et multi à 3-8 après. Garde-fou : chaque nouveauté se résout au bilan et passe par les messages entre couches. | Choix du joueur : la V2 compte plus que le multi et nourrit l'équilibrage. |
 | 16/11/2026 | J4c : couverture des besoins proportionnelle, chaîne expliquée, vêtements 0,4 par an, malus de moral « Bras inoccupés », natalité = moral × besoins, guérisseur sans fausse alerte, foire plus rentable. Règles en section 4.7. | Partie test n° 5. |
 | 16/11/2026 | J4c validé par le joueur ; le guérisseur soigne tout son fief au lieu de 12 cases autour de lui. | Retour du joueur : condition de placement trop particulière. |
+| 16/11/2026 | J5 : 10 archétypes de seigneurs IA (économie au bilan, croissance, rumeurs et achats entre seigneurs, relation), accords de commerce proposés dans les deux sens, prix selon le terrain, relais et charrettes visibles. Règles en section 4.8. | Choix du joueur (questions du 16/11) : archétypes, concurrence pour les terres, accords + convois visibles, prix géographiques. |
 | 16/11/2026 | Partie test n° 4 (orge-349 en 5 × 5, 25 ans, environ 45 min) : église par fief, routes en or et pierre, correction du ravitaillement entre fiefs, alerte de vivres lointains. Chômage et ennui de fin de partie notés pour la suite. | Retours du joueur et analyse du journal. |
 | 16/11/2026 | J4 : carte 5 × 5, fiefs achetés avec leur village et une maison forte, négociation avec prix plancher secret, titres par fiefs et population. Règles en section 4.5. | Choix du joueur (questions du 16/11). |
 | 16/11/2026 | Partie test n° 3 (chêne-832, 13 ans, 33 min) : famille noble servie dans toutes les réserves ; alertes de déficit de nourriture et de bras inoccupés. | Analyse du journal de partie. |

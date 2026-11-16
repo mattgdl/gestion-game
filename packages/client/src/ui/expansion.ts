@@ -4,8 +4,9 @@
  */
 import { DOMINANTS, deNom } from "@jeu/shared";
 import { TITLES, titleDef, type DomainSim } from "@jeu/sim-fief";
-import { PLAYER_ID, adjacent, lordById, priceRange, type FiefMeta, type WorldState } from "@jeu/sim-monde";
+import { PLAYER_ID, adjacent, archetypeOf, lordById, priceRange, type FiefMeta, type WorldState } from "@jeu/sim-monde";
 import { escapeHtml } from "./format";
+import { lordTag, rumors } from "./trade";
 
 const e = escapeHtml;
 
@@ -62,7 +63,7 @@ export function domainPanelHtml(world: WorldState, sim: DomainSim): string {
           : `<button type="button" class="btn btn-small btn-primary" data-offer="${meta.id}">Faire une offre</button>`;
       return `<li class="sale">
         <button type="button" class="sale-name" data-fief="${meta.id}">${e(meta.name)}</button>
-        <span class="muted small">${e(DOMINANTS[meta.dominant].nom)} · ${e(lord?.name ?? "")}</span>
+        <span class="muted small">${e(DOMINANTS[meta.dominant].nom)} · ${e(lord?.name ?? "")}${lord?.ai ? ` · ${lordTag(lord, sim.state.ownerId)}` : ""}</span>
         <span class="small">Village : ${meta.households} foyer${meta.households > 1 ? "s" : ""} · ${landText(meta)}</span>
         <span class="small">Estimé entre <strong>${range[0]}</strong> et <strong>${range[1]}</strong> or</span>
         <span class="sale-actions">${action}</span>
@@ -70,10 +71,13 @@ export function domainPanelHtml(world: WorldState, sim: DomainSim): string {
     })
     .join("");
   const others = world.fiefs.filter((f) => f.ownerId !== PLAYER_ID).length - neighbors.length;
+  const talk = rumors(world, sim.state.ownerId);
+  const rumorHtml = talk.length > 0 ? `<h3>Rumeurs</h3><ul class="rumors">${talk.map((t) => `<li class="small warn">${e(t)}</li>`).join("")}</ul>` : "";
   return `${nextTitleHtml(sim)}
     <h3>Vos fiefs</h3><ul class="fief-list">${myList}</ul>
     <h3>Voisins à vendre</h3>
     ${cards ? `<ul class="sales">${cards}</ul>` : `<p class="muted small">Aucun fief à vendre ne touche les vôtres.</p>`}
+    ${rumorHtml}
     ${others > 0 ? `<p class="muted small">${others} autre${others > 1 ? "s" : ""} fief${others > 1 ? "s" : ""} plus loin : achetable${others > 1 ? "s" : ""} quand il${others > 1 ? "s toucheront" : " touchera"} les vôtres.</p>` : ""}`;
 }
 
@@ -87,7 +91,8 @@ export function offerHtml(world: WorldState, sim: DomainSim, fiefId: string): { 
   return {
     title: `Acheter ${n.meta.name}`,
     body: `<p>${e(lord?.name ?? "Son seigneur")} possède ${e(n.meta.name)} : ${e(DOMINANTS[n.meta.dominant].nom.toLowerCase())}, un village de ${n.meta.households} foyer${n.meta.households > 1 ? "s" : ""}, ${landText(n.meta)}.</p>
-      <p>Vos conseillers l'estiment entre <strong>${n.range[0]}</strong> et <strong>${n.range[1]}</strong> or. Le seigneur a son prix, qu'il ne dit pas ; il change d'une année à l'autre.</p>
+      ${lord?.ai ? `<p class="small">${e(lord.name)} : ${lordTag(lord, sim.state.ownerId)}. ${e(archetypeOf(lord.ai.archetype).description)}</p>` : ""}
+      <p>Vos conseillers l'estiment entre <strong>${n.range[0]}</strong> et <strong>${n.range[1]}</strong> or. Le seigneur a son prix, qu'il ne dit pas ; il change d'une année à l'autre, selon son caractère et ce qu'il pense de vous.</p>
       <label class="offer-row">Votre offre <input type="number" min="1" max="${gold}" step="10" value="${suggested}" data-el="offerPrice" /> or <span class="muted small">(trésor : ${gold} or)</span></label>
       <p class="muted small">L'or est mis de côté tout de suite. Réponse au bilan d'automne : si le seigneur accepte, le fief et son village sont à vous ; sinon l'or revient, avec son avis. Vous pouvez retirer l'offre avant.</p>
       <p class="warn small" data-el="offerError" hidden></p>

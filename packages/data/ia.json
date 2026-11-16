@@ -157,8 +157,8 @@
   ],
   "relationAleatoire": 10,
   "orDepart": [
-    100,
-    300
+    300,
+    700
   ],
   "economie": {
     "productionParFoyer": {
@@ -184,7 +184,7 @@
       "outils": 1,
       "vetements": 2
     },
-    "impotsParFoyer": 4,
+    "impotsParFoyer": 6,
     "reserveMax": 400,
     "reserveDepartAnnees": 1
   },
@@ -199,7 +199,7 @@
     "famineParAn": 500
   },
   "commerce": {
-    "_doc": "Accords de commerce (J5). Prix d'une unité = prixBase × facteur du terrain du partenaire (produitPourMille s'il produit cette marchandise, manquePourMille s'il en consomme sans en produire, 1000 sinon), ± la marge de son archétype (il vend plus cher, achète moins cher), ± relationPourMilleParPoint par point de relation (une bonne relation donne de meilleurs prix). Un accord dure entre dureeAns ; une proposition d'un seigneur IA reste valable expirationAns an ; au plus propositionsMax propositions en attente par domaine et accordsMaxParSeigneur accords par seigneur IA. Au bilan, un accord livré à seuilPartiel ‰ ou plus est honoré (relation + honore), en dessous il est partiel (relation + partiel) ; une rupture coûte rompu.",
+    "_doc": "Accords de commerce (J5). Prix d'une unité = prixBase × facteur du terrain du partenaire (produitPourMille s'il produit cette marchandise, manquePourMille s'il en consomme sans en produire, 1000 sinon), ± la marge de son archétype (il vend plus cher, achète moins cher), ± relationPourMilleParPoint par point de relation (une bonne relation donne de meilleurs prix). Un accord dure entre dureeAns ; une proposition d'un seigneur IA reste valable expirationAns an ; au plus propositionsParAn nouvelle proposition par bilan et propositionsMax en attente par domaine et accordsMaxParSeigneur accords par seigneur IA. Au bilan, un accord livré à seuilPartiel ‰ ou plus est honoré (relation + honore), en dessous il est partiel (relation + partiel) ; une rupture coûte rompu.",
     "prixBase": {
       "nourriture": 3,
       "bois": 2,
@@ -216,7 +216,7 @@
       4
     ],
     "expirationAns": 1,
-    "propositionsMax": 3,
+    "propositionsMax": 2,
     "relation": {
       "honore": 5,
       "partiel": -3,
@@ -225,6 +225,7 @@
       "max": 100
     },
     "seuilPartiel": 800,
-    "accordsMaxParSeigneur": 2
+    "accordsMaxParSeigneur": 2,
+    "propositionsParAn": 1
   }
 }

@@ -4,7 +4,7 @@
  * Lit l'état de la simulation, ne le modifie jamais.
  */
 import Phaser from "phaser";
-import { generateFiefTerrain } from "@jeu/shared";
+import { generateFiefTerrain, parseFiefId } from "@jeu/shared";
 import { BUILDINGS, GOOD_IDS, type Building, type DomainSim } from "@jeu/sim-fief";
 import { lordById } from "@jeu/sim-monde";
 import { CameraController } from "../camera/CameraController";
@@ -30,11 +30,14 @@ export class MapScene extends Phaser.Scene {
   private routesGfx!: Phaser.GameObjects.Graphics;
   private badges!: Phaser.GameObjects.Graphics;
   private porters!: Phaser.GameObjects.Graphics;
+  private convoys!: Phaser.GameObjects.Graphics;
   private overlay!: Phaser.GameObjects.Graphics;
   private ghost!: Phaser.GameObjects.Graphics;
   private labels: Phaser.GameObjects.Text[] = [];
   private drawn = { mapVersion: -1, season: -1, level: "", selection: -2, zoomBucket: -1, session: -1 };
   private drawnFields = { key: "" };
+  /** Année du Monde au dernier dessin des frontières : un fief IA a pu changer de seigneur. */
+  private drawnWorldYear = -1;
   private badgeTimer = 0;
   private sessionCounter = 0;
   private boundSession: unknown = null;
@@ -55,6 +58,7 @@ export class MapScene extends Phaser.Scene {
     this.badges = this.add.graphics().setDepth(12);
     this.porters = this.add.graphics().setDepth(14);
     this.overlay = this.add.graphics().setDepth(20);
+    this.convoys = this.add.graphics().setDepth(25);
     this.ghost = this.add.graphics().setDepth(30);
     this.scale.on("resize", (size: Phaser.Structs.Size) => this.camera.setView(size.width, size.height));
     this.camera.setView(this.scale.width, this.scale.height);
@@ -154,8 +158,10 @@ export class MapScene extends Phaser.Scene {
     ) {
       this.drawStructures(season, level);
     }
-    if (level !== this.drawn.level || zoomBucket !== this.drawn.zoomBucket || sim.mapVersion !== this.drawn.mapVersion) {
+    const worldYear = game.session.world.year;
+    if (level !== this.drawn.level || zoomBucket !== this.drawn.zoomBucket || sim.mapVersion !== this.drawn.mapVersion || worldYear !== this.drawnWorldYear) {
       this.drawOverlay(level);
+      this.drawnWorldYear = worldYear;
     }
     // Champs : redessinés quand les cultures changent ou que la saison avance (blés qui mûrissent).
     const phase = Math.floor(sim.date.seasonProgress * 6);
@@ -418,6 +424,7 @@ export class MapScene extends Phaser.Scene {
     const porters = this.porters;
     routes.clear();
     porters.clear();
+    this.drawConvoys(sim);
     if (level === "monde") return;
     const game = this.game_;
 
@@ -470,6 +477,48 @@ export class MapScene extends Phaser.Scene {
         porters.fillCircle(pos.x, pos.y, 5);
         porters.fillStyle(0x3a2f25, 1);
         porters.fillCircle(pos.x, pos.y, 3.5);
+      }
+    }
+  }
+
+  /**
+   * Charrettes des accords de commerce (J5) : en ligne droite entre le relais et le fief du
+   * partenaire, visibles à tous les niveaux de zoom (taille constante à l'écran).
+   */
+  private drawConvoys(sim: DomainSim): void {
+    const g = this.convoys;
+    g.clear();
+    const S = this.game_.session.world.dims.fiefSize * TILE;
+    const zoom = this.camera.zoom;
+    const r = Math.max(7, 7 / zoom);
+    const tick = sim.state.tick + this.game_.session.tickFraction;
+    for (const c of sim.state.trade.convoys) {
+      const relay = sim.building(c.relayId);
+      const dest = parseFiefId(c.partnerFiefId);
+      if (!relay || !dest) continue;
+      const home = this.center(relay);
+      const far = { x: dest.col * S + S / 2, y: dest.row * S + S / 2 };
+      const outbound = c.status === "aller";
+      const t = outbound
+        ? (tick - c.departTick) / Math.max(1, c.arriveTick - c.departTick)
+        : (tick - c.arriveTick) / Math.max(1, c.returnTick - c.arriveTick);
+      const k = Math.min(1, Math.max(0, t));
+      const from = outbound ? home : far;
+      const to = outbound ? far : home;
+      const x = from.x + (to.x - from.x) * k;
+      const y = from.y + (to.y - from.y) * k;
+      if (this.game_.showRoutes || this.game_.viewLevel === "monde") {
+        g.lineStyle(Math.max(2, 2 / zoom), 0xb07a3a, 0.5);
+        g.lineBetween(home.x, home.y, far.x, far.y);
+      }
+      // Une charrette : caisse brune, chargement à la couleur de la marchandise.
+      g.fillStyle(0x1d160e, 1);
+      g.fillRect(x - r * 1.3, y - r, r * 2.6, r * 2);
+      g.fillStyle(0xb07a3a, 1);
+      g.fillRect(x - r * 1.1, y - r * 0.8, r * 2.2, r * 1.6);
+      if (c.qty > 0) {
+        g.fillStyle(Phaser.Display.Color.HexStringToColor(GOOD_COLORS[c.good]).color, 1);
+        g.fillCircle(x, y, r * 0.6);
       }
     }
   }

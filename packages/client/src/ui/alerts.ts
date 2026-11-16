@@ -5,6 +5,7 @@
 import { BUILDINGS, DAYS_PER_YEAR, DAILY_WOOD, DEMOGRAPHY, type DomainSim } from "@jeu/sim-fief";
 import type { WorldState } from "@jeu/sim-monde";
 import { neighborFiefs } from "./expansion";
+import { rumors } from "./trade";
 
 export interface Alert {
   tone: "bad" | "warn" | "info";
@@ -75,6 +76,7 @@ export function computeAlerts(sim: DomainSim, world?: WorldState): Alert[] {
   out.push(...needsAlerts(sim));
   out.push(...supplyAlerts(sim, world));
   if (world) out.push(...expansionAlerts(world, sim));
+  if (world) out.push(...tradeAlerts(world, sim));
   out.push(...lineageAlerts(sim));
   out.push(...jobAlerts(sim));
 
@@ -227,6 +229,35 @@ export function needsAlerts(sim: DomainSim): Alert[] {
     const clothes = sim.needs.clothesAdvice();
     if (n.outils.coverage < 600 && tools) out.push({ tone: "info", text: `Le village manque d'outils (servis à ${Math.round(n.outils.coverage / 10)} %). ${tools}` });
     if (n.vetements.coverage < 600 && clothes) out.push({ tone: "info", text: `Le village manque de vêtements (servis à ${Math.round(n.vetements.coverage / 10)} %). ${clothes}` });
+  }
+  return out;
+}
+
+/** Commerce (J5) : propositions à lire, accords sans relais ou en retard, rumeurs d'achat. */
+export function tradeAlerts(world: WorldState, sim: DomainSim): Alert[] {
+  const out: Alert[] = [];
+  const t = sim.state.trade;
+  for (const r of rumors(world, sim.state.ownerId)) out.push({ tone: "warn", text: `Rumeur : ${r} Surenchérissez avant le bilan si ce fief vous intéresse.` });
+  if (t.proposals.length > 0) {
+    out.push({ tone: "info", text: `${t.proposals.length} proposition${t.proposals.length > 1 ? "s" : ""} d'accord en attente : panneau Commerce.` });
+  }
+  const active = t.agreements.filter((a) => sim.trade.isActive(a));
+  if (active.length === 0) return out;
+  const relays = sim.trade.relays();
+  if (relays.length === 0) {
+    out.push({ tone: "bad", text: "Des accords de commerce courent, mais aucun relais n'est relié : aucun convoi ne part. Bâtissez un relais (Y)." });
+    return out;
+  }
+  if (relays.every((r) => sim.population.workers(r.id).length === 0)) {
+    out.push({ tone: "bad", text: "Le relais n'a aucun charretier : aucun convoi ne part." });
+  }
+  // À l'automne, un accord encore loin du compte risque de mécontenter le partenaire.
+  if (sim.date.seasonIndex === 2) {
+    const late = active.filter((a) => {
+      const due = sim.trade.due(a);
+      return due > 0 && (a.done + t.convoys.filter((c) => c.agreementId === a.terms.id && c.status === "aller").reduce((n, c) => n + c.qty, 0)) * 10 < due * 8;
+    });
+    if (late.length > 0) out.push({ tone: "warn", text: `${late.length} accord${late.length > 1 ? "s" : ""} en retard sur l'année : le partenaire sera déçu au bilan.` });
   }
   return out;
 }

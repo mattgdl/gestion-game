@@ -3,7 +3,7 @@
  * panneau du domaine, journal, sauvegardes, étiquettes des fiefs.
  * Elle lit l'état et envoie des commandes ; elle ne contient aucune règle de jeu.
  */
-import { DOMINANTS, RESOURCE_IDS, RESOURCE_NAMES, TERRAIN_NAMES } from "@jeu/shared";
+import { DOMINANTS, RESOURCE_IDS, RESOURCE_NAMES, TERRAIN_NAMES, type TradeGood } from "@jeu/shared";
 import {
   BUILDINGS,
   BUILDING_IDS,
@@ -37,6 +37,7 @@ import type { Journal } from "../telemetry/journal";
 import { computeAlerts, foodDays } from "./alerts";
 import { chronicleHtml, decisionHtml, lineagePanelHtml, successionHtml } from "./lineage";
 import { domainPanelHtml, neighborFiefs, offerHtml, realmName } from "./expansion";
+import { lordTag, partnerMarketHtml, proposeHtml, suggestedPrice, tradePanelHtml } from "./trade";
 import { fairHtml, fairPotential, needsFacts } from "./needs";
 import { escapeHtml, formatCost, formatRealDate } from "./format";
 
@@ -75,6 +76,7 @@ const BUILD_KEYS: Record<string, string> = {
   bergerie: "U",
   tisserand: "T",
   guerisseur: "J",
+  relais: "Y",
 };
 
 function toolId(tool: Tool): string {
@@ -114,6 +116,7 @@ export class Hud {
     game.on("session", () => {
       this.buildFiefLabels();
       this.renderDomain();
+      this.renderTrade(true);
       this.renderSelection();
       this.renderSaves();
       this.lastLogLength = -1;
@@ -278,6 +281,10 @@ export class Hud {
           <div class="domain" data-el="fiefList"></div>
         </section>
         <section class="panel-section">
+          <h2>Commerce</h2>
+          <div class="domain" data-el="trade"></div>
+        </section>
+        <section class="panel-section">
           <h2>Événements</h2>
           <ol class="log" data-el="log"></ol>
         </section>
@@ -344,6 +351,28 @@ export class Hud {
         if (!result.ok && result.reason) this.game.toast(result.reason);
         this.renderDomain();
       } else if (target.dataset.fief) this.actions.focusFief(target.dataset.fief);
+    });
+    this.el.trade!.addEventListener("click", (ev) => {
+      const target = (ev.target as HTMLElement).closest<HTMLElement>("[data-accept],[data-refuse],[data-break],[data-withdraw],[data-act]");
+      if (!target) return;
+      const run = (cmd: Parameters<Game["command"]>[0]) => {
+        const result = this.game.command(cmd);
+        if (!result.ok && result.reason) this.game.toast(result.reason);
+        this.renderTrade(true);
+      };
+      if (target.dataset.accept) run({ type: "acceptTradeProposal", proposalId: target.dataset.accept });
+      else if (target.dataset.refuse) run({ type: "refuseTradeProposal", proposalId: target.dataset.refuse });
+      else if (target.dataset.withdraw) run({ type: "withdrawTradeProposal", actionId: target.dataset.withdraw });
+      else if (target.dataset.break) {
+        // Deux clics : rompre coûte de la relation.
+        if (target.dataset.confirm !== "1") {
+          target.dataset.confirm = "1";
+          target.textContent = "Confirmer la rupture";
+          target.classList.add("btn-danger");
+          return;
+        }
+        run({ type: "cancelTrade", agreementId: target.dataset.break });
+      } else if (target.dataset.act === "propose") this.openPropose();
     });
     this.root.querySelectorAll<HTMLButtonElement>("[data-immigration]").forEach((btn) =>
       btn.addEventListener("click", () => {
@@ -951,10 +980,66 @@ export class Hud {
     }
   }
 
-  /** Le monde a changé (fief acheté) : étiquettes et panneau à refaire. */
+  /** Le monde a changé (fief acheté, bilan) : étiquettes et panneaux à refaire. */
   refreshWorld(): void {
     this.buildFiefLabels();
     this.renderDomain();
+    this.renderTrade(true);
+  }
+
+  private renderTrade(force = false): void {
+    const box = this.el.trade!;
+    // Pendant une confirmation de rupture, on ne redessine pas sous le doigt du joueur.
+    if (!force && box.querySelector('[data-confirm="1"]')) return;
+    const html = tradePanelHtml(this.game.session.world, this.game.session.sim);
+    if (box.dataset.html !== html) {
+      box.dataset.html = html;
+      box.innerHTML = html;
+    }
+  }
+
+  /** Fenêtre « Proposer un accord » à un seigneur IA. */
+  openPropose(lordId?: string): void {
+    const session = this.game.session;
+    const world = session.world;
+    const me = session.sim.state.ownerId;
+    const body = this.openModal("Proposer un accord", proposeHtml(world, session.sim, lordId));
+    const q = <T extends HTMLElement>(name: string) => body.querySelector<T>(`[data-el="${name}"]`)!;
+    const lord = q<HTMLSelectElement>("tpLord");
+    const side = q<HTMLSelectElement>("tpSide");
+    const good = q<HTMLSelectElement>("tpGood");
+    const price = q<HTMLInputElement>("tpPrice");
+    const error = q<HTMLElement>("tpError");
+    const refreshPrice = () => {
+      price.value = String(suggestedPrice(world, me, lord.value, good.value as TradeGood, side.value as "vente" | "achat"));
+    };
+    lord.addEventListener("change", () => {
+      q<HTMLElement>("tpMarket").innerHTML = partnerMarketHtml(world, me, lord.value);
+      refreshPrice();
+    });
+    side.addEventListener("change", refreshPrice);
+    good.addEventListener("change", refreshPrice);
+    refreshPrice();
+    body.querySelector('[data-act="close"]')?.addEventListener("click", () => this.closeModal());
+    body.querySelector('[data-act="tpSend"]')?.addEventListener("click", () => {
+      const result = this.game.command({
+        type: "proposeTrade",
+        partnerId: lord.value,
+        good: good.value as TradeGood,
+        side: side.value as "vente" | "achat",
+        perYear: Math.floor(Number(q<HTMLInputElement>("tpQty").value)),
+        price: Math.floor(Number(price.value)),
+        years: Math.floor(Number(q<HTMLInputElement>("tpYears").value)),
+      });
+      if (!result.ok) {
+        error.hidden = false;
+        error.textContent = result.reason ?? "Proposition impossible.";
+        return;
+      }
+      this.closeModal();
+      this.game.toast("Proposition envoyée : réponse au bilan d'automne.");
+      this.renderTrade(true);
+    });
   }
 
   /** Foire d'automne : la partie se met en pause le temps des échanges. */
@@ -1028,6 +1113,8 @@ export class Hud {
       label.classList.toggle("for-sale", forSale);
       label.innerHTML = `<span class="fl-name">${escapeHtml(f.name)}</span>${forSale ? '<span class="fl-sale">à vendre</span>' : ""}
         <span class="fl-owner">${escapeHtml(f.ownerId === PLAYER_ID ? "Votre lignée" : (lord?.name ?? "Sans seigneur"))}</span>
+        ${lord?.ai ? `<span class="fl-terrain">${lordTag(lord, this.game.session.sim.state.ownerId)}</span>` : ""}
+        ${lord?.ai?.plan ? `<span class="fl-sale">convoite ${escapeHtml(world.fiefs.find((x) => x.id === lord.ai!.plan!.fiefId)?.name ?? "")}</span>` : ""}
         <span class="fl-terrain">${escapeHtml(DOMINANTS[f.dominant].nom)}</span>`;
       label.addEventListener("click", () => this.actions.focusFief(f.id));
       layer.appendChild(label);
@@ -1211,6 +1298,7 @@ export class Hud {
       this.renderVillage();
       this.renderLineage();
       this.renderDomain();
+      this.renderTrade();
       this.renderAlerts();
       this.renderLogistics();
       this.renderSelectionLive();
@@ -1448,6 +1536,7 @@ function affairsRow(sim: DomainSim): string {
     if (ev.type === "fiefAcquired") return `<span class="ok">${escapeHtml(ev.name)} est à vous (${ev.price} or).</span>`;
     if (ev.type === "offerRefused") return escapeHtml(ev.reason);
     if (ev.type === "title") return `<strong>Nouveau titre : ${escapeHtml(sim.titleName())}.</strong>`;
+    if (ev.type === "tradeNews") return escapeHtml(ev.text);
     return "";
   });
   const text = lines.filter(Boolean).join("<br />");

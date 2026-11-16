@@ -5,7 +5,7 @@
 
 ## En cours
 
-- Rien. Prochain jalon : **J5 — Voisins IA et commerce**. Critère J3 (deux successions) encore à vérifier dans une partie longue.
+- **Partie test de J5 — Voisins IA et commerce** (critère : signer et honorer au moins deux accords, dont un de vente d'outils ou de vêtements ; voir au moins un achat entre seigneurs IA et une rumeur ; la carte change). Puis **J6 — Guerre et conquête**. Critère J3 (deux successions) encore à vérifier dans une partie longue.
 
 ## À faire
 
@@ -17,11 +17,6 @@
 - Foire : la vente doit valoir le clic ; journal de la foire de l'année seulement.
 - Moral et natalité : moins de plafond à 99, naissances freinées sans vêtements.
 - **Critère de fin :** une partie de 20 ans où les vêtements sont couverts avec 2 ou 3 bergeries, la foire sert, et le chômage reste contenu.
-
-### J5 — Voisins IA et commerce
-- Seigneurs IA qui vivent : leurs villages grandissent, ils achètent des fiefs libres, vendent, refusent.
-- Commerce entre fiefs : convois et accords récurrents (débouché des surplus).
-- Nouveaux métiers liés au commerce.
 
 ### J6 — Guerre et conquête
 - Soldats (métier qui absorbe le chômage), conquête résolue par calcul au bilan d'automne.
@@ -51,6 +46,9 @@
 - *(vide)*
 
 ## Fait
+- 16/11/2026 : **J5 — Voisins IA et commerce** livré, à valider en partie test.
+  - 10 archétypes de seigneurs IA, économie et croissance au bilan, rumeurs et achats entre seigneurs, relation.
+  - Accords de commerce dans les deux sens, prix selon le terrain, relais et charrettes sur la carte.
 - 16/11/2026 : **J4c — Réglages** validé par le joueur (guérisseur : soigne tout son fief) : couverture proportionnelle et chaîne expliquée, malus « Bras inoccupés », natalité freinée sans vêtements, guérisseur, foire plus rentable.
 - 16/11/2026 : **J4b — Métiers et besoins** validé par le joueur (partie test n° 5, 22 ans).
   - Forge (outils, production +25 %), bergerie et tisserand (vêtements : moral, froid), guérisseur (remèdes).
@@ -115,6 +113,8 @@
 - 12/11/2026 : brief fondateur, DESIGN.md v0.1 à v0.3, réponses aux questions Q1 à Q8, création de cette ROADMAP.
 
 ## Idées notées (à trier)
+- Commerce entre seigneurs IA, et seigneurs IA qui dépensent leur or (bâtir, armer) : leur or s'accumule (J5).
+- Le joueur type de `simulate` ne commerce pas encore : à ajouter pour l'équilibrage (J9).
 - **Retours de la partie test n° 5 (J4b, 22 ans, environ 70 min)** :
   - Vêtements : couverture à 0 % de l'an 16 à la fin. Une seule bergerie (≈ 60 laines par an) pour 4 tisserands, quand il en faut 2 à 3 pour 170 habitants. L'écran ne dit pas où la chaîne bloque. Et la couverture compte « tout ou rien » chaque jour : un tiers des besoins servis s'affiche 0 %. À rendre proportionnelle, et à expliquer (« il manque de la laine : une bergerie de plus »).
   - Outils trop faciles : une forge suffit pour toute la partie, 199 outils en stock dormant.

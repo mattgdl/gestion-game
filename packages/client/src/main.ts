@@ -131,6 +131,7 @@ function start(data: HotData = {}): void {
   const attachSession = (s: Session): void => {
     s.onEvents((events) => {
       if (events.some((e) => e.type === "barrier")) {
+        hud.refreshWorld();
         if (writeSlot("auto", s.toSave())) hud.refreshSaves();
         journal.onBarrier();
         if (pauseAtBilan()) {

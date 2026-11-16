@@ -131,9 +131,11 @@ export function aiProposals(world: WorldState, rng: Rng, players: string[], even
   // Les propositions expirées disparaissent.
   world.proposals = world.proposals.filter((p) => p.expiresYear > world.year);
   for (const ownerId of players) {
-    for (const lord of activeAiLords(world)) {
+    let made = 0;
+    // L'ordre des seigneurs change chaque année (tiré au sort) : pas toujours les mêmes en premier.
+    for (const lord of rng.shuffle(activeAiLords(world))) {
       const pending = world.proposals.filter((p) => p.terms.ownerId === ownerId).length;
-      if (pending >= c.propositionsMax) break;
+      if (pending >= c.propositionsMax || made >= c.propositionsParAn) break;
       const ai = lord.ai!;
       const arch = archetypeOf(ai.archetype);
       const near = nearestFiefOf(world, lord.id, ownerId);
@@ -167,6 +169,7 @@ export function aiProposals(world: WorldState, rng: Rng, players: string[], even
         lastYear: world.year + years,
       };
       world.proposals.push({ terms, expiresYear: world.year + c.expirationAns });
+      made += 1;
       events.push({ type: "tradeProposed", ownerId, terms, expiresYear: world.year + c.expirationAns });
     }
   }
