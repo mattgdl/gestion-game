@@ -6,6 +6,7 @@ import demographyJson from "@jeu/data/demography.json";
 import namesJson from "@jeu/data/names.json";
 import dynastyJson from "@jeu/data/dynasty.json";
 import fiefsJson from "@jeu/data/fiefs.json";
+import besoinsJson from "@jeu/data/besoins.json";
 import seasonsJson from "@jeu/data/seasons.json";
 import type { Cost, Resources } from "@jeu/shared";
 import type { GoodId, SuccessionLaw } from "./state";
@@ -31,6 +32,8 @@ export interface BuildingDef {
   stockage?: { capacite: number };
   /** Atelier : production continue tant que le terrain voisin le permet. */
   production?: { ressource: GoodId; parAn: number; casesPleinRendement: number };
+  /** Atelier de transformation : entrées par unité produite, sortie, rythme à plein effectif (J4b). */
+  transformation?: { entrees: Partial<Record<GoodId, number>>; sortie: GoodId; parAn: number; stockEntrees: number };
   /** Ferme : semailles au printemps, moisson à l'automne. */
   agriculture?: { champsMax: number; champsParTravailleur: number; rendementParChamp: number; ticksParRecolte: number };
   /** Emplois du bâtiment et ordre de remplissage (1 d'abord). */
@@ -152,3 +155,27 @@ export function titleDef(id: string): TitleDef | undefined {
 export const BOUGHT_VILLAGE = (fiefsJson as unknown as {
   villageAchete: { vivresParFoyer: number; boisParFoyer: number; champsParFerme: number; foyersParFerme: number };
 }).villageAchete;
+
+/** Besoins, maladie, natalité et foire (J4b). */
+export interface NeedsDef {
+  outilsParTravailleurParAn: number;
+  bonusOutilsPourMille: number;
+  vetementsParHabitantParAn: number;
+  seuilMoralPourMille: number;
+  moralVetus: number;
+  protectionFroidPourMille: number;
+  natalite: { lentJours: number; rapideJours: number };
+  maladie: {
+    chanceParAn: number;
+    parCentHabitants: number;
+    chanceMax: number;
+    rayon: number;
+    dureeJours: number;
+    mortaliteParJour: number;
+    soinPourMille: number;
+    remedeTousLesJours: number;
+    graceAnnees: number;
+  };
+  foire: { plafondParAn: number; prix: Partial<Record<GoodId, { achat: number; vente: number }>> };
+}
+export const NEEDS = besoinsJson as unknown as NeedsDef;

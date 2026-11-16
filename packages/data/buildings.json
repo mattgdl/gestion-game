@@ -203,5 +203,128 @@
       "capacite": 300
     },
     "utilite": "Vient avec chaque fief acheté. Comme le manoir, elle relie les bâtiments de son fief et sert de réserve. Elle ne se démolit pas."
+  },
+  "forge": {
+    "nom": "Forge",
+    "taille": [
+      2,
+      2
+    ],
+    "cout": {
+      "bois": 30,
+      "pierre": 20,
+      "or": 10
+    },
+    "constructible": true,
+    "couleur": "#5b5f66",
+    "description": "Le forgeron fait des outils avec du bois et de la pierre.",
+    "utilite": "Transforme 1 bois et 1 pierre en 1 outil (30 par an avec 2 forgerons). Avec assez d'outils, ateliers et fermes produisent jusqu'à 25 % de plus. Ses porteurs vont chercher bois et pierre dans les réserves.",
+    "transformation": {
+      "entrees": {
+        "bois": 1,
+        "pierre": 1
+      },
+      "sortie": "outils",
+      "parAn": 30,
+      "stockEntrees": 10
+    },
+    "transport": {
+      "porteurs": 2,
+      "charge": 5
+    },
+    "stockMax": 20,
+    "travailleurs": 2,
+    "prioriteEmploi": 4
+  },
+  "bergerie": {
+    "nom": "Bergerie",
+    "taille": [
+      3,
+      2
+    ],
+    "cout": {
+      "bois": 25,
+      "or": 10
+    },
+    "constructible": true,
+    "couleur": "#d8d2c0",
+    "description": "Un berger mène les moutons sur les prés voisins et tond leur laine.",
+    "procheDe": {
+      "terrain": "herbe",
+      "rayon": 3
+    },
+    "production": {
+      "ressource": "laine",
+      "parAn": 40,
+      "casesPleinRendement": 30
+    },
+    "utilite": "Produit de la laine (40 par an) selon les prés libres à 3 cases. La laine fait les vêtements, chez le tisserand.",
+    "transport": {
+      "porteurs": 1,
+      "charge": 8
+    },
+    "stockMax": 20,
+    "travailleurs": 2,
+    "prioriteEmploi": 3
+  },
+  "tisserand": {
+    "nom": "Tisserand",
+    "taille": [
+      2,
+      2
+    ],
+    "cout": {
+      "bois": 20,
+      "pierre": 10,
+      "or": 10
+    },
+    "constructible": true,
+    "couleur": "#8e5a9a",
+    "description": "Le tisserand file et tisse la laine en vêtements.",
+    "utilite": "Transforme 2 laines en 1 vêtement (20 par an avec 2 tisserands). Un village bien vêtu a meilleur moral, souffre moins du froid et a plus d'enfants.",
+    "transformation": {
+      "entrees": {
+        "laine": 2
+      },
+      "sortie": "vetements",
+      "parAn": 20,
+      "stockEntrees": 16
+    },
+    "transport": {
+      "porteurs": 2,
+      "charge": 6
+    },
+    "stockMax": 20,
+    "travailleurs": 2,
+    "prioriteEmploi": 4
+  },
+  "guerisseur": {
+    "nom": "Guérisseur",
+    "taille": [
+      2,
+      1
+    ],
+    "cout": {
+      "bois": 15,
+      "pierre": 5,
+      "or": 15
+    },
+    "constructible": true,
+    "couleur": "#4f8a5b",
+    "description": "Le guérisseur cueille des herbes en forêt et soigne les malades.",
+    "procheDe": {
+      "terrain": "foret",
+      "rayon": 4
+    },
+    "production": {
+      "ressource": "remedes",
+      "parAn": 20,
+      "casesPleinRendement": 20
+    },
+    "utilite": "Prépare des remèdes avec les herbes de la forêt voisine (20 par an, gardés sur place). Pendant une épidémie, les maisons à 12 cases ou moins meurent quatre fois moins.",
+    "stockMax": 20,
+    "travailleurs": 1,
+    "prioriteEmploi": 5,
+    "influence": 12
   }
 }

@@ -153,6 +153,8 @@ function start(data: HotData = {}): void {
           hud.refreshWorld();
           if (writeSlot("auto", s.toSave())) hud.refreshSaves();
           game.toast(`${ev.name} rejoint votre domaine.`);
+        } else if (ev.type === "epidemic") {
+          game.toast("Une maladie se déclare dans le domaine !");
         } else if (ev.type === "offerRefused") {
           game.toast(ev.reason);
         } else if (ev.type === "title") {

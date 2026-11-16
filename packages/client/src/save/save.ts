@@ -92,6 +92,17 @@ const MIGRATIONS: Record<number, (save: any) => any> = {
     const domain = { ...s.domain, dims: world.dims, offers: [], dynasty: { ...s.domain.dynasty, title: "seigneur" } };
     return { ...s, saveVersion: 6, world, domain };
   },
+  /** v6 → v7 (J4b) : besoins du village (outils, vêtements), épidémie, foire d'automne. */
+  6: (s) => ({
+    ...s,
+    saveVersion: 7,
+    domain: {
+      ...s.domain,
+      needs: { outils: { owed: 0, coverage: 0 }, vetements: { owed: 0, coverage: 0 } },
+      epidemic: null,
+      fair: { year: 0, bought: {}, sold: {} },
+    },
+  }),
 };
 
 export function makeSave(world: WorldState, domain: DomainState, now: Date = new Date(), gameId?: string): SaveGame {

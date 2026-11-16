@@ -12,8 +12,20 @@
 import type { WorldDims } from "@jeu/shared";
 
 /** Marchandises physiques, qui se transportent et se stockent. L'or n'en fait pas partie. */
-export type GoodId = "nourriture" | "bois" | "pierre";
-export const GOOD_IDS: readonly GoodId[] = ["nourriture", "bois", "pierre"];
+export type GoodId = "nourriture" | "bois" | "pierre" | "laine" | "outils" | "vetements" | "remedes";
+export const GOOD_IDS: readonly GoodId[] = ["nourriture", "bois", "pierre", "laine", "outils", "vetements", "remedes"];
+/** Marchandises qui servent à construire (comptées dans les totaux du bandeau). */
+export type BuildGood = "nourriture" | "bois" | "pierre";
+export const BUILD_GOODS: readonly BuildGood[] = ["nourriture", "bois", "pierre"];
+export const GOOD_NAMES: Record<GoodId, string> = {
+  nourriture: "Nourriture",
+  bois: "Bois",
+  pierre: "Pierre",
+  laine: "Laine",
+  outils: "Outils",
+  vetements: "Vêtements",
+  remedes: "Remèdes",
+};
 export type Goods = Partial<Record<GoodId, number>>;
 
 export interface FiefTiles {
@@ -101,6 +113,8 @@ export interface YearStats {
   deathsHunger?: number;
   deathsCold?: number;
   marriages?: number;
+  /** Morts de maladie (J4b). */
+  deathsDisease?: number;
   /** Familles de nouveaux venus installées. */
   immigrants?: number;
   /** Nourriture et bois consommés par les foyers. */
@@ -268,6 +282,12 @@ export interface DomainState {
   dims: WorldDims;
   /** Offres d'achat en cours : l'or est déjà retiré du trésor (séquestre) jusqu'au bilan d'automne. */
   offers: Offer[];
+  /** Besoins du village (J4b) : dû en millièmes et couverture lissée (‰). */
+  needs: { outils: NeedState; vetements: NeedState };
+  /** Épidémie en cours (J4b). */
+  epidemic: Epidemic | null;
+  /** Achats et ventes à la foire d'automne de l'année (plafonds). */
+  fair: { year: number; bought: Goods; sold: Goods };
   /** Fin de partie : le temps s'arrête. */
   gameOver: GameOver | null;
   nextId: number;
@@ -277,6 +297,24 @@ export interface DomainState {
   awaitingBarrier: boolean;
   /** Tick auquel la dernière barrière a été résolue (-1 au départ). */
   lastBarrierTick: number;
+}
+
+export interface NeedState {
+  /** Quantité due, en millièmes, pas encore prise dans les réserves. */
+  owed: number;
+  /** Part des besoins servis, lissée sur 30 jours, en millièmes. */
+  coverage: number;
+}
+
+export interface Epidemic {
+  fiefId: string;
+  x: number;
+  y: number;
+  radius: number;
+  untilTick: number;
+  deaths: number;
+  /** Jours de soins donnés depuis le dernier remède pris, par guérisseur. */
+  care: Record<string, number>;
 }
 
 /** Offre d'achat d'un fief voisin, résolue par le Monde au bilan d'automne. */

@@ -11,12 +11,14 @@ import {
   DEMOGRAPHY,
   ECONOMY,
   GOOD_IDS,
+  GOOD_NAMES,
   ageOf,
   dateOf,
   goodsTotal,
   nextMarriageText,
   type Building,
   type DomainSim,
+  type GoodId,
   type Goods,
   type ImmigrationLevel,
   type SuccessionLaw,
@@ -35,6 +37,7 @@ import type { Journal } from "../telemetry/journal";
 import { computeAlerts, foodDays } from "./alerts";
 import { chronicleHtml, decisionHtml, lineagePanelHtml, successionHtml } from "./lineage";
 import { domainPanelHtml, neighborFiefs, offerHtml, realmName } from "./expansion";
+import { fairHtml, needsFacts } from "./needs";
 import { escapeHtml, formatCost, formatRealDate } from "./format";
 
 export interface HudActions {
@@ -68,6 +71,10 @@ const BUILD_KEYS: Record<string, string> = {
   entrepot: "E",
   marche: "N",
   eglise: "G",
+  forge: "K",
+  bergerie: "U",
+  tisserand: "T",
+  guerisseur: "J",
 };
 
 function toolId(tool: Tool): string {
@@ -325,6 +332,9 @@ export class Hud {
         this.renderLineage();
       } else if (target.dataset.act === "chronicle") this.openChronicle();
     });
+    this.el.village!.addEventListener("click", (ev) => {
+      if ((ev.target as HTMLElement).closest('[data-act="fair"]')) this.openFair();
+    });
     this.el.fiefList!.addEventListener("click", (ev) => {
       const target = (ev.target as HTMLElement).closest<HTMLElement>("[data-fief],[data-offer],[data-cancel]");
       if (!target) return;
@@ -539,7 +549,7 @@ export class Hud {
     }
     if (def.production) {
       const prod = def.production;
-      facts.push(`<div><dt>Rendement</dt><dd>${Math.round(eco.efficiency(b.id) / 10)} % de ${prod.parAn} ${RESOURCE_NAMES[prod.ressource].toLowerCase()} par an</dd></div>`);
+      facts.push(`<div><dt>Rendement</dt><dd>${Math.round(eco.efficiency(b.id) / 10)} % de ${prod.parAn} ${GOOD_NAMES[prod.ressource].toLowerCase()} par an</dd></div>`);
     }
     if (def.agriculture) {
       const info = eco.farmInfo(b.id);
@@ -599,7 +609,7 @@ export class Hud {
         if (!d) return `<li><span class="porter-n">${i + 1}</span>Au repos</li>`;
         const dest = sim.building(d.toId);
         const destName = dest ? (BUILDINGS[dest.type]?.nom ?? "réserve") : "réserve démolie";
-        const goods = `${d.amount} ${RESOURCE_NAMES[d.good].toLowerCase()}`;
+        const goods = `${d.amount} ${GOOD_NAMES[d.good].toLowerCase()}`;
         if (d.kind === "collecte") {
           if (d.status === "aller") return `<li><span class="porter-n">${i + 1}</span>Va chercher ${goods} à ${escapeHtml(destName)} · ${seconds(d.arriveTick - tick)}</li>`;
           return `<li><span class="porter-n">${i + 1}</span>Rapporte ${goods} · ${seconds(d.returnTick - tick)}</li>`;
@@ -614,7 +624,7 @@ export class Hud {
       if (trip) {
         const dest = sim.building(trip.toId);
         const destName = dest ? (BUILDINGS[dest.type]?.nom ?? "réserve") : "réserve";
-        const goods = `${trip.amount} ${RESOURCE_NAMES[trip.good].toLowerCase()}`;
+        const goods = `${trip.amount} ${GOOD_NAMES[trip.good].toLowerCase()}`;
         const text = trip.status === "aller" ? `Va chercher ${goods} à ${escapeHtml(destName)}` : `Rapporte ${goods}`;
         rows.push(`<p class="small">${text} · ${seconds((trip.status === "aller" ? trip.arriveTick : trip.returnTick) - tick)}</p>`);
       }
@@ -732,7 +742,11 @@ export class Hud {
       `<div><dt>Récolte</dt><dd>${sim.economy.expectedHarvest()} encore attendue</dd></div>`,
       `<div><dt>Cette année</dt><dd>${stats.births ?? 0} naissance${(stats.births ?? 0) > 1 ? "s" : ""}, ${stats.deaths ?? 0} décès${(stats.marriages ?? 0) > 0 ? `, ${stats.marriages} mariage${(stats.marriages ?? 0) > 1 ? "s" : ""}` : ""}</dd></div>`,
     ];
-    const html = `<dl class="facts">${facts.join("")}</dl>`;
+    facts.push(...needsFacts(sim));
+    const fair = sim.needs.fairOpen()
+      ? `<button type="button" class="btn btn-small btn-primary" data-act="fair">Foire d'automne : ouverte</button>`
+      : `<button type="button" class="btn btn-small" data-act="fair">Foire d'automne (prix)</button>`;
+    const html = `<dl class="facts">${facts.join("")}</dl>${fair}`;
     if (this.el.village!.innerHTML !== html) this.el.village!.innerHTML = html;
     const level = sim.state.taxLevel;
     this.root.querySelectorAll<HTMLButtonElement>("[data-tax]").forEach((btn) => {
@@ -826,7 +840,13 @@ export class Hud {
     const c = sim.population.counts();
     const prod = formatGoods(stats.produced, "rien");
     const deaths = stats.deaths ?? 0;
-    const causes = [stats.deathsHunger ? `${stats.deathsHunger} de faim` : "", stats.deathsCold ? `${stats.deathsCold} de froid` : ""].filter(Boolean).join(", ");
+    const causes = [
+      stats.deathsHunger ? `${stats.deathsHunger} de faim` : "",
+      stats.deathsCold ? `${stats.deathsCold} de froid` : "",
+      stats.deathsDisease ? `${stats.deathsDisease} de maladie` : "",
+    ]
+      .filter(Boolean)
+      .join(", ");
     const days = foodDays(sim);
     const body = this.openModal(
       `Bilan de l'an ${year}`,
@@ -844,11 +864,22 @@ export class Hud {
         <div><dt>Vivres</dt><dd>${days === Infinity ? "—" : `${days} jours d'avance`} pour l'hiver qui vient</dd></div>
       </dl>
       <label class="check"><input id="bilan-pause" type="checkbox" ${pauseAtBilan() ? "checked" : ""} /> Mettre en pause à chaque bilan d'automne</label>
-      <div class="modal-actions"><button type="button" class="btn btn-primary" data-act="bilan-ok">Continuer</button></div>`,
+      <div class="modal-actions"><button type="button" class="btn" data-act="bilan-fair">Foire d'automne</button><button type="button" class="btn btn-primary" data-act="bilan-ok">Continuer</button></div>`,
       onClose,
     );
     body.querySelector<HTMLInputElement>("#bilan-pause")?.addEventListener("change", (e) => setPauseAtBilan((e.target as HTMLInputElement).checked));
     body.querySelector('[data-act="bilan-ok"]')?.addEventListener("click", () => this.closeModal());
+    // La foire remplace la fenêtre du bilan ; la partie reste en pause jusqu'à sa fermeture.
+    body.querySelector('[data-act="bilan-fair"]')?.addEventListener("click", () => {
+      const resume = this.modalOnClose;
+      this.modalOnClose = null;
+      this.openFair();
+      const fairClose = this.modalOnClose as (() => void) | null;
+      this.modalOnClose = () => {
+        fairClose?.();
+        resume?.();
+      };
+    });
   }
 
   showGameOver(onNewGame: () => void): void {
@@ -924,6 +955,34 @@ export class Hud {
   refreshWorld(): void {
     this.buildFiefLabels();
     this.renderDomain();
+  }
+
+  /** Foire d'automne : la partie se met en pause le temps des échanges. */
+  openFair(): void {
+    const session = this.game.session;
+    const wasPaused = session.paused;
+    session.paused = true;
+    const render = () => {
+      const body = this.el.modalBody!;
+      body.innerHTML = fairHtml(session.sim);
+      body.querySelector('[data-act="close"]')?.addEventListener("click", () => this.closeModal());
+      body.querySelectorAll<HTMLButtonElement>("[data-trade]").forEach((btn) =>
+        btn.addEventListener("click", () => {
+          const result = this.game.command({
+            type: "trade",
+            good: btn.dataset.trade as GoodId,
+            qty: Number(btn.dataset.qty),
+            side: btn.dataset.side as "achat" | "vente",
+          });
+          if (!result.ok) this.game.toast(result.reason ?? "Échange impossible.");
+          render();
+        }),
+      );
+    };
+    this.openModal("Foire d'automne", "", () => {
+      if (this.game.session === session) session.paused = wasPaused;
+    });
+    render();
   }
 
   /** Fenêtre d'offre d'achat d'un fief voisin. */
@@ -1304,7 +1363,7 @@ function randomSeed(): string {
 }
 
 function formatGoods(goods: Goods, empty: string): string {
-  const parts = GOOD_IDS.filter((g) => (goods[g] ?? 0) > 0).map((g) => `${goods[g]} ${RESOURCE_NAMES[g].toLowerCase()}`);
+  const parts = GOOD_IDS.filter((g) => (goods[g] ?? 0) > 0).map((g) => `${goods[g]} ${GOOD_NAMES[g].toLowerCase()}`);
   return parts.length > 0 ? parts.join(" · ") : empty;
 }
 

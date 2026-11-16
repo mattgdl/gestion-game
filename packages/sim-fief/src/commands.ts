@@ -3,7 +3,7 @@
  * L'interface envoie une commande, la simulation la vérifie puis l'applique.
  */
 import type { Cost } from "@jeu/shared";
-import type { ImmigrationLevel, SuccessionLaw, TaxLevel } from "./state";
+import type { GoodId, ImmigrationLevel, SuccessionLaw, TaxLevel } from "./state";
 import type { DecisionChoice } from "./systems/dynasty";
 
 export type Command =
@@ -23,7 +23,9 @@ export type Command =
   /** Offre d'achat d'un fief voisin : l'or est mis sous séquestre jusqu'au bilan d'automne. */
   | { type: "makeOffer"; fiefId: string; price: number }
   /** Retire une offre en cours (l'or revient). */
-  | { type: "cancelOffer"; fiefId: string };
+  | { type: "cancelOffer"; fiefId: string }
+  /** Foire d'automne : acheter ou vendre une marchandise à prix fixe. */
+  | { type: "trade"; good: GoodId; qty: number; side: "achat" | "vente" };
 
 export interface CheckResult {
   ok: boolean;

@@ -10,10 +10,10 @@
  *
  * Tout est en nombres entiers et parcouru dans un ordre fixe : déterministe.
  */
-import { TERRAIN_KEYS, type Cost, type Resources } from "@jeu/shared";
-import { BUILDINGS, LOGISTICS, type BuildingDef } from "../data";
+import { TERRAIN_KEYS, Terrain, type Cost, type Resources } from "@jeu/shared";
+import { BUILDINGS, LOGISTICS, NEEDS, type BuildingDef } from "../data";
 import type { DomainSim } from "../domain";
-import { GOOD_IDS, emptyYearStats, type Building, type Delivery, type GoodId, type Goods } from "../state";
+import { BUILD_GOODS, GOOD_IDS, emptyYearStats, type Building, type Delivery, type GoodId, type Goods } from "../state";
 import { shortestRoadPaths } from "./roads";
 import type { HousingOutlook } from "./population";
 import { BARRIER_OFFSET, TICKS_PER_SEASON, TICKS_PER_YEAR, dateOf } from "./seasons";
@@ -98,7 +98,8 @@ export class Economy {
     let count = 0;
     for (let y = b.y - near.rayon; y < b.y + h + near.rayon; y++) {
       for (let x = b.x - near.rayon; x < b.x + w + near.rayon; x++) {
-        if (this.sim.terrainAt(x, y) === wanted) count += 1;
+        // Les prés d'une bergerie doivent être libres (ni champ, ni route, ni bâtiment).
+        if (this.sim.terrainAt(x, y) === wanted && (wanted !== Terrain.Herbe || !this.sim.occupantAt(x, y))) count += 1;
       }
     }
     return Math.min(1000, Math.floor((count * 1000) / prod.casesPleinRendement));
@@ -285,7 +286,7 @@ export class Economy {
   /** Totaux disponibles pour construire : contenu des réserves + trésor. */
   totals(): Resources {
     const out: Resources = { nourriture: 0, bois: 0, pierre: 0, or: this.sim.state.treasury };
-    for (const s of this.storages()) for (const g of GOOD_IDS) out[g] += s.stock[g] ?? 0;
+    for (const s of this.storages()) for (const g of BUILD_GOODS) out[g] += s.stock[g] ?? 0;
     return out;
   }
 
@@ -314,7 +315,7 @@ export class Economy {
   /** Prélève un coût : l'or au trésor, les marchandises dans les réserves (dans l'ordre des bâtiments). */
   withdraw(cost: Cost): void {
     this.sim.state.treasury -= cost.or ?? 0;
-    for (const g of GOOD_IDS) {
+    for (const g of BUILD_GOODS) {
       let left = cost[g] ?? 0;
       for (const s of this.storages()) {
         if (left <= 0) break;
@@ -444,10 +445,15 @@ export class Economy {
     if (finished) state.deliveries = state.deliveries.filter((d) => tick < d.returnTick);
   }
 
+  /** Effet des outils sur la production, en millièmes (1000 sans outils, jusqu'à 1250). */
+  toolFactor(): number {
+    return 1000 + Math.floor((NEEDS.bonusOutilsPourMille * this.sim.state.needs.outils.coverage) / 1000);
+  }
+
   private produce(tick: number): void {
     const season = dateOf(tick).seasonIndex;
     const stats = this.sim.state.yearStats;
-    const morale = this.sim.population.moraleFactor();
+    const morale = Math.floor((this.sim.population.moraleFactor() * this.toolFactor()) / 1000);
     for (const b of this.sim.state.buildings) {
       const def = BUILDINGS[b.type];
       if (!def) continue;
@@ -468,6 +474,24 @@ export class Economy {
           stats.produced[g] = (stats.produced[g] ?? 0) + 1;
           b.lastWork = tick;
         }
+      } else if (def.transformation) {
+        const tr = def.transformation;
+        if ((b.stock[tr.sortie] ?? 0) >= (def.stockMax ?? 0) || !this.sim.isConnected(b.id)) continue;
+        const maxWorkers = def.travailleurs ?? 0;
+        const labor = maxWorkers > 0 ? Math.floor(this.sim.population.labor(b.id) / maxWorkers) : 1000;
+        if (labor <= 0) continue;
+        const ready = Object.entries(tr.entrees).every(([g, n]) => (b.stock[g as GoodId] ?? 0) >= (n ?? 0));
+        const threshold = Math.floor(TICKS_PER_YEAR / tr.parAn) * 1000;
+        // Sans matière première, le travail s'arrête au seuil (rien n'est perdu, rien n'avance).
+        if (!ready && b.progress >= threshold) continue;
+        b.progress += Math.floor((labor * morale) / 1000);
+        if (b.progress >= threshold && ready) {
+          b.progress -= threshold;
+          for (const [g, n] of Object.entries(tr.entrees)) b.stock[g as GoodId] = (b.stock[g as GoodId] ?? 0) - (n ?? 0);
+          b.stock[tr.sortie] = (b.stock[tr.sortie] ?? 0) + 1;
+          stats.produced[tr.sortie] = (stats.produced[tr.sortie] ?? 0) + 1;
+          b.lastWork = tick;
+        }
       } else if (def.agriculture && season === 2) {
         if (goodsTotal(b.stock) >= (def.stockMax ?? 0) || !this.sim.isConnected(b.id)) continue;
         if (tick - b.lastWork < def.agriculture.ticksParRecolte) continue;
@@ -476,7 +500,7 @@ export class Economy {
         const k = this.harvestableField(b, def);
         if (k === undefined) continue;
         const [x, y] = this.sim.xy(k);
-        const amount = fieldYield(def, this.sim.fertilityAt(x, y) ?? 50);
+        const amount = Math.floor((fieldYield(def, this.sim.fertilityAt(x, y) ?? 50) * this.toolFactor()) / 1000);
         this.sim.state.crops[String(k)] = "recolte";
         b.stock.nourriture = (b.stock.nourriture ?? 0) + amount;
         b.lastWork = tick;
@@ -500,10 +524,14 @@ export class Economy {
       let busy = 0;
       for (const d of state.deliveries) if (d.fromId === b.id) busy += 1;
       let idle = transport.porteurs - busy;
+      // Seul ce que le bâtiment produit part en réserve (pas les matières premières d'un atelier).
+      const output: GoodId | null = def?.production?.ressource ?? def?.transformation?.sortie ?? (def?.agriculture ? "nourriture" : null);
       while (idle > 0) {
-        let good: GoodId | null = null;
-        for (const g of GOOD_IDS) if ((b.stock[g] ?? 0) > 0 && (good === null || (b.stock[g] ?? 0) > (b.stock[good] ?? 0))) good = g;
-        if (good === null) break;
+        const good = output !== null && (b.stock[output] ?? 0) > 0 ? output : null;
+        if (good === null) {
+          if (def?.transformation && this.fetchInputs(b, def, tick)) idle -= 1;
+          break;
+        }
         const available = b.stock[good] ?? 0;
         const full = available >= transport.charge;
         if (!full && tick - b.lastWork < LOGISTICS.attenteChargePartielle) break;
@@ -532,6 +560,46 @@ export class Economy {
         idle -= 1;
       }
     }
+  }
+
+  /** Un porteur d'atelier va chercher la matière première qui manque le plus. Renvoie vrai s'il est parti. */
+  private fetchInputs(b: Building, def: BuildingDef, tick: number): boolean {
+    const tr = def.transformation;
+    if (!tr) return false;
+    const charge = def.transport?.charge ?? 5;
+    let best: GoodId | null = null;
+    let bestLack = 0;
+    for (const [g, n] of Object.entries(tr.entrees) as [GoodId, number][]) {
+      const have = (b.stock[g] ?? 0) + this.incomingToMarket(b.id, g);
+      const lack = tr.stockEntrees - have;
+      if (n > 0 && lack > bestLack) {
+        best = g;
+        bestLack = lack;
+      }
+    }
+    if (best === null) return false;
+    return this.sendCollect(b, best, Math.min(charge, bestLack), tick) !== null;
+  }
+
+  /** Prend une marchandise dans les réserves (sans porteur). Renvoie la quantité prise. */
+  take(good: GoodId, amount: number): number {
+    let left = amount;
+    for (const s of this.storages()) {
+      if (left <= 0) break;
+      const t = Math.min(left, s.stock[good] ?? 0);
+      if (t > 0) {
+        s.stock[good] = (s.stock[good] ?? 0) - t;
+        left -= t;
+      }
+    }
+    return amount - left;
+  }
+
+  /** Quantité d'une marchandise dans les réserves (manoir, maisons fortes, entrepôts). */
+  stockOf(good: GoodId): number {
+    let n = 0;
+    for (const s of this.storages()) n += s.stock[good] ?? 0;
+    return n;
   }
 
   /** Champ semé le plus proche de la ferme (d'abord les siens), encore à moissonner. */

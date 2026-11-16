@@ -7,9 +7,9 @@
  * Les provisions des foyers sont comptées en millièmes d'unité (entiers).
  */
 import { RESOURCE_NAMES, Rng } from "@jeu/shared";
-import { BUILDINGS, DEMOGRAPHY, DYNASTY, ECONOMY, LOGISTICS, NAMES, titleDef } from "../data";
+import { BUILDINGS, DEMOGRAPHY, DYNASTY, ECONOMY, LOGISTICS, NAMES, NEEDS, titleDef } from "../data";
 import type { DomainSim } from "../domain";
-import type { Building, Delivery, Family, GoodId, ImmigrationLevel, Sex, Villager } from "../state";
+import { GOOD_NAMES, type Building, type Delivery, type Family, type GoodId, type ImmigrationLevel, type Sex, type Villager } from "../state";
 import { legTicks } from "./economy";
 import { TICKS_PER_SEASON, TICKS_PER_YEAR, dateOf } from "./seasons";
 
@@ -723,17 +723,21 @@ export class Population {
   }
 
   private mortality(rng: Rng, tick: number, season: number): void {
-    const dead: { v: Villager; cause: "age" | "faim" | "froid" }[] = [];
+    const dead: { v: Villager; cause: "age" | "faim" | "froid" | "maladie" }[] = [];
+    const disease = this.sim.needs.diseaseRisks(tick);
+    const coldFactor = this.sim.needs.coldFactor();
     for (const v of this.state.villagers) {
       const f = this.family(v.familyId);
       const pNatural = this.deathRate(ageOf(v, tick)) / DAYS_PER_YEAR;
       const grace = D.joursAvantMortalite;
       const pHunger = f && f.hungryDays >= grace ? D.famineMortaliteParJour : 0;
-      const pCold = f && season === 3 && f.coldDays >= grace ? D.froidMortaliteParJour : 0;
+      const pCold = f && season === 3 && f.coldDays >= grace ? (D.froidMortaliteParJour * coldFactor) / 1000 : 0;
+      const pSick = disease.get(v.id) ?? 0;
       const r = rng.next();
       if (r < pNatural) dead.push({ v, cause: "age" });
       else if (r < pNatural + pHunger) dead.push({ v, cause: "faim" });
       else if (r < pNatural + pHunger + pCold) dead.push({ v, cause: "froid" });
+      else if (r < pNatural + pHunger + pCold + pSick) dead.push({ v, cause: "maladie" });
     }
     if (dead.length === 0) return;
     const stats = this.state.yearStats;
@@ -742,6 +746,10 @@ export class Population {
       stats.deaths = (stats.deaths ?? 0) + 1;
       if (cause === "faim") stats.deathsHunger = (stats.deathsHunger ?? 0) + 1;
       if (cause === "froid") stats.deathsCold = (stats.deathsCold ?? 0) + 1;
+      if (cause === "maladie") {
+        stats.deathsDisease = (stats.deathsDisease ?? 0) + 1;
+        if (this.state.epidemic) this.state.epidemic.deaths += 1;
+      }
     }
     const byCause = (c: string) => dead.filter((d) => d.cause === c).map((d) => `${d.v.name} (${ageOf(d.v, tick)} ans)`);
     const age = byCause("age");
@@ -750,6 +758,8 @@ export class Population {
     if (age.length > 0) this.sim.addLog(`Décès : ${age.join(", ")}.`);
     if (hunger.length > 0) this.sim.addLog(`La faim emporte ${hunger.join(", ")}.`);
     if (cold.length > 0) this.sim.addLog(`Le froid emporte ${cold.join(", ")}.`);
+    const sick = byCause("maladie");
+    if (sick.length > 0) this.sim.addLog(`La maladie emporte ${sick.join(", ")}.`);
     this.version += 1;
     this.sim.dynasty.onDeaths(dead.filter((x) => x.v.noble));
   }
@@ -793,7 +803,7 @@ export class Population {
 
   private births(rng: Rng, tick: number): void {
     const fec = D.fecondite;
-    const pBase = 1 / Math.max(1, fec.intervalleMoyenJours - fec.ecartMinJours);
+    const needs = this.sim.needs;
     const born: string[] = [];
     for (const f of [...this.state.families]) {
       const mother = this.villager(f.wifeId);
@@ -803,7 +813,8 @@ export class Population {
       if (age < fec.ageMin || age > fec.ageMax) continue;
       if (tick - f.lastBirthTick < fec.ecartMinJours * DAY_TICKS) continue;
       if (f.hungryDays > 0) continue;
-      const p = (pBase * (500 + f.morale * 10)) / 1000;
+      // J4b : l'écart entre deux naissances dépend du bien-être (moral, vêtements, outils).
+      const p = 1 / Math.max(1, needs.birthInterval(f.morale) - fec.ecartMinJours);
       if (rng.next() >= p) continue;
       const sex: Sex = rng.chance(0.5) ? "F" : "M";
       const child = this.newVillager(rng, sex, tick, f.id, { fatherId: father.id, motherId: mother.id });
@@ -835,6 +846,7 @@ export class Population {
     const tax = m.impots[this.state.taxLevel];
     if (tax !== 0) parts.push({ label: `Impôts ${this.state.taxLevel === "aucun" ? "supprimés" : "lourds"}`, value: tax });
     if (this.state.dynasty.regency) parts.push({ label: "Régence", value: DYNASTY.regence.moral });
+    if (this.state.needs.vetements.coverage >= NEEDS.seuilMoralPourMille) parts.push({ label: "Bien vêtus", value: NEEDS.moralVetus });
     const title = titleDef(this.state.dynasty.title);
     if (title && title.moral !== 0) parts.push({ label: `Titre : ${title.nomM}`, value: title.moral });
     const welcome = m.immigration[this.state.immigration] ?? 0;
@@ -884,7 +896,7 @@ export class Population {
   }
 
   describeGood(g: GoodId): string {
-    return RESOURCE_NAMES[g].toLowerCase();
+    return GOOD_NAMES[g].toLowerCase();
   }
 
   /** Vitesse de marche, pour estimer les trajets des foyers (ticks par case). */

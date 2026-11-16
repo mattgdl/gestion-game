@@ -29,9 +29,10 @@ import {
 } from "@jeu/shared";
 import type { CheckResult, Command } from "./commands";
 import { BUILDINGS, DEMOGRAPHY, ECONOMY, TITLES, titleDef, type BuildingDef } from "./data";
-import { GOOD_IDS, IMMIGRATION_LEVELS, SUCCESSION_LAWS, emptyYearStats, type Building, type DomainState, type FiefTiles, type Goods } from "./state";
+import { BUILD_GOODS, GOOD_IDS, GOOD_NAMES, IMMIGRATION_LEVELS, SUCCESSION_LAWS, emptyYearStats, type Building, type DomainState, type FiefTiles, type Goods } from "./state";
 import { Dynasty, bySex, emptyDynasty } from "./systems/dynasty";
 import { annexFief } from "./systems/annex";
+import { Needs } from "./systems/needs";
 import { Economy, goodsTotal } from "./systems/economy";
 import { DAY_TICKS, Population } from "./systems/population";
 import { connectedRoads } from "./systems/roads";
@@ -53,7 +54,9 @@ export type SimEvent =
   /** Une offre d'achat est refusée : l'or revient au trésor. */
   | { type: "offerRefused"; fiefId: string; reason: string }
   /** Un nouveau titre est atteint (J4). */
-  | { type: "title"; title: string };
+  | { type: "title"; title: string }
+  /** Une épidémie se déclare (J4b). */
+  | { type: "epidemic"; fiefId: string };
 
 export interface DomainInit {
   ownerId: string;
@@ -75,6 +78,7 @@ export class DomainSim {
   readonly economy: Economy;
   readonly population: Population;
   readonly dynasty: Dynasty;
+  readonly needs: Needs;
 
   private occupancy = new Map<number, Occupant>();
   private buildingsById = new Map<number, Building>();
@@ -88,6 +92,7 @@ export class DomainSim {
     this.state = state;
     this.population = new Population(this);
     this.dynasty = new Dynasty(this);
+    this.needs = new Needs(this);
     this.economy = new Economy(this);
     this.rebuildIndex();
   }
@@ -132,6 +137,9 @@ export class DomainSim {
       dynasty: emptyDynasty(),
       dims,
       offers: [],
+      needs: { outils: { owed: 0, coverage: 0 }, vetements: { owed: 0, coverage: 0 } },
+      epidemic: null,
+      fair: { year: 0, bought: {}, sold: {} },
       gameOver: null,
       nextId: 1,
       log: [],
@@ -427,6 +435,8 @@ export class DomainSim {
         return this.dynasty.checkDecision(cmd.memberId, cmd.choice);
       case "makeOffer":
         return this.checkOffer(cmd.fiefId, cmd.price);
+      case "trade":
+        return this.needs.checkTrade(cmd.good, cmd.qty, cmd.side);
       case "cancelOffer":
         return this.state.offers.some((o) => o.fiefId === cmd.fiefId) ? { ok: true } : { ok: false, reason: "Aucune offre en cours pour ce fief." };
     }
@@ -455,6 +465,10 @@ export class DomainSim {
       this.state.treasury -= cmd.price;
       this.state.offers.push({ actionId: `${this.state.ownerId}-${this.state.tick}-${cmd.fiefId}`, fiefId: cmd.fiefId, price: cmd.price, tick: this.state.tick });
       this.addLog(`Offre de ${cmd.price} or pour un fief voisin : l'or est mis de côté jusqu'au bilan d'automne.`);
+      return result;
+    }
+    if (cmd.type === "trade") {
+      this.needs.applyTrade(cmd.good, cmd.qty, cmd.side);
       return result;
     }
     if (cmd.type === "cancelOffer") {
@@ -601,10 +615,10 @@ export class DomainSim {
     this.rebuildIndex();
     this.state.treasury += refund.or ?? 0;
     const physical: Goods = {};
-    for (const g of GOOD_IDS) if (refund[g]) physical[g] = refund[g];
+    for (const g of BUILD_GOODS) if (refund[g]) physical[g] = refund[g];
     addLost(this.economy.deposit(physical));
     if (goodsTotal(lost) > 0) {
-      const parts = GOOD_IDS.filter((g) => lost[g]).map((g) => `${lost[g]} ${RESOURCE_NAMES[g].toLowerCase()}`);
+      const parts = GOOD_IDS.filter((g) => lost[g]).map((g) => `${lost[g]} ${GOOD_NAMES[g].toLowerCase()}`);
       this.addLog(`Faute de place dans les réserves, perdu : ${parts.join(", ")}.`);
     }
   }
@@ -706,9 +720,11 @@ export class DomainSim {
       this.withRng((rng) => {
         this.population.daily(rng);
         this.dynasty.daily(rng);
+        this.needs.daily(rng);
       });
       this.checkTitle();
       events.push(...this.dynasty.drainEvents());
+      events.push(...this.needs.drainEvents());
       events.push(...this.barrierEvents.splice(0));
       if (!s.gameOver && s.villagers.length < DEMOGRAPHY.seuilDefaite) {
         s.gameOver = { reason: "depeuple", tick: s.tick };

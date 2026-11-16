@@ -1217,3 +1217,44 @@ textarea {
   background: var(--panel-raised);
   color: var(--text);
 }
+
+/* ------------------------------------------------------------ Foire (J4b) */
+.fair-wrap {
+  overflow-x: auto;
+}
+.fair {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.fair th,
+.fair td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--edge);
+  text-align: left;
+  white-space: nowrap;
+}
+.fair thead th {
+  color: var(--text-dim);
+  font-weight: 600;
+  font-size: 12px;
+}
+.fair .num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.fair td .btn {
+  margin-right: 4px;
+}
+.fair .btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* J4b : onze bâtiments ; la rangée des bâtiments passe sur deux lignes plutôt que de déborder. */
+.tool-group-build {
+  flex-wrap: wrap;
+  min-width: 0;
+  justify-content: center;
+  row-gap: 3px;
+}

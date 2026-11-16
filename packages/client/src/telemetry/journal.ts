@@ -120,6 +120,13 @@ export function domainSnapshot(sim: DomainSim): Record<string, unknown> {
     })(),
     finDePartie: sim.state.gameOver,
     lignee: lineageSnapshot(sim),
+    besoins: {
+      outils: { stock: sim.economy.stockOf("outils"), couverture: sim.state.needs.outils.coverage },
+      vetements: { stock: sim.economy.stockOf("vetements"), couverture: sim.state.needs.vetements.coverage },
+      laine: sim.economy.stockOf("laine"),
+      epidemie: sim.state.epidemic ? { fief: sim.state.epidemic.fiefId, morts: sim.state.epidemic.deaths } : null,
+      foire: sim.state.fair,
+    },
     expansion: {
       fiefs: Object.keys(sim.state.fiefs).length,
       titre: sim.state.dynasty.title,
@@ -288,6 +295,7 @@ export class Journal {
         decesFroid: stats.deathsCold ?? 0,
         mariages: stats.marriages ?? 0,
         nouveauxVenus: stats.immigrants ?? 0,
+        decesMaladie: stats.deathsDisease ?? 0,
       },
       mange: Math.round((stats.eaten ?? 0) / 1000),
       bruleBois: Math.round((stats.burned ?? 0) / 1000),

@@ -1,7 +1,7 @@
 # DESIGN.md — Jeu de gestion médiéval à dynastie
 
-> **Titre provisoire :** « Seigneurie » (nom de travail, à remplacer) · **Version du document :** 0.8 · **Dernière mise à jour :** 16/11/2026
-> **Statut :** J4 livré (s'étendre), à valider en partie test. Prochain jalon : J5 (prototype multi).
+> **Titre provisoire :** « Seigneurie » (nom de travail, à remplacer) · **Version du document :** 0.9 · **Dernière mise à jour :** 16/11/2026
+> **Statut :** J4b livré (métiers et besoins), à valider en partie test. Prochain jalon : J5 (prototype multi).
 > Ce document est la référence du projet. En cas de doute, c'est lui qui tranche, et chaque décision y est consignée avec sa raison (section 11).
 
 ## Sommaire
@@ -184,6 +184,25 @@ Règles décidées pendant le développement, à contester si elles ne te convie
 | Alerte (partie test n° 4) | « Les foyers de X vont chercher leurs vivres à N cases » quand c'est plus de 30 cases, avec « réserves du fief pleines » si c'est le cas. | Rendre visible le piège des réserves pleines dans un fief éloigné. |
 
 **Ce que montre l'outil `simulate`** (village type, joueur qui offre le haut de l'estimation dès que son trésor le permet en gardant 200 or) : premier achat vers l'an 15, titre de baron vers l'an 16-18, deuxième achat vers l'an 22. Le joueur type n'utilise pas l'or ensuite : il en garde plus de 2000 à l'an 30. Un joueur qui offre au milieu de la fourchette achète plus tôt, au risque d'un refus.
+
+### 4.6 J4b — Métiers et besoins
+
+| Sujet | Règle | Raison |
+|---|---|---|
+| Nouvelles marchandises | Laine, outils, vêtements, remèdes (en plus de nourriture, bois, pierre). Elles se rangent dans les réserves comme les autres ; les remèdes restent chez le guérisseur. | Choix du joueur : besoins « outils » et « vêtements », plus la maladie. |
+| Forge | 2 × 2 ; 30 bois, 20 pierre, 10 or ; 2 forgerons. Ses 2 porteurs vont chercher bois et pierre ; 1 bois + 1 pierre → 1 outil, 30 par an à plein effectif. | Donne un usage à la pierre et des emplois. |
+| Bergerie | 3 × 2 ; 25 bois, 10 or ; 2 bergers. 40 laines par an à plein rendement, selon les prés libres (herbe sans champ, route ni bâtiment) à 3 cases. | Les prés deviennent une ressource. |
+| Tisserand | 2 × 2 ; 20 bois, 10 pierre, 10 or ; 2 tisserands. 2 laines → 1 vêtement, 20 par an. | Une chaîne à deux étapes, lisible. |
+| Guérisseur | 2 × 1 ; 15 bois, 5 pierre, 15 or ; 1 guérisseur. Prépare 20 remèdes par an avec les herbes de la forêt à 4 cases (gardés sur place, 20 au plus). | Choix du joueur : maladie et guérisseur. |
+| Outils | Chaque travailleur en use 0,5 par an, pris dans les réserves sans porteur. Couverture (part des besoins servis, lissée sur 30 jours) : ateliers et fermes produisent jusqu'à +25 %. | Choix du joueur : les ateliers et fermes équipés produisent plus. |
+| Vêtements | Chaque habitant en use 0,5 par an. Couverture d'au moins 60 % : moral +10 (« Bien vêtus ») ; la mortalité du froid baisse jusqu'à moitié. | Choix du joueur : moral +, moins de morts de froid. |
+| Natalité | L'écart moyen entre deux naissances va de 2,5 ans (rien de satisfait) à 1,5 an (moral, vêtements et outils au plus haut ; le moral compte double). Remplace l'ancien effet du moral. La famille noble suit la même règle. | Choix du joueur : natalité selon le moral et les besoins. La population grandissait plus vite que les emplois. |
+| Maladie | Pas avant l'an 4. Chaque jour, une épidémie peut se déclarer (15 % par an, +5 % par tranche de 100 habitants, 50 % au plus) autour d'une maison, dans un rayon de 10 cases, pour 40 jours. Chaque malade meurt avec 0,15 % de chances par jour (double avant 5 ans et après 60 ans), quatre fois moins s'il habite à 12 cases d'un guérisseur qui a un travailleur et des remèdes (1 remède pour 10 jours de soins d'un foyer). Alerte rouge pendant l'épidémie. | Choix du joueur. Pas de défaite par un seul tirage : environ 6 % des malades meurent sans soins. |
+| Foire d'automne | Tout l'automne (et depuis le bilan) : achat et vente à prix fixes (nourriture 3 / 1 or, bois 2 / 1, pierre 3 / 1, laine 3 / 1, outils 8 / 4, vêtements 10 / 5), 80 unités de chaque marchandise par an et par sens. La partie se met en pause pendant la foire. | Choix du joueur : un usage de l'or au-delà des fiefs. |
+| Interface | Panneau Village : outils, vêtements, laine, rythme des naissances, bouton Foire. Bouton « Foire d'automne » au bilan. Alertes : épidémie, manque d'outils ou de vêtements (à partir de 60 habitants). Barre d'outils sur deux lignes. Touches K forge, U bergerie, T tisserand, J guérisseur. | |
+| Sauvegardes | Format v7. | Les vieilles parties restent jouables. |
+
+**Ce que montre l'outil `simulate`** (joueur type qui ajoute forge, bergeries et tisserands à partir de 50 habitants) : la population passe d'environ 35 à 150-210 habitants en 30 ans (contre plus de 300 avant J4b), le chômage reste sous 30 personnes, une épidémie tue 0 à 10 personnes. Les ateliers manquent de bras tant que le village est petit : les outils arrivent vers l'an 6-15, les vêtements restent rares chez le joueur type (il construit trop de bergeries pour ses tisserands, la laine s'entasse).
 
 ## 5. Systèmes clés
 
@@ -466,6 +485,7 @@ jeu-medieval/
 | 15/11/2026 | Journal de partie ajouté à la page publiée, lu par Claude pour analyser les parties de test. | Demande du joueur : suivre ses parties et en tirer des conclusions. |
 | 15/11/2026 | Retours de la première partie test : fiche d'outil, avertissement des champs en trop, reprise automatique, bilan sur quatre saisons. | Analyse du journal de partie et retours du joueur. |
 | 15/11/2026 | J2b : 20 adultes et leurs enfants au départ, naissances tous les 1,5 an par famille, emplois automatiques réglables, foyers qui se ravitaillent eux-mêmes, moral simple. Règles en section 4.3. | Choix du joueur (questions du 15/11), équilibrage avec `simulate`. |
+| 16/11/2026 | J4b, intercalé avant le multi : besoins outils et vêtements (forge, bergerie, tisserand), maladie et guérisseur, natalité selon le moral et les besoins, foire d'automne. Règles en section 4.6. | Partie test n° 4 : chômage massif et ennui en fin de partie ; choix du joueur (questions du 16/11). |
 | 16/11/2026 | Partie test n° 4 (orge-349 en 5 × 5, 25 ans, environ 45 min) : église par fief, routes en or et pierre, correction du ravitaillement entre fiefs, alerte de vivres lointains. Chômage et ennui de fin de partie notés pour la suite. | Retours du joueur et analyse du journal. |
 | 16/11/2026 | J4 : carte 5 × 5, fiefs achetés avec leur village et une maison forte, négociation avec prix plancher secret, titres par fiefs et population. Règles en section 4.5. | Choix du joueur (questions du 16/11). |
 | 16/11/2026 | Partie test n° 3 (chêne-832, 13 ans, 33 min) : famille noble servie dans toutes les réserves ; alertes de déficit de nourriture et de bras inoccupés. | Analyse du journal de partie. |

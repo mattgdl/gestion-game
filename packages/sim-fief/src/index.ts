@@ -8,3 +8,4 @@ export * from "./systems/economy";
 export * from "./systems/population";
 export * from "./systems/dynasty";
 export * from "./systems/annex";
+export * from "./systems/needs";

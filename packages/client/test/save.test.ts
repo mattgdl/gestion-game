@@ -151,5 +151,19 @@ describe("sauvegarde", () => {
     play(restored, 20);
     expect(restored.sim.state.tick).toBeGreaterThan(v6.domain.tick);
   });
+
+  it("convertit une sauvegarde de J4 (v6) : besoins, épidémie et foire à zéro", () => {
+    const session = Session.newGame("j4b");
+    play(session, 20);
+    const v7 = session.toSave();
+    const { needs: _n, epidemic: _e, fair: _f, ...domain } = v7.domain;
+    const migrated = migrateSave(JSON.parse(JSON.stringify({ ...v7, saveVersion: 6, domain })));
+    expect(migrated.saveVersion).toBe(SAVE_VERSION);
+    expect(migrated.domain.needs.outils).toEqual({ owed: 0, coverage: 0 });
+    expect(migrated.domain.epidemic).toBeNull();
+    const restored = Session.fromSave(migrated);
+    play(restored, 20);
+    expect(restored.sim.state.tick).toBeGreaterThan(v7.domain.tick);
+  });
 });
 

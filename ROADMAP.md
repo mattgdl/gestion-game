@@ -5,7 +5,7 @@
 
 ## En cours
 
-- **Partie test de J4 — S'étendre** (critère : acheter un fief, y construire, débloquer un titre). Critère de J3 (deux successions) à vérifier dans la même partie longue. Puis **J5 — Prototype multi**.
+- **Partie test de J4b — Métiers et besoins** (critère : faire tourner forge et chaîne laine → vêtements, traverser une épidémie, commercer à la foire, sans chômage massif ni temps mort). Critères de J3 (deux successions) et J4 (titre) à vérifier dans la même partie longue. Puis **J5 — Prototype multi**.
 
 ## À faire
 
@@ -35,6 +35,12 @@
 - *(vide)*
 
 ## Fait
+- 16/11/2026 : **J4b — Métiers et besoins** livré, à valider en partie test.
+  - Forge (outils, production +25 %), bergerie et tisserand (vêtements : moral, froid), guérisseur (remèdes).
+  - Natalité de 1,5 à 2,5 ans selon le moral et les besoins.
+  - Épidémies rares et annoncées ; un guérisseur à portée divise la mortalité par quatre.
+  - Foire d'automne : achat et vente à prix fixes.
+  - Sauvegardes format v7. 124 tests automatiques.
 - 16/11/2026 : **Retours de la partie test n° 4** (25 ans, 3 fiefs, baron) : une église par fief, routes à 1 or + 1 pierre, ravitaillement corrigé entre fiefs (les foyers d'un fief acheté mouraient de faim), alerte « vivres à N cases ». 115 tests.
 - 16/11/2026 : **J4 — S'étendre** livré, à valider en partie test.
   - Carte 5 × 5 (nouvelles parties), 24 seigneurs IA avec un village qui grandit.
@@ -92,7 +98,7 @@
 - 12/11/2026 : brief fondateur, DESIGN.md v0.1 à v0.3, réponses aux questions Q1 à Q8, création de cette ROADMAP.
 
 ## Idées notées (à trier)
-- **Chômage massif** (partie test n° 4 : 72 villageois sans emploi sur 143 à l'an 25) et **ennui en fin de partie** (1 à 12 actions par an, tout en vitesse ×3) : il faut des métiers et des besoins nouveaux. Idée du joueur : les événements (maladies, guerres) créeront des métiers (guérisseurs, soldats) qui absorberont ce chômage. À cadrer avant ou avec la V2 ; la natalité (une naissance tous les 1,5 an par foyer) gonfle aussi la population plus vite que les emplois.
+- (Traité en partie par J4b ; à revoir après la partie test.) **Chômage massif** (partie test n° 4 : 72 villageois sans emploi sur 143 à l'an 25) et **ennui en fin de partie** (1 à 12 actions par an, tout en vitesse ×3) : il faut des métiers et des besoins nouveaux. Idée du joueur : les événements (maladies, guerres) créeront des métiers (guérisseurs, soldats) qui absorberont ce chômage. À cadrer avant ou avec la V2 ; la natalité (une naissance tous les 1,5 an par foyer) gonfle aussi la population plus vite que les emplois.
 - Remariage des veufs et veuves (aujourd'hui un foyer qui perd un parent ne se reforme pas).
 - Arrivées des nouveaux venus selon la tendance des vivres (récolte attendue), pas seulement les réserves.
 - L'or et la pierre s'accumulent sans usage (872 or, 188 pierre à l'an 14). J4 donne un débouché à l'or (achat de fiefs) ; la pierre reste sans usage.

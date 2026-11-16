@@ -1,0 +1,53 @@
+{
+  "_doc": "Besoins du village, maladie, natalité et foire (J4b). Outils : chaque travailleur en use outilsParTravailleurParAn par an, pris dans les réserves ; la couverture (part des besoins servis, lissée sur 30 jours) augmente la production des ateliers et des fermes jusqu'à bonusOutilsPourMille. Vêtements : chaque habitant en use vetementsParHabitantParAn ; au-delà de seuilMoralPourMille de couverture, moral +moralVetus ; le froid tue moins (jusqu'à -protectionFroidPourMille). Natalité : l'écart moyen entre deux naissances va de lentJours (rien de satisfait) à rapideJours (moral et besoins au plus haut) ; le moral compte double face aux vêtements et aux outils. Maladie : chaque jour une épidémie peut se déclarer (chanceParAn + parCentHabitants par tranche de 100 habitants, au plus chanceMax) autour d'une maison, dans un rayon ; elle dure dureeJours ; chaque malade meurt avec mortaliteParJour (×2 avant 5 ans et après 60 ans), ×soinPourMille/1000 s'il est soigné (guérisseur à portée avec des remèdes ; 1 remède pour remedeTousLesJours jours de soins d'un foyer). Foire d'automne : prix d'achat et de vente en or, quantités maximales par an.",
+  "outilsParTravailleurParAn": 0.5,
+  "bonusOutilsPourMille": 250,
+  "vetementsParHabitantParAn": 0.5,
+  "seuilMoralPourMille": 600,
+  "moralVetus": 10,
+  "protectionFroidPourMille": 500,
+  "natalite": {
+    "lentJours": 300,
+    "rapideJours": 180
+  },
+  "maladie": {
+    "chanceParAn": 0.15,
+    "parCentHabitants": 0.05,
+    "chanceMax": 0.5,
+    "rayon": 10,
+    "dureeJours": 40,
+    "mortaliteParJour": 0.0015,
+    "soinPourMille": 250,
+    "remedeTousLesJours": 10,
+    "graceAnnees": 3
+  },
+  "foire": {
+    "plafondParAn": 80,
+    "prix": {
+      "nourriture": {
+        "achat": 3,
+        "vente": 1
+      },
+      "bois": {
+        "achat": 2,
+        "vente": 1
+      },
+      "pierre": {
+        "achat": 3,
+        "vente": 1
+      },
+      "laine": {
+        "achat": 3,
+        "vente": 1
+      },
+      "outils": {
+        "achat": 8,
+        "vente": 4
+      },
+      "vetements": {
+        "achat": 10,
+        "vente": 5
+      }
+    }
+  }
+}

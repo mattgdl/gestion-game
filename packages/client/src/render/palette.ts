@@ -1,3 +1,4 @@
+import type { GoodId } from "@jeu/sim-fief";
 /**
  * Couleurs de la carte (placeholders jusqu'à J6). Aucune règle de jeu ici.
  * Les couleurs des seigneurs reprennent les émaux de l'héraldique.
@@ -53,10 +54,14 @@ export function terrainColor(terrain: number, fertility: number, season: number)
 }
 
 /** Couleurs des marchandises (porteurs, caisses en attente, itinéraires). */
-export const GOOD_COLORS: Record<"nourriture" | "bois" | "pierre", string> = {
+export const GOOD_COLORS: Record<GoodId, string> = {
   nourriture: "#e2bd45",
   bois: "#9a6234",
   pierre: "#b9bec4",
+  laine: "#efe9da",
+  outils: "#6f7682",
+  vetements: "#a76bb5",
+  remedes: "#5fae6d",
 };
 
 const SOIL_TILLED = hex("#7a5f3c");

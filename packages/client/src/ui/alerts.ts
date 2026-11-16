@@ -72,6 +72,7 @@ export function computeAlerts(sim: DomainSim, world?: WorldState): Alert[] {
   const usage = sim.economy.storageUsage();
   if (usage.capacity > 0 && usage.used >= usage.capacity * 0.95) out.push({ tone: "warn", text: "Réserves pleines : bâtissez un entrepôt." });
 
+  out.push(...needsAlerts(sim));
   out.push(...supplyAlerts(sim, world));
   if (world) out.push(...expansionAlerts(world, sim));
   out.push(...lineageAlerts(sim));
@@ -204,6 +205,26 @@ export function supplyAlerts(sim: DomainSim, world?: WorldState): Alert[] {
       tone: "warn",
       text: `Les foyers de ${name} vont chercher leurs vivres à ${route.distance} cases${full ? " : les réserves du fief sont pleines (de pierre ou de bois ?)" : ""}. Bâtissez un entrepôt près de leurs maisons et de leurs fermes.`,
     });
+  }
+  return out;
+}
+
+/** Épidémie en cours ; outils et vêtements qui manquent à un village déjà grand (J4b). */
+export function needsAlerts(sim: DomainSim): Alert[] {
+  const out: Alert[] = [];
+  const ep = sim.state.epidemic;
+  if (ep) {
+    const touched = sim.needs.touchedFamilies().length;
+    const healer = sim.state.buildings.some((b) => b.type === "guerisseur" && b.fiefId === ep.fiefId);
+    out.push({
+      tone: "bad",
+      text: `Épidémie : ${touched} foyer${touched > 1 ? "s" : ""} touché${touched > 1 ? "s" : ""}, ${ep.deaths} mort${ep.deaths > 1 ? "s" : ""}.${healer ? " Gardez au guérisseur un travailleur et des remèdes." : " Un guérisseur près de la forêt, à 12 cases des maisons, soignerait les malades."}`,
+    });
+  }
+  if (sim.state.villagers.length >= 60) {
+    const n = sim.state.needs;
+    if (n.outils.coverage < 300) out.push({ tone: "info", text: "Le village manque d'outils : une forge (bois + pierre) rendrait ateliers et fermes plus productifs." });
+    if (n.vetements.coverage < 300) out.push({ tone: "info", text: "Le village manque de vêtements : bergerie puis tisserand (moral, froid moins mortel, plus de naissances)." });
   }
   return out;
 }

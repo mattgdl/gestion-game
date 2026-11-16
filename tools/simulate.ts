@@ -142,6 +142,25 @@ function addWoodcutter(): boolean {
   return true;
 }
 let lastWood = 0;
+// Ateliers (J4b) : petits emplacements au sud de la route y = 22, bergeries à l'est de la route x = 85.
+const smallSpots: [number, number][] = [[74, 23], [76, 23], [78, 23], [80, 23], [82, 23], [74, 20], [83, 20]];
+const sheepSpots: [number, number][] = [[86, 18], [86, 21], [86, 24]];
+let usedSmall = 0;
+let usedSheep = 0;
+function addWorkshop(type: string): boolean {
+  const spots = type === "bergerie" ? sheepSpots : smallSpots;
+  const i = type === "bergerie" ? usedSheep : usedSmall;
+  const spot = spots[i];
+  if (!spot) return false;
+  manor.stock.bois = Math.max(manor.stock.bois ?? 0, 30);
+  manor.stock.pierre = Math.max(manor.stock.pierre ?? 0, 20);
+  sim.state.treasury += 20;
+  build(type, spot[0], spot[1]);
+  if (type === "bergerie") usedSheep += 1;
+  else usedSmall += 1;
+  return true;
+}
+const count = (type: string) => sim.state.buildings.filter((b) => b.type === type).length;
 const adaptive = process.argv[6] !== "fixe";
 /** Un joueur raisonnable : chaque printemps, une ferme de plus si la récolte attendue ne couvre pas l'année. */
 function playerSpring(): string {
@@ -157,6 +176,13 @@ function playerSpring(): string {
   const tick = sim.state.tick;
   const singles = sim.state.villagers.filter((v) => ageOf(v, tick) >= 16).length - 2 * sim.state.families.filter((f) => f.husbandId !== null && f.wifeId !== null).length;
   if (singles >= 2 && addHouse()) notes.push("maison+");
+  // Besoins (J4b) : une forge, puis bergeries et tisserands, quand le village grandit.
+  if (sim.state.villagers.length >= 50) {
+    if (sim.state.needs.outils.coverage < 600 && count("forge") < 3 && addWorkshop("forge")) notes.push("forge+");
+    if (sim.state.needs.vetements.coverage < 600) {
+      if (count("bergerie") <= count("tisserand") ? addWorkshop("bergerie") : addWorkshop("tisserand")) notes.push("laine/tissage+");
+    }
+  }
   // Une maison pour les nouveaux venus quand seul le logement leur manque.
   const outlook = sim.population.housingOutlook();
   if (outlook.spare === 0 && sim.population.immigrationCheck(1).ready && addHouse()) notes.push("maison(venus)+");
@@ -213,6 +239,10 @@ const header = [
   "heritiers",
   "nobles",
   "prestige",
+  "outils",
+  "vetements",
+  "chomeurs",
+  "maladie",
   "fiefs",
   "titre",
   "or",
@@ -267,12 +297,22 @@ for (let y = 1; y <= years; y++) {
       sim.dynasty.lineOfSuccession().length,
       c.nobles,
       sim.dynasty.prestige().total,
+      sim.state.needs.outils.coverage,
+      sim.state.needs.vetements.coverage,
+      c.workers - c.employed,
+      s.deathsDisease ?? 0,
       Object.keys(sim.state.fiefs).length,
       sim.state.dynasty.title,
       sim.state.treasury,
       actions,
     ].join(";"),
   );
+  if (process.argv[8] === "debug" && y % 4 === 0) {
+    for (const b of sim.state.buildings.filter((x) => ["forge", "bergerie", "tisserand"].includes(x.type))) {
+      console.log(`# ${b.type} relie=${sim.isConnected(b.id)} trav=${sim.population.workers(b.id).length} eff=${sim.economy.efficiency(b.id)} stock=${JSON.stringify(b.stock)} prog=${b.progress}`);
+    }
+    console.log(`# produit ${JSON.stringify(s.produced)} reserves outils=${sim.economy.stockOf("outils")} vet=${sim.economy.stockOf("vetements")} laine=${sim.economy.stockOf("laine")}`);
+  }
   if (sim.state.gameOver) {
     console.log(`# fin de partie en l'an ${y} (${sim.state.gameOver.reason})`);
     break;

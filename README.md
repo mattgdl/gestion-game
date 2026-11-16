@@ -31,7 +31,7 @@ Les règles et décisions sont dans **DESIGN.md**, l'avancement dans **ROADMAP.m
 | Vue Monde / retour au manoir | M / O |
 | Pause, vitesses | Espace, 1, 2, 3 |
 | Outils | Échap (Inspecter), R (Route), C (Champ), X (Démolir) |
-| Bâtiments | H Maison, F Ferme, B Bûcheron, P Carrière, E Entrepôt, N Marché, G Église |
+| Bâtiments | H Maison, F Ferme, B Bûcheron, P Carrière, E Entrepôt, N Marché, G Église, K Forge, U Bergerie, T Tisserand, J Guérisseur |
 | Annuler l'outil | Clic droit |
 | Zoomer sur un fief | Double-clic, ou clic en vue Monde |
 | Itinéraires de tous les porteurs | L |
