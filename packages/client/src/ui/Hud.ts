@@ -644,6 +644,7 @@ export class Hud {
           conds.push(`À ${def.procheDe.rayon} cases au plus ${terrain}.`);
         }
         conds.push("Doit toucher une route reliée au manoir pour fonctionner.");
+        if (def.uniqueParFief) conds.push("Une seule par fief.");
         if (def.unique) {
           const built = sim.state.buildings.some((b) => b.type === tool.building);
           conds.push(built ? "Un seul exemplaire possible : déjà construit." : "Un seul exemplaire possible.");
@@ -657,7 +658,7 @@ export class Hud {
           <ul class="tc-conds">${conds.map((c) => `<li>${escapeHtml(c)}</li>`).join("")}</ul>`;
       }
     } else if (tool.kind === "road") {
-      html = `<div class="tc-head"><strong>Route</strong><span class="tc-size">1 or par case</span></div>
+      html = `<div class="tc-head"><strong>Route</strong><span class="tc-size">${formatCost(ECONOMY.coutRoute)} par case</span></div>
         <p>Relie les bâtiments au manoir. Les porteurs ne circulent que sur les routes, par le plus court chemin.</p>
         <ul class="tc-conds"><li>Glisser pour tracer ; la forêt est défrichée au passage.</li><li>Ni sur la roche, ni sur l'eau.</li></ul>`;
     } else if (tool.kind === "field") {

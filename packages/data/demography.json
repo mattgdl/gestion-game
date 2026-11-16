@@ -46,7 +46,7 @@
   },
   "provisions": {
     "joursNourriture": 30,
-    "chargeFoyer": 15
+    "chargeFoyer": 25
   },
   "seuilDefaite": 5,
   "distanceTravailSansPerte": 10,

@@ -642,23 +642,42 @@ export class Population {
       if (this.state.deliveries.some((d) => d.familyId === f.id)) continue;
       const house = this.sim.building(f.houseId);
       if (!house || !this.sim.isConnected(house.id)) continue;
-      // Un trajet lointain se prépare plus tôt : il faut tenir jusqu'au retour.
-      const route = this.sim.economy.routesFrom(house.id, "provisions")[0];
-      const tripDays = route ? Math.ceil((2 * legTicks(route.path.length)) / DAY_TICKS) : 0;
+      // Un trajet lointain se prépare plus tôt : il faut tenir jusqu'au retour. On compte le trajet
+      // jusqu'à la réserve qui a vraiment des vivres, pas jusqu'à l'étal vide le plus proche.
+      const eco = this.sim.economy;
+      const carry = D.provisions.chargeFoyer;
+      const days = (r: { path: number[] } | undefined) => (r ? Math.ceil((2 * legTicks(r.path.length)) / DAY_TICKS) : 0);
+      const foodRoute = eco.supplyRoute(house.id, "nourriture", carry, "provisions");
+      // Un petit dépôt proche peut se vider avant notre tour : on prévoit le voyage jusqu'à une réserve
+      // qui a de quoi servir plusieurs foyers.
+      const sureRoute = eco.supplyRoute(house.id, "nourriture", carry * 4, "provisions", true);
+      const foodTrip = Math.max(days(foodRoute), days(sureRoute));
       let daily = 0;
       for (const v of this.members(f.id)) daily += dailyFood(v, tick);
+      // Jamais plus de deux mois de vivres d'avance : en temps de disette, chacun doit pouvoir manger.
+      const foodMissing = Math.min(Math.max(target.food, daily * (2 * foodTrip + 20)), target.food * 2) - f.food;
       let good: GoodId | null = null;
       let missing = 0;
-      if (f.food < target.food / 2 || f.food < daily * (tripDays + 10)) {
+      let route = foodRoute;
+      if (f.food < target.food / 2 || f.food < daily * (foodTrip + 10)) {
         good = "nourriture";
-        missing = Math.max(target.food, daily * (2 * tripDays + 20)) - f.food;
+        missing = foodMissing;
       } else if (target.wood > 0 && f.wood < target.wood / 2) {
-        good = "bois";
-        missing = target.wood - f.wood;
+        // Partie test n° 4 : des foyers partis loin chercher du bois mouraient de faim en route.
+        // On ne part chercher du bois que si les vivres tiennent tout le voyage ; sinon, vivres d'abord.
+        const woodRoute = eco.supplyRoute(house.id, "bois", Math.ceil((target.wood - f.wood) / 1000), "provisions");
+        if (woodRoute && f.food >= daily * (days(woodRoute) + 10)) {
+          good = "bois";
+          missing = target.wood - f.wood;
+          route = woodRoute;
+        } else if (foodRoute && foodMissing > 0) {
+          good = "nourriture";
+          missing = foodMissing;
+        }
       }
-      if (!good) continue;
-      const want = Math.min(D.provisions.chargeFoyer, Math.ceil(missing / 1000));
-      this.sim.economy.sendCollect(house, good, want, tick, f.id);
+      if (!good || !route) continue;
+      const want = Math.min(carry, Math.ceil(missing / 1000));
+      eco.sendCollect(house, good, want, tick, f.id, route);
     }
   }
 

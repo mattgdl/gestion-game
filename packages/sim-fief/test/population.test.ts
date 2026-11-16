@@ -120,6 +120,19 @@ describe("provisions des foyers", () => {
     expect(sim.state.families.every((f) => f.hungryDays === 0)).toBe(true);
   });
 
+  it("va jusqu'à une réserve bien garnie plutôt qu'à un entrepôt proche presque vide", () => {
+    const { sim, world } = hungryVillage();
+    // Un entrepôt tout près des maisons, avec seulement 2 vivres ; le manoir en a plein.
+    const depot = build(sim, "entrepot", 80, 25);
+    depot.stock = { nourriture: 2 };
+    for (const f of sim.state.families) if (!f.noble) f.food = 0;
+    runUntil(sim, world, DAY_TICKS * 2);
+    const trips = sim.state.deliveries.filter((d) => d.kind === "collecte" && d.familyId !== undefined && d.good === "nourriture");
+    expect(trips.length).toBeGreaterThan(1);
+    expect(trips.filter((d) => d.toId === depot.id)).toHaveLength(0);
+    expect(trips.some((d) => d.toId === manorOf(sim).id && d.amount >= 5)).toBe(true);
+  });
+
   it("fait ses provisions de bois à l'automne et se chauffe l'hiver", () => {
     const { sim, world } = hungryVillage();
     runUntil(sim, world, WINTER + DAY_TICKS * 5);

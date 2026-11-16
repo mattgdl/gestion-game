@@ -181,13 +181,13 @@
       "or": 40
     },
     "constructible": true,
-    "unique": true,
     "couleur": "#d8d0c0",
     "description": "Soutient le moral des foyers voisins.",
-    "utilite": "Son prêtre soutient le moral (+15) des maisons à 15 cases ou moins. Plus tard (J3), elle accueillera mariages et successions de votre lignée.",
+    "utilite": "Son prêtre soutient le moral (+15) des maisons à 15 cases ou moins. Une église par fief.",
     "travailleurs": 1,
     "prioriteEmploi": 5,
-    "influence": 15
+    "influence": 15,
+    "uniqueParFief": true
   },
   "maisonforte": {
     "nom": "Maison forte",

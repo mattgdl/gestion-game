@@ -1,13 +1,14 @@
 {
-  "_doc": "Économie. Ressources de départ (rangées au manoir, l'or au trésor), coûts, impôts par foyer logé, perçus à chaque bilan d'automne.",
+  "_doc": "Économie. Ressources de départ (rangées au manoir, l'or au trésor), coûts, impôts par foyer logé, perçus à chaque bilan d'automne. Une route coûte 1 or et 1 pierre par case (retours de la partie test n° 4 : la pierre s'accumulait sans usage et les routes ne coûtaient presque rien).",
   "ressourcesDepart": {
     "nourriture": 180,
     "bois": 150,
-    "pierre": 60,
+    "pierre": 100,
     "or": 200
   },
   "coutRoute": {
-    "or": 1
+    "or": 1,
+    "pierre": 1
   },
   "coutChamp": {},
   "remboursementDemolition": 0.5,

@@ -74,6 +74,40 @@ describe("annexion d'un fief acheté", () => {
     expect(sim.state.dynasty.chronicle.some((c) => c.text.startsWith("Achat ") && c.text.includes(meta.name))).toBe(true);
   });
 
+  it("autorise une église par fief, et fait payer les routes en or et en pierre", () => {
+    const { sim, world } = newGame("eglises");
+    const meta = fiefById(world, "f-0-0")!;
+    sim.state.treasury = 99999;
+    sim.apply({ type: "makeOffer", fiefId: "f-0-0", price: 99999 });
+    untilWinter(sim, world);
+    sim.state.treasury = 1000;
+    const manor = sim.state.buildings.find((b) => b.type === "manoir")!;
+    manor.stock = { bois: 200, pierre: 200, nourriture: 50 };
+    const placeIn = (fiefId: string) => {
+      const f = sim.state.fiefs[fiefId]!;
+      for (let y = f.originY + 2; y < f.originY + f.size - 4; y++) {
+        for (let x = f.originX + 2; x < f.originX + f.size - 4; x++) {
+          if (sim.apply({ type: "build", building: "eglise", x, y }).ok) return true;
+        }
+      }
+      return false;
+    };
+    expect(placeIn("f-1-0")).toBe(true);
+    expect(placeIn("f-1-0")).toBe(false);
+    expect(placeIn("f-0-0")).toBe(true);
+    expect(meta.ownerId).toBe("joueur");
+    const before = sim.totals();
+    const f = sim.state.fiefs["f-1-0"]!;
+    let built = false;
+    for (let y = f.originY + 1; y < f.originY + f.size && !built; y++) {
+      for (let x = f.originX + 1; x < f.originX + f.size && !built; x++) built = sim.apply({ type: "road", x, y }).ok;
+    }
+    expect(built).toBe(true);
+    const after = sim.totals();
+    expect(before.or - after.or).toBe(1);
+    expect(before.pierre - after.pierre).toBe(1);
+  });
+
   it("donne le titre de baron à 2 fiefs et 100 habitants, définitivement, avec prestige et moral", () => {
     const { sim, world } = newGame("titre");
     const meta = fiefById(world, "f-0-0")!;

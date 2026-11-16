@@ -229,12 +229,30 @@ export class Economy {
    * Envoie un porteur chercher une marchandise : pour un foyer, à la réserve ou au marché le plus
    * proche qui en a ; pour un marché, à la réserve la plus proche qui en a. Renvoie la livraison créée.
    */
-  sendCollect(from: Building, good: GoodId, want: number, tick: number, familyId?: number): Delivery | null {
-    const kind = familyId !== undefined ? "provisions" : "reserves";
-    const route = this.routesFrom(from.id, kind).find((r) => {
+  /**
+   * Réserve où aller chercher une marchandise : la plus proche qui peut fournir tout ce qu'on veut ;
+   * sinon celle qui en a le plus. (Partie test n° 4 : des foyers faisaient des allers-retours pour
+   * 1 ou 2 vivres à des étals presque vides et mouraient de faim, alors que le manoir était plein.)
+   */
+  supplyRoute(fromId: number, good: GoodId, want: number, kind: "reserves" | "provisions", strict = false): Route | undefined {
+    const routes = this.routesFrom(fromId, kind);
+    const availableAt = (r: Route) => {
       const s = this.sim.building(r.storageId);
-      return s !== undefined && (s.stock[good] ?? 0) - this.pendingCollect(s.id, good) > 0;
-    });
+      return s ? (s.stock[good] ?? 0) - this.pendingCollect(s.id, good) : 0;
+    };
+    let route = routes.find((r) => availableAt(r) >= want);
+    if (!route && !strict) {
+      for (const r of routes) {
+        const a = availableAt(r);
+        if (a > 0 && (!route || a > availableAt(route))) route = r;
+      }
+    }
+    return route;
+  }
+
+  sendCollect(from: Building, good: GoodId, want: number, tick: number, familyId?: number, chosen?: Route): Delivery | null {
+    const kind = familyId !== undefined ? "provisions" : "reserves";
+    const route = chosen ?? this.supplyRoute(from.id, good, want, kind);
     if (!route) return null;
     const supply = this.sim.building(route.storageId) as Building;
     const available = (supply.stock[good] ?? 0) - this.pendingCollect(supply.id, good);

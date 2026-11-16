@@ -16,6 +16,8 @@ export interface BuildingDef {
   cout: Cost;
   constructible: boolean;
   unique?: boolean;
+  /** Un seul exemplaire par fief (église). */
+  uniqueParFief?: boolean;
   couleur: string;
   description: string;
   /** À quoi sert le bâtiment (fiche affichée avant de le construire). */

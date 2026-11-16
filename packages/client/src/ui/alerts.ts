@@ -72,6 +72,7 @@ export function computeAlerts(sim: DomainSim, world?: WorldState): Alert[] {
   const usage = sim.economy.storageUsage();
   if (usage.capacity > 0 && usage.used >= usage.capacity * 0.95) out.push({ tone: "warn", text: "Réserves pleines : bâtissez un entrepôt." });
 
+  out.push(...supplyAlerts(sim, world));
   if (world) out.push(...expansionAlerts(world, sim));
   out.push(...lineageAlerts(sim));
   out.push(...jobAlerts(sim));
@@ -177,4 +178,32 @@ export function expansionAlerts(world: WorldState, sim: DomainSim): Alert[] {
   const first = affordable[0];
   if (!first) return [];
   return [{ tone: "info", text: `Votre trésor (${sim.state.treasury} or) permet de faire une offre pour ${first.meta.name} (estimé ${first.range[0]} à ${first.range[1]} or) : panneau Domaine et voisins.` }];
+}
+
+/** Distance au-delà de laquelle les foyers d'un fief perdent trop de temps à se ravitailler. */
+const FAR_SUPPLY = 30;
+
+/**
+ * Vivres trop loin : dans un fief, les foyers vont chercher leur nourriture à plus de 30 cases
+ * (partie test n° 4 : les réserves d'un fief acheté étaient pleines de pierre, la moisson partait au loin).
+ */
+export function supplyAlerts(sim: DomainSim, world?: WorldState): Alert[] {
+  const out: Alert[] = [];
+  const seen = new Set<string>();
+  for (const f of sim.state.families) {
+    if (f.noble || f.houseId === null) continue;
+    const house = sim.building(f.houseId);
+    if (!house || seen.has(house.fiefId) || !sim.isConnected(house.id)) continue;
+    seen.add(house.fiefId);
+    const route = sim.economy.supplyRoute(house.id, "nourriture", 25, "provisions");
+    if (!route || route.distance <= FAR_SUPPLY) continue;
+    const name = sim.state.fiefs[house.fiefId]?.name ?? world?.fiefs.find((m) => m.id === house.fiefId)?.name ?? "un fief";
+    const local = sim.state.buildings.filter((b) => b.fiefId === house.fiefId && BUILDINGS[b.type]?.stockage);
+    const full = local.some((b) => sim.economy.freeSpace(b) <= 0);
+    out.push({
+      tone: "warn",
+      text: `Les foyers de ${name} vont chercher leurs vivres à ${route.distance} cases${full ? " : les réserves du fief sont pleines (de pierre ou de bois ?)" : ""}. Bâtissez un entrepôt près de leurs maisons et de leurs fermes.`,
+    });
+  }
+  return out;
 }

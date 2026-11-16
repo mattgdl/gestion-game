@@ -501,6 +501,12 @@ export class DomainSim {
       return { ok: false, reason: `Un seul exemplaire possible : ${def.nom}.` };
     }
     const [w, h] = def.taille;
+    if (def.uniqueParFief) {
+      const here = this.fiefAt(x, y);
+      if (here && this.state.buildings.some((b) => b.type === type && b.fiefId === here.id)) {
+        return { ok: false, reason: `Un seul exemplaire par fief : ${def.nom}.` };
+      }
+    }
     let fiefId: string | null = null;
     for (let dy = 0; dy < h; dy++) {
       for (let dx = 0; dx < w; dx++) {
