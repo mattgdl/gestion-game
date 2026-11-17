@@ -6,6 +6,7 @@ import { BUILDINGS, DAYS_PER_YEAR, DAILY_WOOD, DEMOGRAPHY, type DomainSim } from
 import type { WorldState } from "@jeu/sim-monde";
 import { neighborFiefs } from "./expansion";
 import { rumors } from "./trade";
+import { warAlerts } from "./war";
 
 export interface Alert {
   tone: "bad" | "warn" | "info";
@@ -76,6 +77,7 @@ export function computeAlerts(sim: DomainSim, world?: WorldState): Alert[] {
   out.push(...needsAlerts(sim));
   out.push(...supplyAlerts(sim, world));
   if (world) out.push(...expansionAlerts(world, sim));
+  if (world) out.push(...warAlerts(world, sim));
   if (world) out.push(...tradeAlerts(world, sim));
   out.push(...lineageAlerts(sim));
   out.push(...jobAlerts(sim));

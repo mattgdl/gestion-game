@@ -1283,3 +1283,9 @@ textarea {
   flex-direction: column;
   gap: 4px;
 }
+
+/* Guerre (J6) */
+.fl-war {
+  background: #b5473a;
+  color: #fff;
+}

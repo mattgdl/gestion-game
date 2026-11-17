@@ -38,6 +38,7 @@ import { computeAlerts, foodDays } from "./alerts";
 import { chronicleHtml, decisionHtml, lineagePanelHtml, successionHtml } from "./lineage";
 import { domainPanelHtml, neighborFiefs, offerHtml, realmName } from "./expansion";
 import { lordTag, partnerMarketHtml, proposeHtml, suggestedPrice, tradePanelHtml } from "./trade";
+import { declareHtml, warPanelHtml } from "./war";
 import { fairHtml, fairPotential, needsFacts } from "./needs";
 import { escapeHtml, formatCost, formatRealDate } from "./format";
 
@@ -77,6 +78,8 @@ const BUILD_KEYS: Record<string, string> = {
   tisserand: "T",
   guerisseur: "J",
   relais: "Y",
+  caserne: "V",
+  armurerie: "I",
 };
 
 function toolId(tool: Tool): string {
@@ -281,6 +284,10 @@ export class Hud {
           <div class="domain" data-el="fiefList"></div>
         </section>
         <section class="panel-section">
+          <h2>Guerre</h2>
+          <div class="domain" data-el="war"></div>
+        </section>
+        <section class="panel-section">
           <h2>Commerce</h2>
           <div class="domain" data-el="trade"></div>
         </section>
@@ -343,14 +350,30 @@ export class Hud {
       if ((ev.target as HTMLElement).closest('[data-act="fair"]')) this.openFair();
     });
     this.el.fiefList!.addEventListener("click", (ev) => {
-      const target = (ev.target as HTMLElement).closest<HTMLElement>("[data-fief],[data-offer],[data-cancel]");
+      const target = (ev.target as HTMLElement).closest<HTMLElement>("[data-fief],[data-offer],[data-cancel],[data-war]");
       if (!target) return;
-      if (target.dataset.offer) this.openOffer(target.dataset.offer);
+      if (target.dataset.war) this.openDeclare(target.dataset.war);
+      else if (target.dataset.offer) this.openOffer(target.dataset.offer);
       else if (target.dataset.cancel) {
         const result = this.game.command({ type: "cancelOffer", fiefId: target.dataset.cancel });
         if (!result.ok && result.reason) this.game.toast(result.reason);
         this.renderDomain();
       } else if (target.dataset.fief) this.actions.focusFief(target.dataset.fief);
+    });
+    this.el.war!.addEventListener("click", (ev) => {
+      const target = (ev.target as HTMLElement).closest<HTMLElement>("[data-endwar],[data-unwar],[data-act]");
+      if (!target) return;
+      const run = (cmd: Parameters<Game["command"]>[0]) => {
+        const result = this.game.command(cmd);
+        if (!result.ok && result.reason) this.game.toast(result.reason);
+        this.renderWar(true);
+      };
+      if (target.dataset.endwar) run({ type: "endWar", warId: target.dataset.endwar });
+      else if (target.dataset.unwar) run({ type: "cancelWarDeclaration", actionId: target.dataset.unwar });
+      else if (target.dataset.act === "hire") {
+        const input = this.el.war!.querySelector<HTMLInputElement>('[data-el="mercCount"]');
+        run({ type: "hireMercenaries", count: Math.floor(Number(input?.value ?? 0)) });
+      }
     });
     this.el.trade!.addEventListener("click", (ev) => {
       const target = (ev.target as HTMLElement).closest<HTMLElement>("[data-accept],[data-refuse],[data-break],[data-withdraw],[data-act]");
@@ -985,6 +1008,41 @@ export class Hud {
     this.buildFiefLabels();
     this.renderDomain();
     this.renderTrade(true);
+    this.renderWar(true);
+  }
+
+  private renderWar(force = false): void {
+    const box = this.el.war!;
+    // On ne redessine pas sous le doigt du joueur qui tape un nombre de mercenaires.
+    if (!force && box.contains(document.activeElement)) return;
+    const html = warPanelHtml(this.game.session.world, this.game.session.sim);
+    if (box.dataset.html !== html) {
+      box.dataset.html = html;
+      box.innerHTML = html;
+    }
+  }
+
+  /** Fenêtre « Déclarer la guerre » à un fief voisin. */
+  openDeclare(fiefId: string): void {
+    const session = this.game.session;
+    const view = declareHtml(session.world, session.sim, fiefId);
+    if (!view) return;
+    const body = this.openModal(view.title, view.body);
+    body.querySelector('[data-act="close"]')?.addEventListener("click", () => this.closeModal());
+    body.querySelectorAll<HTMLButtonElement>("[data-goal]").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        const result = this.game.command({ type: "declareWar", fiefId, goal: btn.dataset.goal as "conquete" | "pillage" });
+        if (!result.ok) {
+          const err = body.querySelector<HTMLElement>('[data-el="warError"]')!;
+          err.hidden = false;
+          err.textContent = result.reason ?? "Guerre impossible.";
+          return;
+        }
+        this.closeModal();
+        this.game.toast("Déclaration de guerre prête : elle partira au bilan d'automne.");
+        this.renderWar(true);
+      }),
+    );
   }
 
   private renderTrade(force = false): void {
@@ -1115,6 +1173,7 @@ export class Hud {
         <span class="fl-owner">${escapeHtml(f.ownerId === PLAYER_ID ? "Votre lignée" : (lord?.name ?? "Sans seigneur"))}</span>
         ${lord?.ai ? `<span class="fl-terrain">${lordTag(lord, this.game.session.sim.state.ownerId)}</span>` : ""}
         ${lord?.ai?.plan ? `<span class="fl-sale">convoite ${escapeHtml(world.fiefs.find((x) => x.id === lord.ai!.plan!.fiefId)?.name ?? "")}</span>` : ""}
+        ${world.wars.some((w) => w.fiefId === f.id) ? `<span class="fl-sale fl-war">assiégé</span>` : ""}
         <span class="fl-terrain">${escapeHtml(DOMINANTS[f.dominant].nom)}</span>`;
       label.addEventListener("click", () => this.actions.focusFief(f.id));
       layer.appendChild(label);
@@ -1299,6 +1358,7 @@ export class Hud {
       this.renderLineage();
       this.renderDomain();
       this.renderTrade();
+      this.renderWar();
       this.renderAlerts();
       this.renderLogistics();
       this.renderSelectionLive();

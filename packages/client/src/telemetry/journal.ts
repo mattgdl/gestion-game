@@ -173,6 +173,13 @@ export function worldSnapshot(world: WorldState, sim: DomainSim): Record<string,
       convois: t.convoys.length,
       enAttente: t.pending.length,
     },
+    guerre: {
+      soldats: sim.army.soldiers().length,
+      armes: sim.army.armed(),
+      force: sim.army.strength(),
+      guerres: sim.state.army.wars.map((w) => ({ attaquant: w.attackerId, defenseur: w.defenderId, fief: w.fiefId, but: w.goal, gagnes: w.won, perdus: w.lost })),
+      guerresDuMonde: world.wars.length,
+    },
     seigneursIA: ais.length,
     plusGrands: ais
       .map((l) => ({ nom: l.name, archetype: l.ai!.archetype, fiefs: world.fiefs.filter((f) => f.ownerId === l.id).length, or: l.ai!.gold, relation: l.ai!.relations[sim.state.ownerId] ?? 0 }))

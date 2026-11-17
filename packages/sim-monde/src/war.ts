@@ -36,7 +36,7 @@ export interface GuerreDef {
   pillageReserves: number;
   pillageMorts: number;
   moralGuerre: number;
-  ia: { soldatsParFoyer: number; recuperation: number; declarationParAn: number; graceAnnees: number; avantageRequis: number; mercenairesPartOr: number; attraitJoueur: number; mercenairesMax: number };
+  ia: { soldatsParFoyer: number; recuperation: number; declarationParAn: number; graceAnnees: number; avantageRequis: number; mercenairesPartOr: number; attraitJoueur: number; mercenairesMax: number; avantageJoueur: number };
   relationCible: number;
   relationAutres: number;
 }
@@ -203,8 +203,10 @@ export function resolveWars(world: WorldState, rng: Rng, events: WorldEvent[]): 
     const att = lordOf(world, w.attackerId);
     if (att?.ai) att.ai.gold -= aiMercenaries(att) * g.prixMercenaire;
     const soldiers = (id: string) => (isAi(id) ? aiSoldiers(world, lordOf(world, id)!) : (world.armies[id]?.soldiers ?? 0));
-    const attackerLosses = Math.floor((soldiers(w.attackerId) * (won ? g.pertesGagnant : g.pertesPerdant)) / 1000);
-    const defenderLosses = Math.floor((soldiers(w.defenderId) * (won ? g.pertesPerdant : g.pertesGagnant)) / 1000);
+    // Le perdant perd au moins un soldat s'il en a ; le gagnant, sa part arrondie.
+    const losses = (n: number, lost: boolean) => (lost ? Math.ceil((n * g.pertesPerdant) / 1000) : Math.round((n * g.pertesGagnant) / 1000));
+    const attackerLosses = losses(soldiers(w.attackerId), !won);
+    const defenderLosses = losses(soldiers(w.defenderId), won);
     for (const [id, n] of [
       [w.attackerId, attackerLosses],
       [w.defenderId, defenderLosses],
@@ -294,7 +296,7 @@ export function aiWars(world: WorldState, rng: Rng, events: WorldEvent[]): void 
       .filter((f) => {
         // Un seigneur IA n'attaque pas un joueur avec qui il s'entend bien.
         if (!isAi(f.ownerId!) && (lord.ai!.relations[f.ownerId!] ?? 0) >= 30) return false;
-        return attack * 1000 >= defenseOf(world, f) * g.ia.avantageRequis;
+        return attack * 1000 >= defenseOf(world, f) * (isAi(f.ownerId!) ? g.ia.avantageRequis : g.ia.avantageJoueur);
       })
       .map((f) => {
         // Un joueur attire : ses réserves et son or ; plus encore s'ils sont en mauvais termes.

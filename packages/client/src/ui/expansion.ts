@@ -61,12 +61,14 @@ export function domainPanelHtml(world: WorldState, sim: DomainSim): string {
         offer !== null
           ? `<span class="small">Offre en cours : <strong>${offer} or</strong> (réponse au bilan d'automne)</span><button type="button" class="btn btn-small" data-cancel="${meta.id}">Retirer</button>`
           : `<button type="button" class="btn btn-small btn-primary" data-offer="${meta.id}">Faire une offre</button>`;
+      const siege = world.wars.find((w) => w.fiefId === meta.id);
+      const warBtn = siege ? `<span class="small warn">Assiégé</span>` : `<button type="button" class="btn btn-small" data-war="${meta.id}">Guerre…</button>`;
       return `<li class="sale">
         <button type="button" class="sale-name" data-fief="${meta.id}">${e(meta.name)}</button>
         <span class="muted small">${e(DOMINANTS[meta.dominant].nom)} · ${e(lord?.name ?? "")}${lord?.ai ? ` · ${lordTag(lord, sim.state.ownerId)}` : ""}</span>
         <span class="small">Village : ${meta.households} foyer${meta.households > 1 ? "s" : ""} · ${landText(meta)}</span>
         <span class="small">Estimé entre <strong>${range[0]}</strong> et <strong>${range[1]}</strong> or</span>
-        <span class="sale-actions">${action}</span>
+        <span class="sale-actions">${action}${warBtn}</span>
       </li>`;
     })
     .join("");

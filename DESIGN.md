@@ -1,7 +1,7 @@
 # DESIGN.md — Jeu de gestion médiéval à dynastie
 
 > **Titre provisoire :** « Seigneurie » (nom de travail, à remplacer) · **Version du document :** 0.9 · **Dernière mise à jour :** 16/11/2026
-> **Statut :** J5 validé par le joueur (partie test n° 6). Prochain jalon : guerre et conquête (J6), puis événements et traits (J7), multi (J8).
+> **Statut :** J6 livré (guerre et conquête), à valider en partie test. Ensuite : événements et traits (J7), multi (J8).
 > Ce document est la référence du projet. En cas de doute, c'est lui qui tranche, et chaque décision y est consignée avec sa raison (section 11).
 
 ## Sommaire
@@ -245,6 +245,23 @@ Règles décidées pendant le développement, à contester si elles ne te convie
 
 **Ce que montre un monde sans joueur sur 40 ans** (graines orge-349, a, b) : aucun achat les 5 premières années, puis 1 à 3 achats entre seigneurs vers l'an 10, 5 à 14 vers l'an 20 ; il reste 9 à 16 seigneurs à l'an 40 (24 au départ). Le joueur reçoit environ une proposition par an. L'or des seigneurs IA s'accumule (3 000 à 6 000 à l'an 40) : à surveiller à l'équilibrage (J9).
 
+### 4.9 J6 — Guerre et conquête
+
+| Sujet | Règle | Raison |
+|---|---|---|
+| Soldats | Caserne (3 × 2 ; 40 bois, 40 pierre, 30 or) : 8 soldats, de vrais villageois, priorité d'emploi 9 (elle prend les bras inoccupés). Solde de 2 or par soldat au bilan. Son porteur va chercher des armes. | Choix du joueur : caserne surtout. La guerre absorbe le chômage. |
+| Armes | Armurerie (2 × 2 ; 30 bois, 20 pierre, 20 or ; 2 armuriers) : 1 outil + 1 bois → 1 arme, 15 par an. Un soldat armé compte double. 20 % des armes s'usent à chaque bilan. | Une chaîne qui prolonge celle des outils. |
+| Mercenaires | Loués dans le panneau Guerre, 25 or chacun, jusqu'au bilan (force 12, moins qu'un soldat armé). | Choix du joueur : « 3 si besoin ». Pas trop rentables : un pillage ne doit pas se financer seul. |
+| Force | Soldats × 10 (× 2 armés) + mercenaires × 12, × moral (750 à 1250 ‰). Le défenseur ajoute sa milice (3 par foyer) et compte 1,5 fois. Hasard de ± 20 % par camp et par assaut. Seigneur IA : 0,6 soldat par foyer × (0,5 + goût de la guerre), moins ses blessés (ils reviennent à 30 % par an) ; il loue des mercenaires avec 30 % de son or (20 au plus) pour attaquer. | Lisible et déterministe. |
+| Siège | Déclaration au bilan (une guerre à la fois), premier assaut au bilan suivant, puis un par an. Conquête : 3 assauts gagnés ; pillage : 1. Siège levé après 2 assauts perdus ; l'attaquant peut lever le siège. À chaque assaut, le perdant perd 25 % de ses soldats (au moins un), le gagnant 10 %. | Choix du joueur : siège sur plusieurs années. |
+| Enjeux | Pillage : 30 % de l'or, 25 % des réserves, 3 morts (joueur) ; un foyer et 30 % de l'or (IA). Conquête : le fief et son village changent de mains. Le fief de départ d'un joueur ne peut être que pillé. Un fief perdu emporte ses bâtiments, routes, champs et foyers. | Choix du joueur : pillage ou fief disputé, sans défaite par la guerre. |
+| Réputation | Le joueur qui déclare une guerre : −60 avec sa cible, −10 avec tous les autres seigneurs. Les accords avec l'ennemi sont rompus. Moral « En guerre » −5. | Une guerre a un prix diplomatique. |
+| IA | Après l'an 6, chaque seigneur IA en paix déclare une guerre avec la chance 30 % × goût de la guerre, contre le voisin le plus faible qu'il domine (×1,2 pour un seigneur IA, ×0,9 pour un joueur, qui attire aussi par ses richesses), jamais contre un joueur avec qui sa relation est de +30 ou plus. Conquête si son ambition est forte, pillage sinon (et toujours contre un fief de départ). Les IA se font aussi la guerre entre elles. | Choix du joueur : les IA t'attaquent, entre elles aussi. |
+| Interface | Panneau Guerre : armée, force, défense, guerres en cours (rapport de forces estimé), déclaration en attente, mercenaires. Bouton « Guerre… » sur chaque voisin (fenêtre : forces, règles, réputation ; Piller ou Conquérir). Étiquette « assiégé » sur la carte du monde. Alertes de siège avec rapport de forces. Assauts et pillages dans « Affaires » au bilan et dans la chronique. Touches V caserne, I armurerie. | |
+| Sauvegardes | Format v9 (aucune guerre en cours, pas d'armée). | |
+
+**Ce que montre un monde sur 30 ans** (6 graines, joueur passif avec 4 soldats après l'an 10) : 17 à 28 guerres entre seigneurs, 7 à 14 conquêtes ; il reste 4 à 8 seigneurs IA à l'an 30. Le joueur est attaqué 1 à 5 fois, le plus souvent après l'an 25, parfois dès l'an 7-10 (voisin conquérant) : les IA s'attaquent d'abord entre elles. À juger en partie test.
+
 ## 5. Systèmes clés
 
 ### 5.1 Carte et caméra
@@ -443,6 +460,7 @@ jeu-medieval/
 │  │  │  ├─ barrier.ts        ← barrière annuelle : commerce, achats de fiefs, vie des IA
 │  │  │  ├─ fiefs.ts          ← valeur des fiefs, prix plancher
 │  │  │  ├─ trade.ts          ← prix, propositions et règlement des accords (J5)
+│  │  │  ├─ war.ts            ← guerres : déclarations, sièges, pillages, conquêtes (J6)
 │  │  │  ├─ ai/archetypes.ts  ← archétypes des seigneurs IA (J5)
 │  │  │  └─ ai/neighbors.ts   ← vie des seigneurs IA : économie, croissance, achats (J5)
 │  │  └─ test/
@@ -535,6 +553,7 @@ jeu-medieval/
 | 16/11/2026 | J4c validé par le joueur ; le guérisseur soigne tout son fief au lieu de 12 cases autour de lui. | Retour du joueur : condition de placement trop particulière. |
 | 16/11/2026 | J5 : 10 archétypes de seigneurs IA (économie au bilan, croissance, rumeurs et achats entre seigneurs, relation), accords de commerce proposés dans les deux sens, prix selon le terrain, relais et charrettes visibles. Règles en section 4.8. | Choix du joueur (questions du 16/11) : archétypes, concurrence pour les terres, accords + convois visibles, prix géographiques. |
 | 17/11/2026 | J5 validé (partie test n° 6). Corrections : ventes en route comptées au bilan, guérisseur prioritaire à l'emploi et message de soins exact, répit après une épidémie, propositions IA tournées vers ses besoins, achats IA selon le caractère du vendeur. Section 4.8. | Analyse du journal de partie. |
+| 17/11/2026 | J6 : caserne et armurerie (soldats villageois, armes), mercenaires en appoint, siège sur plusieurs années (un assaut par bilan), pillage ou conquête, fief de départ seulement pillable, réputation, IA qui s'attaquent entre elles et attaquent le joueur. Section 4.9. | Choix du joueur (questions du 17/11). |
 | 16/11/2026 | Partie test n° 4 (orge-349 en 5 × 5, 25 ans, environ 45 min) : église par fief, routes en or et pierre, correction du ravitaillement entre fiefs, alerte de vivres lointains. Chômage et ennui de fin de partie notés pour la suite. | Retours du joueur et analyse du journal. |
 | 16/11/2026 | J4 : carte 5 × 5, fiefs achetés avec leur village et une maison forte, négociation avec prix plancher secret, titres par fiefs et population. Règles en section 4.5. | Choix du joueur (questions du 16/11). |
 | 16/11/2026 | Partie test n° 3 (chêne-832, 13 ans, 33 min) : famille noble servie dans toutes les réserves ; alertes de déficit de nourriture et de bras inoccupés. | Analyse du journal de partie. |

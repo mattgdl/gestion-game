@@ -5,7 +5,7 @@
 
 ## En cours
 
-- Rien. Prochain jalon : **J6 — Guerre et conquête**. Critère J3 (deux successions) encore à vérifier dans une partie longue.
+- **Partie test de J6 — Guerre et conquête** (critère : bâtir une armée armée, mener un siège jusqu'au bout — pillage ou conquête — et subir ou repousser une attaque ; voir des guerres entre IA). Puis **J7 — Événements et traits**. Critère J3 (deux successions) encore à vérifier dans une partie longue.
 
 ## À faire
 
@@ -17,9 +17,6 @@
 - Foire : la vente doit valoir le clic ; journal de la foire de l'année seulement.
 - Moral et natalité : moins de plafond à 99, naissances freinées sans vêtements.
 - **Critère de fin :** une partie de 20 ans où les vêtements sont couverts avec 2 ou 3 bergeries, la foire sert, et le chômage reste contenu.
-
-### J6 — Guerre et conquête
-- Soldats (métier qui absorbe le chômage), conquête résolue par calcul au bilan d'automne.
 
 ### J7 — Événements et traits
 - Événements saisonniers annoncés, choix au bilan d'automne.
@@ -46,6 +43,7 @@
 - *(vide)*
 
 ## Fait
+- 17/11/2026 : **J6 — Guerre et conquête** livré, à valider en partie test : caserne, armurerie, mercenaires, sièges, pillage, conquête, IA belliqueuses.
 - 17/11/2026 : **J5 — Voisins IA et commerce** validé par le joueur (partie test n° 6), avec corrections (ventes en route, guérisseur, répit des épidémies, propositions IA).
   - 10 archétypes de seigneurs IA, économie et croissance au bilan, rumeurs et achats entre seigneurs, relation.
   - Accords de commerce dans les deux sens, prix selon le terrain, relais et charrettes sur la carte.
@@ -113,6 +111,9 @@
 - 12/11/2026 : brief fondateur, DESIGN.md v0.1 à v0.3, réponses aux questions Q1 à Q8, création de cette ROADMAP.
 
 ## Idées notées (à trier)
+- Murs et palissades (bonus de défense), alliances, paix achetée, tribut : écartés de J6 (choix du joueur).
+- La carte se consolide vite (4 à 8 seigneurs IA à l'an 30) : à surveiller à l'équilibrage (J9).
+- Barre d'outils sur trois lignes depuis J6 : à revoir avec les vrais graphismes.
 - Le relais prend les vêtements et outils dont le village a besoin : pas de priorité entre besoins du village et accords (partie test n° 6 : 13 à 18 vêtements livrés sur 25 en rejouant la partie).
 - Un guérisseur ne soigne que son fief : un fief acheté en demande un autre ; à rappeler à l'achat.
 - Commerce entre seigneurs IA, et seigneurs IA qui dépensent leur or (bâtir, armer) : leur or s'accumule (J5).
