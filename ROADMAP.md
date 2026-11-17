@@ -11,13 +11,6 @@
 
 > **Ordre revu le 16/11/2026** (choix du joueur) : une partie de la V2 passe avant le multi. Elle donne plus de jeu au solo et de la matière pour l'équilibrage. Garde-fou : chaque nouveauté se résout au bilan d'automne, passe par les messages de `shared/src/messages.ts` et reste déterministe, pour que le multi n'ait rien à réécrire.
 
-### J4c — Réglages (courte passe)
-- Vêtements : couverture proportionnelle (plus de « tout ou rien ») et message qui dit où la chaîne bloque (laine, tisserand).
-- Guérisseurs : remèdes gardés sur place, plus d'alerte « porteurs ».
-- Foire : la vente doit valoir le clic ; journal de la foire de l'année seulement.
-- Moral et natalité : moins de plafond à 99, naissances freinées sans vêtements.
-- **Critère de fin :** une partie de 20 ans où les vêtements sont couverts avec 2 ou 3 bergeries, la foire sert, et le chômage reste contenu.
-
 ### J7 — Événements et traits
 - Événements saisonniers annoncés, choix au bilan d'automne.
 - Traits des personnages (seigneur, héritiers, conjoints).
