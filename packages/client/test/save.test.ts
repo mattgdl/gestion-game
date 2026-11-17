@@ -170,10 +170,12 @@ describe("sauvegarde", () => {
     const session = Session.newGame("j5");
     play(session, 20);
     const v8 = session.toSave();
-    const { trade: _t, ...domain } = v8.domain;
+    const { trade: _t, army: _ar, ...domain } = v8.domain;
     const world = { ...v8.world, lords: v8.world.lords.map(({ ai: _a, ...l }) => l) } as Record<string, unknown>;
     delete world.agreements;
     delete world.proposals;
+    delete world.wars;
+    delete world.armies;
     const migrated = migrateSave(JSON.parse(JSON.stringify({ ...v8, saveVersion: 7, domain, world })));
     expect(migrated.saveVersion).toBe(SAVE_VERSION);
     expect(migrated.world.lords).toEqual(v8.world.lords);

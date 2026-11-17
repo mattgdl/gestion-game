@@ -2,7 +2,7 @@
  * État de la couche Monde : qui possède quel fief, les seigneurs, l'année en cours.
  * Sérialisable en JSON. En solo il vit dans le navigateur ; en multi (J8) dans le serveur.
  */
-import type { DominantId, FiefSummary, LineageSetup, TradeGood, TradeTerms, WorldDims } from "@jeu/shared";
+import type { DominantId, FiefSummary, LineageSetup, TradeGood, TradeTerms, WarInfo, WorldDims } from "@jeu/shared";
 
 export interface FiefMeta {
   id: string;
@@ -40,6 +40,8 @@ export interface AiLord {
   plan: { fiefId: string; year: number } | null;
   /** A manqué de vivres au dernier bilan. */
   hungry: boolean;
+  /** Soldats blessés ou tombés, qui manquent à son armée (J6) ; ils reviennent peu à peu. */
+  wounded?: number;
 }
 
 /** Accord proposé par un seigneur IA, en attente de la réponse du domaine (J5). */
@@ -66,6 +68,10 @@ export interface WorldState {
   agreements: TradeTerms[];
   /** Accords proposés par les seigneurs IA, pas encore acceptés (J5). */
   proposals: TradeProposal[];
+  /** Guerres en cours (J6). */
+  wars: WarInfo[];
+  /** Dernière armée annoncée par chaque domaine joueur au bilan (J6). */
+  armies: Record<string, { soldiers: number; armed: number; mercenaries: number; morale: number; households: number }>;
 }
 
 export function fiefById(world: WorldState, id: string): FiefMeta | undefined {

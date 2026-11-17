@@ -8,6 +8,7 @@ import dynastyJson from "@jeu/data/dynasty.json";
 import fiefsJson from "@jeu/data/fiefs.json";
 import besoinsJson from "@jeu/data/besoins.json";
 import seasonsJson from "@jeu/data/seasons.json";
+import guerreJson from "@jeu/data/guerre.json";
 import type { Cost, Resources } from "@jeu/shared";
 import type { GoodId, SuccessionLaw } from "./state";
 
@@ -47,6 +48,8 @@ export interface BuildingDef {
   influence?: number;
   /** Relais de convoi (J5) : charge d'une charrette, jours de route par fief de distance (aller). */
   relais?: { chargeConvoi: number; joursParFief: number };
+  /** Caserne (J6) : ses travailleurs sont des soldats ; ses porteurs vont chercher des armes. */
+  caserne?: boolean;
   /** Porteurs attachés au bâtiment. */
   transport?: { porteurs: number; charge: number };
   /** Production en attente au-delà de laquelle le bâtiment s'arrête. */
@@ -183,3 +186,15 @@ export interface NeedsDef {
   foire: { plafondParAn: number; prix: Partial<Record<GoodId, { achat: number; vente: number }>> };
 }
 export const NEEDS = besoinsJson as unknown as NeedsDef;
+
+/** Guerre (J6) : ce dont la couche Fief a besoin (force, solde, mercenaires, usure, moral). */
+export interface GuerreFiefDef {
+  forceSoldat: number;
+  armeFacteur: number;
+  forceMercenaire: number;
+  prixMercenaire: number;
+  soldeParAn: number;
+  usureArmes: number;
+  moralGuerre: number;
+}
+export const GUERRE_FIEF = guerreJson as unknown as GuerreFiefDef;

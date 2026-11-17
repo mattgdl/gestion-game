@@ -9,11 +9,11 @@
  * Elles sont dans des bâtiments (réserves, ou production en attente) ou sur le dos
  * d'un porteur. Seul l'or reste un total : le trésor.
  */
-import type { TradeGood, TradeTerms, WorldDims } from "@jeu/shared";
+import type { TradeGood, TradeTerms, WarGoal, WarInfo, WorldDims } from "@jeu/shared";
 
 /** Marchandises physiques, qui se transportent et se stockent. L'or n'en fait pas partie. */
-export type GoodId = "nourriture" | "bois" | "pierre" | "laine" | "outils" | "vetements" | "remedes";
-export const GOOD_IDS: readonly GoodId[] = ["nourriture", "bois", "pierre", "laine", "outils", "vetements", "remedes"];
+export type GoodId = "nourriture" | "bois" | "pierre" | "laine" | "outils" | "vetements" | "remedes" | "armes";
+export const GOOD_IDS: readonly GoodId[] = ["nourriture", "bois", "pierre", "laine", "outils", "vetements", "remedes", "armes"];
 /** Marchandises qui servent à construire (comptées dans les totaux du bandeau). */
 export type BuildGood = "nourriture" | "bois" | "pierre";
 export const BUILD_GOODS: readonly BuildGood[] = ["nourriture", "bois", "pierre"];
@@ -25,6 +25,7 @@ export const GOOD_NAMES: Record<GoodId, string> = {
   outils: "Outils",
   vetements: "Vêtements",
   remedes: "Remèdes",
+  armes: "Armes",
 };
 export type Goods = Partial<Record<GoodId, number>>;
 
@@ -292,6 +293,8 @@ export interface DomainState {
   fair: { year: number; bought: Goods; sold: Goods };
   /** Commerce avec les seigneurs IA (J5) : propositions, accords, convois. */
   trade: TradeState;
+  /** Armée et guerres (J6). */
+  army: ArmyState;
   /** Fin de partie : le temps s'arrête. */
   gameOver: GameOver | null;
   nextId: number;
@@ -319,6 +322,22 @@ export interface Epidemic {
   deaths: number;
   /** Jours de soins donnés depuis le dernier remède pris, par guérisseur. */
   care: Record<string, number>;
+}
+
+/** Armée et guerres du domaine (J6). */
+export interface ArmyState {
+  /** Mercenaires loués pour les assauts de ce bilan. */
+  mercenaries: number;
+  /** Déclarations de guerre à remettre au Monde au prochain bilan. */
+  pending: { actionId: string; fiefId: string; goal: WarGoal }[];
+  /** Sièges que le domaine lève (identifiants de guerre). */
+  ends: string[];
+  /** Guerres en cours où le domaine est engagé (copie tenue à jour par les messages du Monde). */
+  wars: WarInfo[];
+}
+
+export function emptyArmy(): ArmyState {
+  return { mercenaries: 0, pending: [], ends: [], wars: [] };
 }
 
 /** Commerce avec les seigneurs IA (J5). */

@@ -50,6 +50,12 @@ export type ProposeAction =
     }
   /** Le domaine a accepté un accord proposé par un seigneur IA (il court depuis l'acceptation). */
   | { type: "acceptTrade"; actionId: string; ownerId: string; proposalId: string }
+  /** Le domaine déclare la guerre à un fief qui touche les siens (J6) : premier assaut au bilan suivant. */
+  | { type: "declareWar"; actionId: string; ownerId: string; fiefId: string; goal: WarGoal }
+  /** L'attaquant lève le siège. */
+  | { type: "endWar"; actionId: string; ownerId: string; warId: string }
+  /** Forces du domaine au bilan : soldats, soldats armés, mercenaires, moral (‰). */
+  | { type: "armyReport"; actionId: string; ownerId: string; soldiers: number; armed: number; mercenaries: number; morale: number; households: number }
   /** Le domaine rompt un accord. */
   | { type: "cancelTrade"; actionId: string; ownerId: string; agreementId: string }
   /**
@@ -75,6 +81,23 @@ export interface BarrierInput {
   actions: ProposeAction[];
 }
 
+/** But d'une guerre (J6) : prendre le fief, ou le piller. */
+export type WarGoal = "conquete" | "pillage";
+
+/** Une guerre en cours, vue par tous (J6). */
+export interface WarInfo {
+  id: string;
+  attackerId: string;
+  defenderId: string;
+  fiefId: string;
+  goal: WarGoal;
+  /** Année du premier assaut. */
+  firstYear: number;
+  /** Assauts gagnés et perdus par l'attaquant. */
+  won: number;
+  lost: number;
+}
+
 /** Résultats renvoyés par le Monde. */
 export type WorldEvent =
   | { type: "info"; ownerId: string | null; text: string }
@@ -89,10 +112,32 @@ export type WorldEvent =
       toOwnerId: string;
       price: number;
       households: number;
+      /** Pris par les armes (J6), et non acheté. */
+      conquest?: boolean;
     }
   /** Une offre est refusée ou annulée : l'or sous séquestre revient, avec la raison. */
   | { type: "escrowReleased"; ownerId: string; actionId: string; fiefId: string; gold: number; reason: string }
   | { type: "paymentReceived"; ownerId: string; gold: number; reason: string }
+  /** Une guerre est déclarée (J6). */
+  | { type: "warDeclared"; war: WarInfo; text: string }
+  /** Un assaut du siège, au bilan : forces, vainqueur, soldats perdus de chaque camp. */
+  | {
+      type: "warRound";
+      warId: string;
+      attackerId: string;
+      defenderId: string;
+      fiefId: string;
+      attack: number;
+      defense: number;
+      attackerWon: boolean;
+      attackerLosses: number;
+      defenderLosses: number;
+      text: string;
+    }
+  /** Fin d'une guerre : fief conquis, pillé, siège levé ou abandonné. */
+  | { type: "warEnded"; warId: string; attackerId: string; defenderId: string; fiefId: string; outcome: "conquis" | "pille" | "leve" | "abandon"; text: string }
+  /** Un domaine est pillé : part de son or et de ses réserves perdue, quelques morts. */
+  | { type: "pillaged"; ownerId: string; goldPermille: number; reservesPermille: number; deaths: number; text: string }
   /** Un seigneur IA propose un accord (J5) ; il tient jusqu'au bilan de expiresYear. */
   | { type: "tradeProposed"; ownerId: string; terms: TradeTerms; expiresYear: number }
   /** Un seigneur IA accepte l'accord proposé par le domaine. */

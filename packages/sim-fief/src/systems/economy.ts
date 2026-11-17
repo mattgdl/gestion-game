@@ -525,6 +525,10 @@ export class Economy {
         this.dispatchRelay(b, tick);
         continue;
       }
+      if (def?.caserne) {
+        this.dispatchBarracks(b, tick);
+        continue;
+      }
       let busy = 0;
       for (const d of state.deliveries) if (d.fromId === b.id) busy += 1;
       let idle = transport.porteurs - busy;
@@ -564,6 +568,19 @@ export class Economy {
         idle -= 1;
       }
     }
+  }
+
+  /** Porteur de la caserne (J6) : il va chercher des armes pour chaque poste de soldat. */
+  private dispatchBarracks(b: Building, tick: number): void {
+    const def = BUILDINGS[b.type] as BuildingDef;
+    const transport = def.transport;
+    if (!transport) return;
+    let busy = 0;
+    for (const d of this.sim.state.deliveries) if (d.fromId === b.id) busy += 1;
+    if (busy >= transport.porteurs) return;
+    const lack = Math.min(def.stockMax ?? 0, def.travailleurs ?? 0) - (b.stock.armes ?? 0) - this.incomingToMarket(b.id, "armes");
+    if (lack <= 0 || this.stockOf("armes") <= 0) return;
+    this.sendCollect(b, "armes", Math.min(transport.charge, lack), tick);
   }
 
   /**
@@ -780,6 +797,11 @@ export class Economy {
     }
     if (def.relais) {
       return { text: this.sim.trade.relayStatus(b), tone: "ok", blocked: false };
+    }
+    if (def.caserne) {
+      const n = this.sim.population.workers(b.id).length;
+      const arms = Math.min(n, b.stock.armes ?? 0);
+      return { text: `${n} soldat${n > 1 ? "s" : ""}, dont ${arms} armé${arms > 1 ? "s" : ""}. Force de l'armée : ${this.sim.army.strength()}.`, tone: n > 0 ? "ok" : "warn", blocked: false };
     }
     if (b.type === "guerisseur") {
       // Les remèdes restent chez le guérisseur : ils soignent sur place pendant une épidémie.

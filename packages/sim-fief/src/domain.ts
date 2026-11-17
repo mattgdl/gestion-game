@@ -29,11 +29,12 @@ import {
 } from "@jeu/shared";
 import type { CheckResult, Command } from "./commands";
 import { BUILDINGS, DEMOGRAPHY, ECONOMY, TITLES, titleDef, type BuildingDef } from "./data";
-import { BUILD_GOODS, GOOD_IDS, GOOD_NAMES, IMMIGRATION_LEVELS, SUCCESSION_LAWS, emptyTrade, emptyYearStats, type Building, type DomainState, type FiefTiles, type Goods } from "./state";
+import { BUILD_GOODS, GOOD_IDS, GOOD_NAMES, IMMIGRATION_LEVELS, SUCCESSION_LAWS, emptyArmy, emptyTrade, emptyYearStats, type Building, type DomainState, type FiefTiles, type Goods } from "./state";
 import { Dynasty, bySex, emptyDynasty } from "./systems/dynasty";
 import { annexFief } from "./systems/annex";
 import { Needs } from "./systems/needs";
 import { Trade } from "./systems/trade";
+import { Army } from "./systems/army";
 import { Economy, goodsTotal } from "./systems/economy";
 import { DAY_TICKS, Population } from "./systems/population";
 import { connectedRoads } from "./systems/roads";
@@ -83,6 +84,7 @@ export class DomainSim {
   readonly dynasty: Dynasty;
   readonly needs: Needs;
   readonly trade: Trade;
+  readonly army: Army;
 
   private occupancy = new Map<number, Occupant>();
   private buildingsById = new Map<number, Building>();
@@ -98,6 +100,7 @@ export class DomainSim {
     this.dynasty = new Dynasty(this);
     this.needs = new Needs(this);
     this.trade = new Trade(this);
+    this.army = new Army(this);
     this.economy = new Economy(this);
     this.rebuildIndex();
   }
@@ -144,6 +147,7 @@ export class DomainSim {
       offers: [],
       needs: { outils: { owed: 0, coverage: 0 }, vetements: { owed: 0, coverage: 0 } },
       trade: emptyTrade(),
+      army: emptyArmy(),
       epidemic: null,
       fair: { year: 0, bought: {}, sold: {} },
       gameOver: null,
@@ -283,6 +287,37 @@ export class DomainSim {
   /** Cases qui bordent un bâtiment de ce type posé en (x, y). */
   perimeterOf(type: string, x: number, y: number): number[] {
     return this.perimeter({ id: -1, type, x, y, fiefId: "", stock: {}, progress: 0, lastWork: 0 });
+  }
+
+  /**
+   * Un fief perdu (conquis par l'ennemi, J6) : ses bâtiments, routes, champs et les foyers qui y
+   * habitent quittent le domaine. Le fief de départ n'est jamais perdu (le Monde l'interdit).
+   */
+  loseFief(fiefId: string): void {
+    const st = this.state;
+    const fief = st.fiefs[fiefId];
+    if (!fief) return;
+    const inside = (k: number) => {
+      const x = k % st.worldWidth;
+      const y = Math.floor(k / st.worldWidth);
+      return x >= fief.originX && y >= fief.originY && x < fief.originX + fief.size && y < fief.originY + fief.size;
+    };
+    const gone = new Set(st.buildings.filter((b) => b.fiefId === fiefId).map((b) => b.id));
+    for (const f of [...st.families]) {
+      if (f.houseId === null || !gone.has(f.houseId) || f.noble) continue;
+      for (const v of this.population.members(f.id)) this.population.remove(v);
+    }
+    for (const f of st.families) if (f.houseId !== null && gone.has(f.houseId)) f.houseId = null;
+    st.buildings = st.buildings.filter((b) => !gone.has(b.id));
+    st.roads = st.roads.filter((k) => !inside(k));
+    st.fields = st.fields.filter((k) => !inside(k));
+    for (const k of Object.keys(st.crops)) if (inside(Number(k))) delete st.crops[k];
+    st.deliveries = st.deliveries.filter((d) => !gone.has(d.fromId) && !gone.has(d.toId));
+    st.trade.convoys = st.trade.convoys.filter((c) => !gone.has(c.relayId));
+    if (st.epidemic?.fiefId === fiefId) st.epidemic = null;
+    delete st.fiefs[fiefId];
+    this.population.version += 1;
+    this.rebuildIndex();
   }
 
   /** Après l'ajout d'un fief : index et affichage à refaire. */
@@ -451,6 +486,11 @@ export class DomainSim {
       case "withdrawTradeProposal":
       case "cancelTrade":
         return this.trade.check(cmd);
+      case "declareWar":
+      case "cancelWarDeclaration":
+      case "endWar":
+      case "hireMercenaries":
+        return this.army.check(cmd);
     }
   }
 
@@ -485,6 +525,10 @@ export class DomainSim {
     }
     if (cmd.type === "acceptTradeProposal" || cmd.type === "refuseTradeProposal" || cmd.type === "proposeTrade" || cmd.type === "withdrawTradeProposal" || cmd.type === "cancelTrade") {
       this.trade.apply(cmd);
+      return result;
+    }
+    if (cmd.type === "declareWar" || cmd.type === "cancelWarDeclaration" || cmd.type === "endWar" || cmd.type === "hireMercenaries") {
+      this.army.apply(cmd);
       return result;
     }
     if (cmd.type === "cancelOffer") {
@@ -719,6 +763,7 @@ export class DomainSim {
     if ((s.tick + 1) % TICKS_PER_YEAR === BARRIER_OFFSET && s.lastBarrierTick !== s.tick) {
       s.awaitingBarrier = true;
       this.population.collectTaxes();
+      this.army.upkeep();
       return [{ type: "barrier" }];
     }
     s.tick += 1;
@@ -757,7 +802,7 @@ export class DomainSim {
   /** Offres d'achat remises au Monde à la barrière. */
   barrierActions(): ProposeAction[] {
     const offers: ProposeAction[] = this.state.offers.map((o) => ({ type: "buyFief", actionId: o.actionId, ownerId: this.state.ownerId, fiefId: o.fiefId, price: o.price }));
-    return [...offers, ...this.trade.barrierActions()];
+    return [...offers, ...this.trade.barrierActions(), ...this.army.barrierActions()];
   }
 
   /** Événements produits par la dernière barrière (achats, refus, titres), lus par l'interface. */
@@ -766,8 +811,15 @@ export class DomainSim {
   applyBarrierResult(result: BarrierResult): void {
     const me = this.state.ownerId;
     for (const e of result.events) {
-      const news = this.trade.applyEvent(e);
+      const news = this.trade.applyEvent(e) ?? this.army.applyEvent(e);
       if (news) this.barrierEvents.push({ type: "tradeNews", text: news });
+      if (e.type === "fiefTransferred" && e.fromOwnerId === me && e.toOwnerId !== me) {
+        const text = `${e.name} est perdu : ses maisons, ses ateliers et ses habitants passent à l'ennemi.`;
+        this.loseFief(e.fiefId);
+        this.addLog(text);
+        this.dynasty.chronicle(text);
+        this.barrierEvents.push({ type: "tradeNews", text });
+      }
       if (e.type === "info" && (e.ownerId === null || e.ownerId === me)) this.addLog(e.text);
       if (e.type === "escrowReleased" && e.ownerId === me) {
         this.state.offers = this.state.offers.filter((o) => o.actionId !== e.actionId);
@@ -781,7 +833,9 @@ export class DomainSim {
         const parts = [`${report.families} foyer${report.families > 1 ? "s" : ""}`, `${report.farms} ferme${report.farms > 1 ? "s" : ""}`];
         if (report.woodcutter) parts.push("un bûcheron");
         const camp = report.homeless > 0 ? ` ${report.homeless} foyer${report.homeless > 1 ? "s" : ""} sans maison campe${report.homeless > 1 ? "nt" : ""} au manoir : bâtissez-leur des maisons.` : "";
-        const text = `Achat ${deNom(e.name)} pour ${e.price} or : son village (${parts.join(", ")}) rejoint le domaine.${camp}`;
+        const text = e.conquest
+          ? `Conquête ${deNom(e.name)} : son village (${parts.join(", ")}) rejoint le domaine.${camp}`
+          : `Achat ${deNom(e.name)} pour ${e.price} or : son village (${parts.join(", ")}) rejoint le domaine.${camp}`;
         this.addLog(text);
         this.dynasty.chronicle(text);
         this.barrierEvents.push({ type: "fiefAcquired", fiefId: e.fiefId, name: e.name, price: e.price });
@@ -789,6 +843,7 @@ export class DomainSim {
       }
     }
     this.trade.afterBarrier(result.resolved.year);
+    this.army.afterBarrier();
     this.state.awaitingBarrier = false;
     this.state.lastBarrierTick = this.state.tick;
   }

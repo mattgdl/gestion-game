@@ -8,14 +8,16 @@
  * Ordre de résolution (déterministe) :
  * 1. commerce : accords acceptés ou rompus, règlement de l'année, réponses aux propositions ;
  * 2. achats de fiefs (domaines et seigneurs IA ensemble : la meilleure offre l'emporte) ;
- * 3. vie des seigneurs IA : production, consommation, croissance des villages ;
- * 4. projets des seigneurs IA : achats préparés (rumeurs) et propositions d'accords.
+ * 3. guerres : déclarations des domaines, assauts, pillages et conquêtes ;
+ * 4. vie des seigneurs IA : production, consommation, croissance des villages ;
+ * 5. projets des seigneurs IA : achats préparés (rumeurs), propositions d'accords, guerres.
  */
 import { Rng, type BarrierInput, type BarrierResult, type ProposeAction, type WorldEvent } from "@jeu/shared";
 import { aiEconomy, aiOffers, aiPlans, settleAiGold } from "./ai/neighbors";
 import { FIEFS, adjacent, floorPrice } from "./fiefs";
 import { fiefById, type WorldState } from "./state";
 import { aiProposals, resolveTrade } from "./trade";
+import { aiWars, playerWarActions, resolveWars } from "./war";
 
 export function resolveBarrier(world: WorldState, inputs: BarrierInput[]): BarrierResult {
   const rng = new Rng(world.rngState);
@@ -33,12 +35,16 @@ export function resolveBarrier(world: WorldState, inputs: BarrierInput[]): Barri
   const offers = [...playerActions, ...aiOffers(world)];
   resolveOffers(world, offers, events);
   events = settleAiGold(world, events);
-  // 3. Vie des seigneurs IA.
+  // 3. Guerres : déclarations et levées de siège des domaines, puis les assauts de l'année.
+  playerWarActions(world, playerActions, events);
+  resolveWars(world, rng, events);
+  // 4. Vie des seigneurs IA.
   aiEconomy(world, rng);
-  // 4. Projets des seigneurs IA pour l'an prochain.
+  // 5. Projets des seigneurs IA pour l'an prochain.
   const players = world.lords.filter((l) => l.isPlayer).map((l) => l.id);
   aiPlans(world, rng, events);
   aiProposals(world, rng, players, events);
+  aiWars(world, rng, events);
 
   events.unshift({
     type: "info",

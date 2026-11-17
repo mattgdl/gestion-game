@@ -352,5 +352,61 @@
       "chargeConvoi": 30,
       "joursParFief": 10
     }
+  },
+  "caserne": {
+    "nom": "Caserne",
+    "taille": [
+      3,
+      2
+    ],
+    "cout": {
+      "bois": 40,
+      "pierre": 40,
+      "or": 30
+    },
+    "constructible": true,
+    "couleur": "#7a3b3b",
+    "description": "Les soldats du seigneur s'y entraînent ; ses porteurs vont chercher des armes à l'armurerie ou dans les réserves.",
+    "utilite": "Emploie jusqu'à 8 soldats (pris parmi les bras inoccupés : la caserne passe en dernier). Chaque soldat touche 2 or par an au bilan ; armé, il compte double. Défend le domaine et mène vos sièges.",
+    "transport": {
+      "porteurs": 1,
+      "charge": 5
+    },
+    "stockMax": 8,
+    "travailleurs": 8,
+    "prioriteEmploi": 9,
+    "caserne": true
+  },
+  "armurerie": {
+    "nom": "Armurerie",
+    "taille": [
+      2,
+      2
+    ],
+    "cout": {
+      "bois": 30,
+      "pierre": 20,
+      "or": 20
+    },
+    "constructible": true,
+    "couleur": "#4a4f5a",
+    "description": "L'armurier forge des armes avec des outils et du bois.",
+    "utilite": "Transforme 1 outil et 1 bois en 1 arme (15 par an avec 2 armuriers). Un soldat armé compte double ; 20 % des armes s'usent chaque année.",
+    "transformation": {
+      "entrees": {
+        "outils": 1,
+        "bois": 1
+      },
+      "sortie": "armes",
+      "parAn": 15,
+      "stockEntrees": 10
+    },
+    "transport": {
+      "porteurs": 2,
+      "charge": 5
+    },
+    "stockMax": 20,
+    "travailleurs": 2,
+    "prioriteEmploi": 4
   }
 }

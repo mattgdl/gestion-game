@@ -2,7 +2,7 @@
  * Commandes : la SEULE façon de modifier le domaine depuis l'interface.
  * L'interface envoie une commande, la simulation la vérifie puis l'applique.
  */
-import type { Cost, TradeGood } from "@jeu/shared";
+import type { Cost, TradeGood, WarGoal } from "@jeu/shared";
 import type { GoodId, ImmigrationLevel, SuccessionLaw, TaxLevel } from "./state";
 import type { DecisionChoice } from "./systems/dynasty";
 
@@ -34,7 +34,14 @@ export type Command =
   /** Retire une proposition pas encore remise au Monde. */
   | { type: "withdrawTradeProposal"; actionId: string }
   /** Rompt un accord en cours (la relation en souffre). */
-  | { type: "cancelTrade"; agreementId: string };
+  | { type: "cancelTrade"; agreementId: string }
+  /** Déclare la guerre à un fief voisin (J6) : remise au bilan, premier assaut l'an suivant. */
+  | { type: "declareWar"; fiefId: string; goal: WarGoal }
+  | { type: "cancelWarDeclaration"; actionId: string }
+  /** Lève un siège que l'on mène (au bilan). */
+  | { type: "endWar"; warId: string }
+  /** Loue des mercenaires pour les assauts du prochain bilan. */
+  | { type: "hireMercenaries"; count: number };
 
 export interface CheckResult {
   ok: boolean;

@@ -7,7 +7,7 @@
  * Les provisions des foyers sont comptées en millièmes d'unité (entiers).
  */
 import { RESOURCE_NAMES, Rng } from "@jeu/shared";
-import { BUILDINGS, DEMOGRAPHY, DYNASTY, ECONOMY, LOGISTICS, NAMES, NEEDS, titleDef } from "../data";
+import { BUILDINGS, DEMOGRAPHY, DYNASTY, ECONOMY, GUERRE_FIEF, LOGISTICS, NAMES, NEEDS, titleDef } from "../data";
 import type { DomainSim } from "../domain";
 import { GOOD_NAMES, type Building, type Delivery, type Family, type GoodId, type ImmigrationLevel, type Sex, type Villager } from "../state";
 import { legTicks } from "./economy";
@@ -851,6 +851,7 @@ export class Population {
     if (title && title.moral !== 0) parts.push({ label: `Titre : ${title.nomM}`, value: title.moral });
     const welcome = m.immigration[this.state.immigration] ?? 0;
     if (welcome !== 0) parts.push({ label: "Accueil ouvert aux nouveaux venus", value: welcome });
+    if (this.sim.army.atWar()) parts.push({ label: "En guerre", value: GUERRE_FIEF.moralGuerre });
     const idle = this.idleMalus();
     if (idle.malus !== 0) parts.push({ label: `Bras inoccupés (${idle.pct} %)`, value: idle.malus });
     const total = Math.max(0, Math.min(100, parts.reduce((s, p) => s + p.value, 0)));

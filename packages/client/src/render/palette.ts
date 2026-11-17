@@ -62,6 +62,7 @@ export const GOOD_COLORS: Record<GoodId, string> = {
   outils: "#6f7682",
   vetements: "#a76bb5",
   remedes: "#5fae6d",
+  armes: "#9aa3b0",
 };
 
 const SOIL_TILLED = hex("#7a5f3c");

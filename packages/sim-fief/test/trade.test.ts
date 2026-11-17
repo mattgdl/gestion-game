@@ -127,7 +127,7 @@ describe("commandes de commerce", () => {
     expect(sim.state.trade.agreements).toHaveLength(1);
     expect(sim.state.trade.accepted).toEqual(["p-1"]);
     expect(sim.apply({ type: "acceptTradeProposal", proposalId: "p-2" }).reason).toContain("à la fois");
-    expect(sim.barrierActions().map((a) => a.type).sort()).toEqual(["acceptTrade", "tradeReport"]);
+    expect(sim.barrierActions().map((a) => a.type).filter((t) => t !== "armyReport").sort()).toEqual(["acceptTrade", "tradeReport"]);
   });
 
   it("proposer un accord, le retirer, rompre un accord", () => {
