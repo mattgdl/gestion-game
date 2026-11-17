@@ -1358,3 +1358,45 @@ textarea {
   background: var(--or-soft);
   box-shadow: inset 0 0 0 1px var(--or);
 }
+
+/* Bandeau sur deux lignes, à toutes les tailles (retour du joueur, 17/11) :
+   1re ligne le nom du domaine, la date, la vitesse et les panneaux ; 2e ligne les compteurs. */
+.topbar {
+  flex-wrap: wrap;
+  row-gap: 6px;
+  column-gap: 16px;
+  padding-block: 8px 6px;
+}
+.realm {
+  max-width: none;
+  flex: 1 1 auto;
+}
+.realm-name {
+  font-size: 20px;
+}
+.resources {
+  order: 3;
+  flex-basis: 100%;
+  justify-content: center;
+  overflow-x: auto;
+  gap: 6px;
+}
+.res {
+  padding: 4px 10px;
+}
+.res-label {
+  font-size: 11px;
+}
+@media (min-width: 900px) {
+  .realm-sub {
+    display: block;
+  }
+}
+@media (max-width: 900px) {
+  .resources {
+    justify-content: flex-start;
+  }
+  .realm-name {
+    font-size: 17px;
+  }
+}

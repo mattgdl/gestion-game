@@ -250,6 +250,7 @@ Règles décidées pendant le développement, à contester si elles ne te convie
 | Sujet | Règle | Raison |
 |---|---|---|
 | Deux panneaux | Bouton **Domaine** : sélection, village, lignée, logistique, vos fiefs (titre), événements, partie. Bouton **Voisins** : fiefs voisins (offre, guerre, rumeurs), guerre, commerce. Un clic ouvre le panneau, un second le ferme. Pastille rouge sur Voisins : propositions d'accord et sièges subis en attente. | « Domaine ne doit parler que de mon domaine, de ma logistique et de ma lignée » : le panneau devenait illisible. |
+| Bandeau du haut | Sur deux lignes à toutes les tailles : 1re ligne le nom du domaine, la date, la vitesse et les boutons Domaine / Voisins ; 2e ligne les compteurs (ressources, réserves, habitants, moral, prestige), centrés. | Retour du joueur : compteurs et nom tronqués sur une ligne. |
 | Barre de construction | Un bouton par famille (Habitat, Vivres, Ressources, Artisanat, Logistique, Services, Armée), avec ses touches et ses bâtiments ; un clic ouvre ses bâtiments au-dessus de la barre, le choix d'un bâtiment referme le menu, Échap aussi. Les touches de chaque bâtiment restent actives. Famille de chaque bâtiment : champ `categorie` de buildings.json. Une seule ligne ; sur petit écran, la barre défile de côté. | Seize bâtiments ne tenaient plus sur une ligne lisible. |
 
 ### 4.9 J6 — Guerre et conquête
