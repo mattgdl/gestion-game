@@ -1289,3 +1289,72 @@ textarea {
   background: #b5473a;
   color: #fff;
 }
+
+/* Deux panneaux : Domaine (chez soi) et Voisins (achats, guerre, commerce). */
+.panel-toggles {
+  display: flex;
+  gap: 4px;
+}
+.panel-toggle.is-active {
+  border-color: var(--or);
+  background: var(--or-soft);
+}
+.panel-toggle .badge {
+  display: inline-block;
+  min-width: 16px;
+  margin-left: 6px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #b5473a;
+  color: #fff;
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
+}
+#hud[data-panel="domaine"] .panel-section[data-panel="voisins"],
+#hud[data-panel="voisins"] .panel-section[data-panel="domaine"] {
+  display: none;
+}
+
+/* Barre de construction par familles : un bouton par famille, ses bâtiments s'ouvrent au-dessus.
+   Une seule ligne : sur un petit écran, la barre défile de côté. */
+.tool-group-build {
+  flex-wrap: nowrap;
+}
+.build-menus {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  padding-left: var(--gutter-left);
+  padding-right: var(--gutter-right);
+}
+.build-menu {
+  pointer-events: auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 3px;
+  max-width: 100%;
+  padding: 5px;
+  background: var(--panel);
+  border: 1px solid var(--or);
+  border-radius: 10px;
+  backdrop-filter: blur(6px);
+}
+.tool-cat .tool-cost {
+  max-width: 16ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tool-cat.is-open {
+  border-color: var(--or);
+}
+.tool-cat.is-active {
+  border-color: var(--or);
+  background: var(--or-soft);
+  box-shadow: inset 0 0 0 1px var(--or);
+}

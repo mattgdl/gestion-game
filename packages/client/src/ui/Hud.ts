@@ -36,7 +36,7 @@ import { readSlot, slotInfo, writeSlot, type SlotId } from "../save/storage";
 import type { Journal } from "../telemetry/journal";
 import { computeAlerts, foodDays } from "./alerts";
 import { chronicleHtml, decisionHtml, lineagePanelHtml, successionHtml } from "./lineage";
-import { domainPanelHtml, neighborFiefs, offerHtml, realmName } from "./expansion";
+import { myFiefsHtml, neighborFiefs, neighborsHtml, offerHtml, realmName } from "./expansion";
 import { lordTag, partnerMarketHtml, proposeHtml, suggestedPrice, tradePanelHtml } from "./trade";
 import { declareHtml, warPanelHtml } from "./war";
 import { fairHtml, fairPotential, needsFacts } from "./needs";
@@ -63,6 +63,17 @@ const TOOL_DEFS: ToolDef[] = [
   { id: "road", label: "Route", key: "R", tool: { kind: "road" }, hint: "Glisser pour tracer. Les routes relient les bâtiments au manoir." },
   { id: "field", label: "Champ", key: "C", tool: { kind: "field" }, hint: "Glisser pour peindre des champs autour d'une ferme." },
   { id: "demolish", label: "Démolir", key: "X", tool: { kind: "demolish" }, hint: "Rembourse la moitié du coût." },
+];
+
+/** Familles de la barre de construction, dans l'ordre (la famille de chaque bâtiment est dans buildings.json). */
+const BUILD_CATEGORIES: { id: string; nom: string }[] = [
+  { id: "habitat", nom: "Habitat" },
+  { id: "vivres", nom: "Vivres" },
+  { id: "ressources", nom: "Ressources" },
+  { id: "artisanat", nom: "Artisanat" },
+  { id: "logistique", nom: "Logistique" },
+  { id: "services", nom: "Services" },
+  { id: "armee", nom: "Armée" },
 ];
 
 const BUILD_KEYS: Record<string, string> = {
@@ -109,6 +120,7 @@ export class Hud {
   ) {
     this.render();
     this.bind();
+    this.syncPanelButtons();
     game.on("tool", () => {
       this.renderTools();
       this.renderToolCard();
@@ -130,6 +142,7 @@ export class Hud {
     this.renderSelection();
     this.renderSaves();
     this.renderView();
+    this.root.dataset.panel = "domaine";
     if (window.innerWidth < 900) this.root.classList.add("panel-closed");
 
     // Les hauteurs du bandeau et de la barre d'outils varient (retour à la ligne sur petit écran) :
@@ -179,10 +192,9 @@ export class Hud {
         </button>`,
     ).join("");
 
-    const builds = BUILDING_IDS.filter((id) => BUILDINGS[id]?.constructible)
-      .map((id) => {
-        const def = BUILDINGS[id]!;
-        return `<button class="tool tool-build" type="button" data-tool="build:${id}" title="${escapeHtml(def.utilite)}">
+    const buildButton = (id: string) => {
+      const def = BUILDINGS[id]!;
+      return `<button class="tool tool-build" type="button" data-tool="build:${id}" title="${escapeHtml(def.utilite)}">
           <span class="tool-top">
             <span class="swatch" style="background:${def.couleur}"></span>
             <span class="tool-name">${def.nom}</span>
@@ -190,7 +202,22 @@ export class Hud {
           </span>
           <span class="tool-cost">${formatCost(def.cout)}</span>
         </button>`;
+    };
+    // Les bâtiments sont rangés par famille : un bouton par famille, qui ouvre ses bâtiments.
+    const constructible = BUILDING_IDS.filter((id) => BUILDINGS[id]?.constructible);
+    const categories = BUILD_CATEGORIES.filter((c) => constructible.some((id) => BUILDINGS[id]?.categorie === c.id));
+    const builds = categories
+      .map((c) => {
+        const ids = constructible.filter((id) => BUILDINGS[id]?.categorie === c.id);
+        const keys = ids.map((id) => BUILD_KEYS[id]).filter(Boolean).join(" ");
+        return `<button class="tool tool-cat" type="button" data-cat="${c.id}" title="${escapeHtml(ids.map((id) => BUILDINGS[id]!.nom).join(", "))}">
+          <span class="tool-top"><span class="tool-name">${c.nom}</span><span class="tool-key">${keys}</span></span>
+          <span class="tool-cost">${ids.map((id) => BUILDINGS[id]!.nom).join(" · ")}</span>
+        </button>`;
       })
+      .join("");
+    const menus = categories
+      .map((c) => `<div class="build-menu" data-menu="${c.id}" hidden>${constructible.filter((id) => BUILDINGS[id]?.categorie === c.id).map(buildButton).join("")}</div>`)
       .join("");
 
     this.root.innerHTML = `
@@ -227,7 +254,10 @@ export class Hud {
             <button type="button" class="speed-btn" data-speed="3" title="Vitesse ×3 (3)">×3</button>
           </div>
         </div>
-        <button type="button" class="panel-toggle" data-el="panelToggle" aria-label="Afficher ou masquer le panneau">Domaine</button>
+        <div class="panel-toggles" role="group" aria-label="Panneaux">
+          <button type="button" class="panel-toggle" data-panel-toggle="domaine" title="Votre domaine : village, lignée, logistique, fiefs">Domaine</button>
+          <button type="button" class="panel-toggle" data-panel-toggle="voisins" title="Les seigneurs voisins : achats, guerre, commerce">Voisins<span class="badge" data-el="voisinsBadge" hidden></span></button>
+        </div>
       </header>
 
       <div class="fief-labels" data-el="fiefLabels"></div>
@@ -248,11 +278,11 @@ export class Hud {
       <div class="toasts" data-el="toasts" aria-live="polite"></div>
 
       <aside class="panel" data-el="panel">
-        <section class="panel-section">
+        <section class="panel-section" data-panel="domaine">
           <h2>Sélection</h2>
           <div data-el="selection"></div>
         </section>
-        <section class="panel-section">
+        <section class="panel-section" data-panel="domaine">
           <h2>Village</h2>
           <div data-el="village"></div>
           <div class="tax" role="group" aria-label="Impôts">
@@ -270,32 +300,36 @@ export class Hud {
           </div>
           <p class="muted small" data-el="immigrationHint"></p>
         </section>
-        <section class="panel-section">
+        <section class="panel-section" data-panel="domaine">
           <h2>Lignée</h2>
           <div class="lineage" data-el="lineage"></div>
         </section>
-        <section class="panel-section">
+        <section class="panel-section" data-panel="domaine">
           <h2>Logistique</h2>
           <div data-el="logistics"></div>
           <button type="button" class="btn btn-small" data-act="routes" aria-pressed="false">Montrer les itinéraires (L)</button>
         </section>
-        <section class="panel-section">
-          <h2>Domaine et voisins</h2>
+        <section class="panel-section" data-panel="domaine">
+          <h2>Vos fiefs</h2>
           <div class="domain" data-el="fiefList"></div>
         </section>
-        <section class="panel-section">
+        <section class="panel-section" data-panel="voisins">
+          <h2>Fiefs voisins</h2>
+          <div class="domain" data-el="neighbors"></div>
+        </section>
+        <section class="panel-section" data-panel="voisins">
           <h2>Guerre</h2>
           <div class="domain" data-el="war"></div>
         </section>
-        <section class="panel-section">
+        <section class="panel-section" data-panel="voisins">
           <h2>Commerce</h2>
           <div class="domain" data-el="trade"></div>
         </section>
-        <section class="panel-section">
+        <section class="panel-section" data-panel="domaine">
           <h2>Événements</h2>
           <ol class="log" data-el="log"></ol>
         </section>
-        <section class="panel-section">
+        <section class="panel-section" data-panel="domaine">
           <h2>Partie</h2>
           <div data-el="saves"></div>
           <div class="journal" data-el="journal"></div>
@@ -303,6 +337,7 @@ export class Hud {
       </aside>
 
       <nav class="toolbar" aria-label="Outils">
+        <div class="build-menus">${menus}</div>
         <div class="toolbar-inner">
           <div class="tool-group">${tools}</div>
           <div class="tool-group tool-group-build">${builds}</div>
@@ -324,6 +359,9 @@ export class Hud {
   private bind(): void {
     this.root.querySelectorAll<HTMLButtonElement>("[data-tool]").forEach((b) => {
       b.addEventListener("click", () => this.selectToolById(b.dataset.tool as string));
+    });
+    this.root.querySelectorAll<HTMLButtonElement>("[data-cat]").forEach((b) => {
+      b.addEventListener("click", () => this.openCategory(this.openCat === b.dataset.cat ? null : (b.dataset.cat as string)));
     });
     this.root.querySelectorAll<HTMLButtonElement>("[data-speed]").forEach((b) => {
       b.addEventListener("click", () => this.setSpeed(Number(b.dataset.speed)));
@@ -349,7 +387,7 @@ export class Hud {
     this.el.village!.addEventListener("click", (ev) => {
       if ((ev.target as HTMLElement).closest('[data-act="fair"]')) this.openFair();
     });
-    this.el.fiefList!.addEventListener("click", (ev) => {
+    const fiefClicks = (ev: MouseEvent) => {
       const target = (ev.target as HTMLElement).closest<HTMLElement>("[data-fief],[data-offer],[data-cancel],[data-war]");
       if (!target) return;
       if (target.dataset.war) this.openDeclare(target.dataset.war);
@@ -359,7 +397,9 @@ export class Hud {
         if (!result.ok && result.reason) this.game.toast(result.reason);
         this.renderDomain();
       } else if (target.dataset.fief) this.actions.focusFief(target.dataset.fief);
-    });
+    };
+    this.el.fiefList!.addEventListener("click", fiefClicks);
+    this.el.neighbors!.addEventListener("click", fiefClicks);
     this.el.war!.addEventListener("click", (ev) => {
       const target = (ev.target as HTMLElement).closest<HTMLElement>("[data-endwar],[data-unwar],[data-act]");
       if (!target) return;
@@ -413,7 +453,9 @@ export class Hud {
     this.root.querySelector('[data-act="world"]')?.addEventListener("click", () => this.actions.worldView());
     this.root.querySelector('[data-act="zoomin"]')?.addEventListener("click", () => this.zoomCenter(1.4));
     this.root.querySelector('[data-act="zoomout"]')?.addEventListener("click", () => this.zoomCenter(1 / 1.4));
-    this.el.panelToggle!.addEventListener("click", () => this.root.classList.toggle("panel-closed"));
+    this.root.querySelectorAll<HTMLButtonElement>("[data-panel-toggle]").forEach((btn) =>
+      btn.addEventListener("click", () => this.togglePanel(btn.dataset.panelToggle as "domaine" | "voisins")),
+    );
     this.el.modal!.addEventListener("click", (e) => {
       if (e.target === this.el.modal) this.closeModal();
     });
@@ -427,6 +469,7 @@ export class Hud {
   }
 
   private selectToolById(id: string): void {
+    if (this.openCat !== null) this.openCategory(null);
     if (id.startsWith("build:")) this.game.setTool({ kind: "build", building: id.slice(6) });
     else {
       const def = TOOL_DEFS.find((t) => t.id === id);
@@ -477,7 +520,10 @@ export class Hud {
     if (e.code === "Digit2" || e.code === "Numpad2") return this.setSpeed(2);
     if (e.code === "Digit3" || e.code === "Numpad3") return this.setSpeed(3);
     const key = e.key.toLowerCase();
-    if (e.key === "Escape") return this.game.setTool({ kind: "inspect" });
+    if (e.key === "Escape") {
+      if (this.openCat !== null) return this.openCategory(null);
+      return this.game.setTool({ kind: "inspect" });
+    }
     if (key === "r") return this.selectToolById("road");
     if (key === "c") return this.selectToolById("field");
     if (key === "x" || e.key === "Delete") return this.selectToolById("demolish");
@@ -508,8 +554,23 @@ export class Hud {
 
   // ------------------------------------------------------------ rendus ponctuels
 
+  /** Famille de bâtiments ouverte au-dessus de la barre (null : aucune). */
+  private openCat: string | null = null;
+
+  private openCategory(cat: string | null): void {
+    this.openCat = cat;
+    this.root.querySelectorAll<HTMLElement>("[data-menu]").forEach((m) => (m.hidden = m.dataset.menu !== cat));
+    this.renderTools();
+  }
+
   private renderTools(): void {
     const active = toolId(this.game.tool);
+    // La famille du bâtiment choisi est mise en avant ; son menu se referme une fois le bâtiment choisi.
+    const activeCat = this.game.tool.kind === "build" ? BUILDINGS[this.game.tool.building]?.categorie : undefined;
+    this.root.querySelectorAll<HTMLButtonElement>("[data-cat]").forEach((b) => {
+      b.classList.toggle("is-active", b.dataset.cat === activeCat);
+      b.classList.toggle("is-open", b.dataset.cat === this.openCat);
+    });
     this.root.querySelectorAll<HTMLButtonElement>("[data-tool]").forEach((b) => {
       const on = b.dataset.tool === active;
       b.classList.toggle("is-active", on);
@@ -995,12 +1056,38 @@ export class Hud {
     const realm = home ? realmName(sim, home.name) : "Votre lignée";
     if (this.el.realmName!.textContent !== realm) this.el.realmName!.textContent = realm;
     this.el.realmSub!.textContent = `Graine « ${world.seedText} »`;
-    const html = domainPanelHtml(world, sim);
-    const box = this.el.fiefList!;
-    if (box.dataset.html !== html) {
-      box.dataset.html = html;
-      box.innerHTML = html;
+    const put = (box: HTMLElement, html: string) => {
+      if (box.dataset.html !== html) {
+        box.dataset.html = html;
+        box.innerHTML = html;
+      }
+    };
+    put(this.el.fiefList!, myFiefsHtml(world, sim));
+    put(this.el.neighbors!, neighborsHtml(world, sim));
+    // Pastille du bouton Voisins : ce qui attend une décision (propositions, guerres).
+    const waiting = sim.state.trade.proposals.length + sim.state.army.wars.filter((w) => w.defenderId === sim.state.ownerId).length;
+    const badge = this.el.voisinsBadge!;
+    badge.hidden = waiting === 0;
+    badge.textContent = String(waiting);
+  }
+
+  /** Ouvre le panneau demandé, ou le ferme s'il est déjà affiché. */
+  togglePanel(mode: "domaine" | "voisins"): void {
+    const closed = this.root.classList.contains("panel-closed");
+    if (!closed && this.root.dataset.panel === mode) {
+      this.root.classList.add("panel-closed");
+    } else {
+      this.root.dataset.panel = mode;
+      this.root.classList.remove("panel-closed");
+      this.el.panel!.scrollTop = 0;
     }
+    this.syncPanelButtons();
+  }
+
+  private syncPanelButtons(): void {
+    this.root.querySelectorAll<HTMLButtonElement>("[data-panel-toggle]").forEach((b) =>
+      b.classList.toggle("is-active", !this.root.classList.contains("panel-closed") && b.dataset.panelToggle === this.root.dataset.panel),
+    );
   }
 
   /** Le monde a changé (fief acheté, bilan) : étiquettes et panneaux à refaire. */

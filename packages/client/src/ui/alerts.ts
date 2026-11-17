@@ -182,7 +182,7 @@ export function expansionAlerts(world: WorldState, sim: DomainSim): Alert[] {
     .sort((a, b) => a.range[0] - b.range[0]);
   const first = affordable[0];
   if (!first) return [];
-  return [{ tone: "info", text: `Votre trésor (${sim.state.treasury} or) permet de faire une offre pour ${first.meta.name} (estimé ${first.range[0]} à ${first.range[1]} or) : panneau Domaine et voisins.` }];
+  return [{ tone: "info", text: `Votre trésor (${sim.state.treasury} or) permet de faire une offre pour ${first.meta.name} (estimé ${first.range[0]} à ${first.range[1]} or) : panneau Voisins.` }];
 }
 
 /** Distance au-delà de laquelle les foyers d'un fief perdent trop de temps à se ravitailler. */
@@ -241,7 +241,7 @@ export function tradeAlerts(world: WorldState, sim: DomainSim): Alert[] {
   const t = sim.state.trade;
   for (const r of rumors(world, sim.state.ownerId)) out.push({ tone: "warn", text: `Rumeur : ${r} Surenchérissez avant le bilan si ce fief vous intéresse.` });
   if (t.proposals.length > 0) {
-    out.push({ tone: "info", text: `${t.proposals.length} proposition${t.proposals.length > 1 ? "s" : ""} d'accord en attente : panneau Commerce.` });
+    out.push({ tone: "info", text: `${t.proposals.length} proposition${t.proposals.length > 1 ? "s" : ""} d'accord en attente : panneau Voisins, Commerce.` });
   }
   const active = t.agreements.filter((a) => sim.trade.isActive(a));
   if (active.length === 0) return out;

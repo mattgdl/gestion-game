@@ -48,6 +48,8 @@ export interface BuildingDef {
   influence?: number;
   /** Relais de convoi (J5) : charge d'une charrette, jours de route par fief de distance (aller). */
   relais?: { chargeConvoi: number; joursParFief: number };
+  /** Famille de la barre de construction (interface). */
+  categorie?: string;
   /** Caserne (J6) : ses travailleurs sont des soldats ; ses porteurs vont chercher des armes. */
   caserne?: boolean;
   /** Porteurs attachés au bâtiment. */

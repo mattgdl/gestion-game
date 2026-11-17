@@ -245,6 +245,13 @@ Règles décidées pendant le développement, à contester si elles ne te convie
 
 **Ce que montre un monde sans joueur sur 40 ans** (graines orge-349, a, b) : aucun achat les 5 premières années, puis 1 à 3 achats entre seigneurs vers l'an 10, 5 à 14 vers l'an 20 ; il reste 9 à 16 seigneurs à l'an 40 (24 au départ). Le joueur reçoit environ une proposition par an. L'or des seigneurs IA s'accumule (3 000 à 6 000 à l'an 40) : à surveiller à l'équilibrage (J9).
 
+### 4.8 bis Interface en deux panneaux et barre par familles (retour du joueur, 17/11)
+
+| Sujet | Règle | Raison |
+|---|---|---|
+| Deux panneaux | Bouton **Domaine** : sélection, village, lignée, logistique, vos fiefs (titre), événements, partie. Bouton **Voisins** : fiefs voisins (offre, guerre, rumeurs), guerre, commerce. Un clic ouvre le panneau, un second le ferme. Pastille rouge sur Voisins : propositions d'accord et sièges subis en attente. | « Domaine ne doit parler que de mon domaine, de ma logistique et de ma lignée » : le panneau devenait illisible. |
+| Barre de construction | Un bouton par famille (Habitat, Vivres, Ressources, Artisanat, Logistique, Services, Armée), avec ses touches et ses bâtiments ; un clic ouvre ses bâtiments au-dessus de la barre, le choix d'un bâtiment referme le menu, Échap aussi. Les touches de chaque bâtiment restent actives. Famille de chaque bâtiment : champ `categorie` de buildings.json. Une seule ligne ; sur petit écran, la barre défile de côté. | Seize bâtiments ne tenaient plus sur une ligne lisible. |
+
 ### 4.9 J6 — Guerre et conquête
 
 | Sujet | Règle | Raison |
@@ -257,7 +264,7 @@ Règles décidées pendant le développement, à contester si elles ne te convie
 | Enjeux | Pillage : 30 % de l'or, 25 % des réserves, 3 morts (joueur) ; un foyer et 30 % de l'or (IA). Conquête : le fief et son village changent de mains. Le fief de départ d'un joueur ne peut être que pillé. Un fief perdu emporte ses bâtiments, routes, champs et foyers. | Choix du joueur : pillage ou fief disputé, sans défaite par la guerre. |
 | Réputation | Le joueur qui déclare une guerre : −60 avec sa cible, −10 avec tous les autres seigneurs. Les accords avec l'ennemi sont rompus. Moral « En guerre » −5. | Une guerre a un prix diplomatique. |
 | IA | Après l'an 6, chaque seigneur IA en paix déclare une guerre avec la chance 30 % × goût de la guerre, contre le voisin le plus faible qu'il domine (×1,2 pour un seigneur IA, ×0,9 pour un joueur, qui attire aussi par ses richesses), jamais contre un joueur avec qui sa relation est de +30 ou plus. Conquête si son ambition est forte, pillage sinon (et toujours contre un fief de départ). Les IA se font aussi la guerre entre elles. | Choix du joueur : les IA t'attaquent, entre elles aussi. |
-| Interface | Panneau Guerre : armée, force, défense, guerres en cours (rapport de forces estimé), déclaration en attente, mercenaires. Bouton « Guerre… » sur chaque voisin (fenêtre : forces, règles, réputation ; Piller ou Conquérir). Étiquette « assiégé » sur la carte du monde. Alertes de siège avec rapport de forces. Assauts et pillages dans « Affaires » au bilan et dans la chronique. Touches V caserne, I armurerie. | |
+| Interface | Panneau Guerre : armée, force, défense, guerres en cours (rapport de forces estimé), déclaration en attente, mercenaires. Bouton « Guerre… » sur chaque voisin (fenêtre : forces, règles, réputation ; Piller ou Conquérir). Étiquette « assiégé » sur la carte du monde. Alertes de siège avec rapport de forces. Assauts et pillages dans « Affaires » au bilan et dans la chronique. Touches V caserne, I armurerie. Depuis le 17/11, ces sections sont dans le panneau Voisins (section 4.8 bis). | |
 | Sauvegardes | Format v9 (aucune guerre en cours, pas d'armée). | |
 
 **Ce que montre un monde sur 30 ans** (6 graines, joueur passif avec 4 soldats après l'an 10) : 17 à 28 guerres entre seigneurs, 7 à 14 conquêtes ; il reste 4 à 8 seigneurs IA à l'an 30. Le joueur est attaqué 1 à 5 fois, le plus souvent après l'an 25, parfois dès l'an 7-10 (voisin conquérant) : les IA s'attaquent d'abord entre elles. À juger en partie test.
@@ -554,6 +561,7 @@ jeu-medieval/
 | 16/11/2026 | J5 : 10 archétypes de seigneurs IA (économie au bilan, croissance, rumeurs et achats entre seigneurs, relation), accords de commerce proposés dans les deux sens, prix selon le terrain, relais et charrettes visibles. Règles en section 4.8. | Choix du joueur (questions du 16/11) : archétypes, concurrence pour les terres, accords + convois visibles, prix géographiques. |
 | 17/11/2026 | J5 validé (partie test n° 6). Corrections : ventes en route comptées au bilan, guérisseur prioritaire à l'emploi et message de soins exact, répit après une épidémie, propositions IA tournées vers ses besoins, achats IA selon le caractère du vendeur. Section 4.8. | Analyse du journal de partie. |
 | 17/11/2026 | J6 : caserne et armurerie (soldats villageois, armes), mercenaires en appoint, siège sur plusieurs années (un assaut par bilan), pillage ou conquête, fief de départ seulement pillable, réputation, IA qui s'attaquent entre elles et attaquent le joueur. Section 4.9. | Choix du joueur (questions du 17/11). |
+| 17/11/2026 | Interface : panneau Domaine (chez soi) et panneau Voisins (achats, guerre, commerce) ; barre de construction par familles. Section 4.8 bis. | Retour du joueur : trop d'informations mêlées, barre de construction illisible. |
 | 16/11/2026 | Partie test n° 4 (orge-349 en 5 × 5, 25 ans, environ 45 min) : église par fief, routes en or et pierre, correction du ravitaillement entre fiefs, alerte de vivres lointains. Chômage et ennui de fin de partie notés pour la suite. | Retours du joueur et analyse du journal. |
 | 16/11/2026 | J4 : carte 5 × 5, fiefs achetés avec leur village et une maison forte, négociation avec prix plancher secret, titres par fiefs et population. Règles en section 4.5. | Choix du joueur (questions du 16/11). |
 | 16/11/2026 | Partie test n° 3 (chêne-832, 13 ans, 33 min) : famille noble servie dans toutes les réserves ; alertes de déficit de nourriture et de bras inoccupés. | Analyse du journal de partie. |

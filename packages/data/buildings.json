@@ -1,5 +1,5 @@
 {
-  "_doc": "Bâtiments. taille = [largeur, hauteur] en cases. cout en ressources. procheDe = terrain requis à moins de 'rayon' cases (et terrain exploité par la production). stockage.capacite = marchandises stockables (nourriture + bois + pierre ; l'or est au trésor, sans limite). production.parAn = unités produites par an à plein rendement ; casesPleinRendement = cases du terrain exploité nécessaires pour le plein rendement. agriculture : champsMax travaillés par la ferme, rendementParChamp à 100 % de fertilité, ticksParRecolte entre deux champs moissonnés. transport : porteurs du bâtiment et charge par voyage. stockMax = marchandises en attente avant arrêt de la production. utilite = à quoi sert le bâtiment (fiche avant construction). actifDes = jalon à partir duquel le bâtiment a un effet, s'il n'en a pas encore. travailleurs = emplois du bâtiment ; prioriteEmploi = ordre de remplissage des emplois (1 d'abord). logement = familles logées. marche : réserve propre (capacite) que ses porteurs remplissent jusqu'aux cibles. influence = rayon (cases) dans lequel les foyers en profitent pour le moral.",
+  "_doc": "Bâtiments. taille = [largeur, hauteur] en cases. cout en ressources. procheDe = terrain requis à moins de 'rayon' cases (et terrain exploité par la production). stockage.capacite = marchandises stockables (nourriture + bois + pierre ; l'or est au trésor, sans limite). production.parAn = unités produites par an à plein rendement ; casesPleinRendement = cases du terrain exploité nécessaires pour le plein rendement. agriculture : champsMax travaillés par la ferme, rendementParChamp à 100 % de fertilité, ticksParRecolte entre deux champs moissonnés. transport : porteurs du bâtiment et charge par voyage. stockMax = marchandises en attente avant arrêt de la production. utilite = à quoi sert le bâtiment (fiche avant construction). actifDes = jalon à partir duquel le bâtiment a un effet, s'il n'en a pas encore. travailleurs = emplois du bâtiment ; prioriteEmploi = ordre de remplissage des emplois (1 d'abord). logement = familles logées. marche : réserve propre (capacite) que ses porteurs remplissent jusqu'aux cibles. influence = rayon (cases) dans lequel les foyers en profitent pour le moral. categorie = famille du bâtiment dans la barre de construction (habitat, vivres, ressources, artisanat, logistique, services, armee).",
   "manoir": {
     "nom": "Manoir",
     "taille": [
@@ -29,7 +29,8 @@
     "couleur": "#c9a26b",
     "description": "Loge une famille.",
     "utilite": "Loge une famille. Une famille logée a meilleur moral, se chauffe l'hiver et permet aux jeunes adultes de se marier et de fonder un foyer.",
-    "logement": 1
+    "logement": 1,
+    "categorie": "habitat"
   },
   "ferme": {
     "nom": "Ferme",
@@ -58,7 +59,8 @@
     "stockMax": 300,
     "utilite": "Nourrit le village : 3 travailleurs sèment au printemps et moissonnent à l'automne jusqu'à 12 champs (4 par travailleur). Une terre fertile donne jusqu'à 12 nourriture par champ.",
     "travailleurs": 3,
-    "prioriteEmploi": 1
+    "prioriteEmploi": 1,
+    "categorie": "vivres"
   },
   "bucheron": {
     "nom": "Bûcheron",
@@ -89,7 +91,8 @@
     "stockMax": 20,
     "utilite": "Fournit le bois des constructions et du chauffage des foyers en hiver. 2 travailleurs.",
     "travailleurs": 2,
-    "prioriteEmploi": 2
+    "prioriteEmploi": 2,
+    "categorie": "ressources"
   },
   "carriere": {
     "nom": "Carrière",
@@ -119,7 +122,8 @@
     "stockMax": 20,
     "utilite": "Fournit la pierre des bâtiments importants : entrepôt, marché, église. 2 travailleurs.",
     "travailleurs": 2,
-    "prioriteEmploi": 3
+    "prioriteEmploi": 3,
+    "categorie": "ressources"
   },
   "entrepot": {
     "nom": "Entrepôt",
@@ -137,7 +141,8 @@
     "stockage": {
       "capacite": 300
     },
-    "utilite": "Ajoute 300 places de réserve. Placé près des ateliers, il raccourcit les trajets des porteurs."
+    "utilite": "Ajoute 300 places de réserve. Placé près des ateliers, il raccourcit les trajets des porteurs.",
+    "categorie": "logistique"
   },
   "marche": {
     "nom": "Marché",
@@ -167,7 +172,8 @@
       "porteurs": 2,
       "charge": 10
     },
-    "influence": 12
+    "influence": 12,
+    "categorie": "services"
   },
   "eglise": {
     "nom": "Église",
@@ -187,7 +193,8 @@
     "travailleurs": 1,
     "prioriteEmploi": 5,
     "influence": 15,
-    "uniqueParFief": true
+    "uniqueParFief": true,
+    "categorie": "services"
   },
   "maisonforte": {
     "nom": "Maison forte",
@@ -234,7 +241,8 @@
     },
     "stockMax": 20,
     "travailleurs": 2,
-    "prioriteEmploi": 4
+    "prioriteEmploi": 4,
+    "categorie": "artisanat"
   },
   "bergerie": {
     "nom": "Bergerie",
@@ -265,7 +273,8 @@
     },
     "stockMax": 20,
     "travailleurs": 2,
-    "prioriteEmploi": 3
+    "prioriteEmploi": 3,
+    "categorie": "vivres"
   },
   "tisserand": {
     "nom": "Tisserand",
@@ -296,7 +305,8 @@
     },
     "stockMax": 20,
     "travailleurs": 2,
-    "prioriteEmploi": 4
+    "prioriteEmploi": 4,
+    "categorie": "artisanat"
   },
   "guerisseur": {
     "nom": "Guérisseur",
@@ -324,7 +334,8 @@
     "utilite": "Prépare des remèdes avec les herbes de la forêt voisine (20 par an, gardés sur place). Pendant une épidémie, il soigne tout son fief : les malades meurent quatre fois moins.",
     "stockMax": 20,
     "travailleurs": 1,
-    "prioriteEmploi": 2
+    "prioriteEmploi": 2,
+    "categorie": "services"
   },
   "relais": {
     "nom": "Relais",
@@ -351,7 +362,8 @@
     "relais": {
       "chargeConvoi": 30,
       "joursParFief": 10
-    }
+    },
+    "categorie": "logistique"
   },
   "caserne": {
     "nom": "Caserne",
@@ -375,7 +387,8 @@
     "stockMax": 8,
     "travailleurs": 8,
     "prioriteEmploi": 9,
-    "caserne": true
+    "caserne": true,
+    "categorie": "armee"
   },
   "armurerie": {
     "nom": "Armurerie",
@@ -407,6 +420,7 @@
     },
     "stockMax": 20,
     "travailleurs": 2,
-    "prioriteEmploi": 4
+    "prioriteEmploi": 4,
+    "categorie": "armee"
   }
 }

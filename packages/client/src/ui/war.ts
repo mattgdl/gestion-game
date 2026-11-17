@@ -43,7 +43,7 @@ export function warPanelHtml(world: WorldState, sim: DomainSim): string {
   const armed = sim.army.armed();
   const casernes = sim.army.casernes().length;
   const parts: string[] = [];
-  parts.push(`<p class="small">${casernes === 0 ? '<span class="warn">Aucune caserne (touche S)</span>' : `${soldiers} soldat${soldiers > 1 ? "s" : ""}, dont ${armed} armé${armed > 1 ? "s" : ""}`}${a.mercenaries > 0 ? ` · ${a.mercenaries} mercenaire${a.mercenaries > 1 ? "s" : ""}` : ""} · force <strong>${myStrength(sim)}</strong> · défense du domaine <strong>${myDefense(sim)}</strong> <span class="muted">(milice comprise)</span></p>`);
+  parts.push(`<p class="small">${casernes === 0 ? '<span class="warn">Aucune caserne (touche V)</span>' : `${soldiers} soldat${soldiers > 1 ? "s" : ""}, dont ${armed} armé${armed > 1 ? "s" : ""}`}${a.mercenaries > 0 ? ` · ${a.mercenaries} mercenaire${a.mercenaries > 1 ? "s" : ""}` : ""} · force <strong>${myStrength(sim)}</strong> · défense du domaine <strong>${myDefense(sim)}</strong> <span class="muted">(milice comprise)</span></p>`);
   if (a.wars.length > 0) {
     const cards = a.wars
       .map((w) => {
@@ -71,7 +71,7 @@ export function warPanelHtml(world: WorldState, sim: DomainSim): string {
     parts.push(`<p class="small warn">Déclaration prête contre ${e(fief?.name ?? "")} (${p.goal === "conquete" ? "conquête" : "pillage"}) : elle partira au bilan. <button type="button" class="btn btn-small" data-unwar="${e(p.actionId)}">Retirer</button></p>`);
   }
   parts.push(`<div class="offer-row small">Mercenaires (${GUERRE_FIEF.prixMercenaire} or chacun, jusqu'au bilan) <input type="number" min="1" max="50" value="5" data-el="mercCount" /> <button type="button" class="btn btn-small" data-act="hire">Louer</button></div>`);
-  parts.push(`<p class="muted small">Pour attaquer : panneau Domaine et voisins, bouton « Guerre… » d'un fief voisin.</p>`);
+  parts.push(`<p class="muted small">Pour attaquer : section Fiefs voisins, bouton « Guerre… » d'un fief voisin.</p>`);
   return parts.join("");
 }
 

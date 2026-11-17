@@ -36,6 +36,7 @@
 - *(vide)*
 
 ## Fait
+- 17/11/2026 : interface revue (retour du joueur) : panneaux Domaine et Voisins séparés, barre de construction par familles.
 - 17/11/2026 : **J6 — Guerre et conquête** livré, à valider en partie test : caserne, armurerie, mercenaires, sièges, pillage, conquête, IA belliqueuses.
 - 17/11/2026 : **J5 — Voisins IA et commerce** validé par le joueur (partie test n° 6), avec corrections (ventes en route, guérisseur, répit des épidémies, propositions IA).
   - 10 archétypes de seigneurs IA, économie et croissance au bilan, rumeurs et achats entre seigneurs, relation.
@@ -106,7 +107,6 @@
 ## Idées notées (à trier)
 - Murs et palissades (bonus de défense), alliances, paix achetée, tribut : écartés de J6 (choix du joueur).
 - La carte se consolide vite (4 à 8 seigneurs IA à l'an 30) : à surveiller à l'équilibrage (J9).
-- Barre d'outils sur trois lignes depuis J6 : à revoir avec les vrais graphismes.
 - Le relais prend les vêtements et outils dont le village a besoin : pas de priorité entre besoins du village et accords (partie test n° 6 : 13 à 18 vêtements livrés sur 25 en rejouant la partie).
 - Un guérisseur ne soigne que son fief : un fief acheté en demande un autre ; à rappeler à l'achat.
 - Commerce entre seigneurs IA, et seigneurs IA qui dépensent leur or (bâtir, armer) : leur or s'accumule (J5).

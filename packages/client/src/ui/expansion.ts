@@ -48,11 +48,17 @@ export function nextTitleHtml(sim: DomainSim): string {
   return `<p class="small">Titre : <strong>${e(name)}</strong>. Pour devenir ${e(next.nomM)} : ${ok(fiefs, next.fiefs)} fiefs, ${ok(people, next.habitants)} habitants <span class="muted">(+${next.prestige} prestige, moral +${next.moral})</span>.</p>`;
 }
 
-export function domainPanelHtml(world: WorldState, sim: DomainSim): string {
+/** Panneau Domaine : titre, progression, vos fiefs. */
+export function myFiefsHtml(world: WorldState, sim: DomainSim): string {
   const mine = world.fiefs.filter((f) => f.ownerId === PLAYER_ID);
   const myList = mine
     .map((f) => `<li><button type="button" class="fief-item" data-fief="${f.id}"><span class="blazon" style="background:#2f6fd0"></span><span class="fief-text"><span class="fief-name">${e(f.name)}</span><span class="fief-meta">${e(DOMINANTS[f.dominant].nom)}</span></span></button></li>`)
     .join("");
+  return `${nextTitleHtml(sim)}<ul class="fief-list">${myList}</ul>`;
+}
+
+/** Panneau Voisins : fiefs voisins (achat, guerre) et rumeurs. */
+export function neighborsHtml(world: WorldState, sim: DomainSim): string {
   const neighbors = neighborFiefs(world, sim);
   const cards = neighbors
     .map(({ meta, range, offer }) => {
@@ -75,12 +81,9 @@ export function domainPanelHtml(world: WorldState, sim: DomainSim): string {
   const others = world.fiefs.filter((f) => f.ownerId !== PLAYER_ID).length - neighbors.length;
   const talk = rumors(world, sim.state.ownerId);
   const rumorHtml = talk.length > 0 ? `<h3>Rumeurs</h3><ul class="rumors">${talk.map((t) => `<li class="small warn">${e(t)}</li>`).join("")}</ul>` : "";
-  return `${nextTitleHtml(sim)}
-    <h3>Vos fiefs</h3><ul class="fief-list">${myList}</ul>
-    <h3>Voisins à vendre</h3>
-    ${cards ? `<ul class="sales">${cards}</ul>` : `<p class="muted small">Aucun fief à vendre ne touche les vôtres.</p>`}
+  return `${cards ? `<ul class="sales">${cards}</ul>` : `<p class="muted small">Aucun fief voisin ne touche les vôtres.</p>`}
     ${rumorHtml}
-    ${others > 0 ? `<p class="muted small">${others} autre${others > 1 ? "s" : ""} fief${others > 1 ? "s" : ""} plus loin : achetable${others > 1 ? "s" : ""} quand il${others > 1 ? "s toucheront" : " touchera"} les vôtres.</p>` : ""}`;
+    ${others > 0 ? `<p class="muted small">${others} autre${others > 1 ? "s" : ""} fief${others > 1 ? "s" : ""} plus loin : à portée quand il${others > 1 ? "s toucheront" : " touchera"} les vôtres.</p>` : ""}`;
 }
 
 /** Fenêtre d'offre : prix proposé, fourchette, or disponible. */

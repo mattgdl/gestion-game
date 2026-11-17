@@ -347,7 +347,7 @@ export class Trade {
     const carters = this.sim.population.workers(relay.id).length;
     const out = this.t.convoys.filter((c) => c.relayId === relay.id);
     const goods = TRADE_GOODS.filter((g) => (relay.stock[g] ?? 0) > 0).map((g) => `${relay.stock[g]} ${goodName(g)}`);
-    if (this.t.agreements.length === 0) return "Aucun accord de commerce : le relais attend (panneau Commerce).";
+    if (this.t.agreements.length === 0) return "Aucun accord de commerce : le relais attend (panneau Voisins, Commerce).";
     return `${out.length} charrette${out.length > 1 ? "s" : ""} en route sur ${carters} charretier${carters > 1 ? "s" : ""}${goods.length > 0 ? ` · au relais : ${goods.join(", ")}` : ""}.`;
   }
 }
