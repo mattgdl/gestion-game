@@ -88,6 +88,35 @@ describe("relais et convois", () => {
   });
 });
 
+describe("convois au moment du bilan (partie test J5)", () => {
+  it("une vente encore en route au bilan compte pour l'année où elle est partie, et pas deux fois", () => {
+    const { sim, world, relay } = withRelay();
+    manorOf(sim).stock = { nourriture: 100 };
+    runUntil(sim, world, 1275);
+    const terms = agreement(sim, { partnerId: world.lords.find((l) => l.ai)!.id, perYear: 30 });
+    world.agreements.push({ ...terms });
+    world.lords.find((l) => l.id === terms.partnerId)!.ai!.gold = 10000;
+    relay.stock.bois = 30;
+    runUntil(sim, world, 1300);
+    expect(sim.state.trade.convoys.some((c) => c.status === "aller" && c.qty === 30)).toBe(true);
+    runUntil(sim, world, 1360);
+    expect(sim.state.log.some((l) => l.text.includes("30 bois livrés sur 30"))).toBe(true);
+    // À l'arrivée, l'an suivant, la charrette ne compte plus rien.
+    runUntil(sim, world, 1360 + 20 * DAY_TICKS);
+    expect(sim.state.trade.agreements[0]!.done).toBe(0);
+  });
+
+  it("en fin d'année, une charrette part sans attendre d'être pleine", () => {
+    const { sim, world, relay } = withRelay();
+    manorOf(sim).stock = { nourriture: 100 };
+    runUntil(sim, world, 1200);
+    agreement(sim, { perYear: 60 });
+    relay.stock.bois = 12;
+    runUntil(sim, world, 1200 + 2 * DAY_TICKS);
+    expect(sim.state.trade.convoys.some((c) => c.qty === 12)).toBe(true);
+  });
+});
+
 describe("commandes de commerce", () => {
   it("accepter une proposition l'active tout de suite ; on ne peut pas acheter et vendre la même marchandise", () => {
     const { sim } = withRelay();

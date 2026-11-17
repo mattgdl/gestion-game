@@ -144,12 +144,14 @@ export function aiProposals(world: WorldState, rng: Rng, players: string[], even
       if (agreementsWith(world, ownerId, lord.id).length >= c.accordsMaxParSeigneur) continue;
       if (world.proposals.some((p) => p.terms.ownerId === ownerId && p.terms.partnerId === lord.id)) continue;
       if (rng.next() * 1000 >= arch.commerce) continue;
-      // Ce qui lui manque le plus (en or), sinon ce qu'il a le plus en trop.
+      // D'abord ce qui lui manque (le joueur peut le fournir), sinon ce qu'il a en trop ; à valeur
+      // égale d'un accord (quantité plafonnée à 60), un besoin compte trois fois plus qu'un surplus.
+      // (Partie test J5 : il proposait surtout de vendre 60 pierre ou bois, que le joueur refusait.)
       let best: { good: TradeGood; side: "vente" | "achat"; qty: number; score: number } | null = null;
       for (const g of TRADE_GOODS) {
         const room = lordTradeRoom(world, lord, g);
-        const want = { good: g, side: "vente" as const, qty: room.manque, score: room.manque * c.prixBase[g] * 2 };
-        const sell = { good: g, side: "achat" as const, qty: room.surplus, score: room.surplus * c.prixBase[g] };
+        const want = { good: g, side: "vente" as const, qty: room.manque, score: Math.min(60, room.manque) * c.prixBase[g] * 3 };
+        const sell = { good: g, side: "achat" as const, qty: room.surplus, score: Math.min(60, room.surplus) * c.prixBase[g] };
         for (const o of [want, sell]) if (o.qty >= 10 && (!best || o.score > best.score)) best = o;
       }
       if (!best) continue;

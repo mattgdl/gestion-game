@@ -169,6 +169,26 @@ describe("épidémie", () => {
     runUntil(sim, world, sim.state.tick + 7 * DAY_TICKS);
     expect(sim.state.epidemic).toBeNull();
     expect(sim.state.log.some((l) => l.text.startsWith("L'épidémie prend fin"))).toBe(true);
+    // Un répit suit : pas de nouvelle épidémie tout de suite, quel que soit le tirage.
+    expect(sim.state.epidemicEndTick).toBeDefined();
+    runUntil(sim, world, sim.state.tick + (NEEDS.maladie.repitJours - 10) * DAY_TICKS);
+    expect(sim.state.epidemic).toBeNull();
+  });
+
+  it("dit si le guérisseur peut vraiment soigner (travailleur, remèdes)", () => {
+    const { sim, world } = village([{ terrain: 1, x: 88, y: 18, w: 6, h: 6 }]);
+    houses(sim, 6);
+    expect(sim.needs.careText("f-1-0")).toContain("Aucun guérisseur");
+    const healer = build(sim, "guerisseur", 89, 26);
+    sim.apply({ type: "setWorkers", buildingId: healer.id, count: 0 });
+    runUntil(sim, world, DAY_TICKS + 1);
+    expect(sim.needs.careText("f-1-0")).toContain("personne pour soigner");
+    sim.apply({ type: "setWorkers", buildingId: healer.id, count: 1 });
+    runUntil(sim, world, 2 * DAY_TICKS + 1);
+    healer.stock.remedes = 0;
+    expect(sim.needs.careText("f-1-0")).toContain("plus de remèdes");
+    healer.stock.remedes = 5;
+    expect(sim.needs.careText("f-1-0")).toContain("5 remèdes");
   });
 });
 

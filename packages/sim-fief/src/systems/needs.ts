@@ -167,11 +167,13 @@ export class Needs {
         this.sim.addLog(text);
         this.sim.dynasty.chronicle(text);
         st.epidemic = null;
+        st.epidemicEndTick = st.tick;
       }
       return;
     }
     // Pas d'épidémie pendant les premières années : le village doit d'abord s'installer.
     if (st.tick < m.graceAnnees * TICKS_PER_YEAR) return;
+    if (st.epidemicEndTick !== undefined && st.tick < st.epidemicEndTick + m.repitJours * DAY_TICKS) return;
     const chance = Math.min(m.chanceMax, m.chanceParAn + (m.parCentHabitants * st.villagers.length) / 100);
     if (rng.next() >= chance / DAYS_PER_YEAR) return;
     const housed = st.families.filter((f) => f.houseId !== null && !f.noble);
@@ -189,9 +191,20 @@ export class Needs {
     };
     const touched = this.touchedFamilies().length;
     const name = st.fiefs[house.fiefId]?.name;
-    const text = `Une maladie se déclare${name ? ` à ${name}` : ""} : ${touched} foyer${touched > 1 ? "s" : ""} touché${touched > 1 ? "s" : ""}. Un guérisseur dans le fief, avec des remèdes, sauve des vies.`;
+    const text = `Une maladie se déclare${name ? ` à ${name}` : ""} : ${touched} foyer${touched > 1 ? "s" : ""} touché${touched > 1 ? "s" : ""}. ${this.careText(house.fiefId)}`;
     this.sim.addLog(text);
     this.events.push({ type: "epidemic", fiefId: house.fiefId });
+  }
+
+  /** Ce que peuvent les guérisseurs de ce fief, en une phrase (travailleur, remèdes). */
+  careText(fiefId: string): string {
+    const healers = this.state.buildings.filter((b) => b.type === "guerisseur" && b.fiefId === fiefId);
+    if (healers.length === 0) return "Aucun guérisseur dans ce fief : les malades ne sont pas soignés.";
+    const staffed = healers.filter((b) => this.sim.population.workers(b.id).length > 0);
+    if (staffed.length === 0) return "Le guérisseur n'a personne pour soigner : donnez-lui un travailleur.";
+    const remedies = staffed.reduce((n, b) => n + (b.stock.remedes ?? 0), 0);
+    if (remedies === 0) return "Le guérisseur n'a plus de remèdes : les malades ne sont pas soignés.";
+    return `Le guérisseur soigne avec ${remedies} remède${remedies > 1 ? "s" : ""} (un pour dix jours de soins d'un foyer).`;
   }
 
   /** Foyers dans la zone de l'épidémie (leur maison, ou le manoir pour les sans-abri). */

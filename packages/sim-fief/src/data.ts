@@ -178,6 +178,7 @@ export interface NeedsDef {
     soinPourMille: number;
     remedeTousLesJours: number;
     graceAnnees: number;
+    repitJours: number;
   };
   foire: { plafondParAn: number; prix: Partial<Record<GoodId, { achat: number; vente: number }>> };
 }

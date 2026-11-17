@@ -56,8 +56,14 @@ export class Trade {
   /** Quantité en route pour cet accord, pas encore comptée. */
   private inTransit(a: Agreement): number {
     let n = 0;
-    for (const c of this.t.convoys) if (c.agreementId === a.terms.id && c.status === "aller") n += c.qty;
+    for (const c of this.t.convoys) if (c.agreementId === a.terms.id && c.status === "aller" && !c.counted) n += c.qty;
     return n;
+  }
+
+  /** Ventes parties mais pas encore arrivées : elles comptent pour l'année où elles ont quitté le domaine. */
+  private salesOnTheRoad(a: Agreement): number {
+    if (a.terms.side !== "vente") return 0;
+    return this.inTransit(a);
   }
 
   /** Ce qu'il reste à livrer ou à recevoir cette année, convois en route compris. */
@@ -117,7 +123,7 @@ export class Trade {
     c.status = "retour";
     if (!a) return;
     if (c.side === "vente") {
-      a.done += c.qty;
+      if (!c.counted) a.done += c.qty;
       c.qty = 0;
       return;
     }
@@ -149,16 +155,18 @@ export class Trade {
       if (!this.isActive(a)) continue;
       const left = this.remaining(a);
       if (left <= 0) continue;
-      const load = Math.min(def.chargeConvoi, left);
+      let load = Math.min(def.chargeConvoi, left);
+      const days = this.travelDays(relay, a.terms.partnerFiefId);
       if (a.terms.side === "vente") {
         const have = relay.stock[a.terms.good] ?? 0;
+        // En fin d'année, on n'attend plus une charrette pleine : on part avec ce qu'on a.
+        if (have < load && have > 0 && this.daysToBarrier() <= days + 10) load = have;
         if (have < load) continue;
         relay.stock[a.terms.good] = have - load;
       } else {
         // Une charrette ne part acheter que si le trésor peut payer son chargement.
         if (this.sim.state.treasury < load * a.terms.price) continue;
       }
-      const days = this.travelDays(relay, a.terms.partnerFiefId);
       this.t.convoys.push({
         id: this.sim.state.nextId++,
         agreementId: a.terms.id,
@@ -174,6 +182,12 @@ export class Trade {
       });
       free -= 1;
     }
+  }
+
+  /** Jours avant le bilan d'automne de l'année en cours (0 s'il est passé). */
+  private daysToBarrier(): number {
+    const yearStart = (this.year() - 1) * TICKS_PER_YEAR;
+    return Math.max(0, Math.floor((yearStart + BARRIER_OFFSET - this.sim.state.tick) / DAY_TICKS));
   }
 
   /** Le relais vient d'être démoli : ses charrettes perdent leur point de retour. */
@@ -264,7 +278,15 @@ export class Trade {
     for (const id of this.t.cancelled) out.push({ type: "cancelTrade", actionId: `${me}-${tick}-fin-${id}`, ownerId: me, agreementId: id });
     for (const a of this.t.agreements) {
       if (!this.isActive(a)) continue;
-      out.push({ type: "tradeReport", actionId: `${me}-${tick}-bilan-${a.terms.id}`, ownerId: me, agreementId: a.terms.id, quantity: a.done, due: this.due(a), paid: a.paid });
+      out.push({
+        type: "tradeReport",
+        actionId: `${me}-${tick}-bilan-${a.terms.id}`,
+        ownerId: me,
+        agreementId: a.terms.id,
+        quantity: a.done + this.salesOnTheRoad(a),
+        due: this.due(a),
+        paid: a.paid,
+      });
     }
     return out;
   }
@@ -306,6 +328,8 @@ export class Trade {
   /** Fin du bilan : compteurs de l'année remis à zéro, propositions échues retirées. */
   afterBarrier(resolvedYear: number): void {
     const t = this.t;
+    // Les ventes en route ont été comptées dans ce bilan.
+    for (const c of t.convoys) if (c.side === "vente" && c.status === "aller") c.counted = true;
     for (const a of t.agreements) {
       a.done = 0;
       a.paid = 0;

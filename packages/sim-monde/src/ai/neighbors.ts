@@ -7,7 +7,7 @@
  * Monde : deux joueurs obtiennent le même monde.
  */
 import { TRADE_GOODS, type ProposeAction, type Rng, type WorldEvent } from "@jeu/shared";
-import { FIEFS, adjacent, fiefValue } from "../fiefs";
+import { FIEFS, adjacent, fiefValue, sellerFactor } from "../fiefs";
 import { fiefById, type Lord, type WorldState } from "../state";
 import { IA, archetypeOf } from "./archetypes";
 
@@ -60,6 +60,15 @@ export function aiEconomy(world: WorldState, rng: Rng): void {
   }
 }
 
+/**
+ * Valeur d'un fief telle qu'un acheteur IA l'estime : sa valeur, corrigée par le caractère du
+ * vendeur (un avare vend cher). Sans cela, un seigneur visait chaque année le même fief d'un
+ * avare ou d'un reclus et voyait son offre refusée (partie test J5).
+ */
+function askingValue(world: WorldState, meta: Parameters<typeof fiefValue>[0], buyerId: string): number {
+  return Math.floor((fiefValue(meta) * sellerFactor(world, meta, buyerId)) / 1000);
+}
+
 /** Or qu'un seigneur IA peut dépenser : son trésor moins sa part d'épargne. */
 export function spendable(lord: Lord): number {
   const ai = lord.ai;
@@ -91,7 +100,7 @@ export function aiOffers(world: WorldState): ProposeAction[] {
     if (!meta || !purchasableBy(world, lord).some((f) => f.id === meta.id)) continue;
     const arch = archetypeOf(ai.archetype);
     const factor = e.surenchereMin + Math.floor(((e.surenchereMax - e.surenchereMin) * arch.ambition) / 1000);
-    const price = Math.floor((fiefValue(meta) * factor) / 1000);
+    const price = Math.floor((askingValue(world, meta, lord.id) * factor) / 1000);
     if (price > spendable(lord)) continue;
     ai.gold -= price;
     out.push({ type: "buyFief", actionId: `ia-${world.year}-${lord.id}`, ownerId: lord.id, fiefId: meta.id, price });
@@ -112,7 +121,7 @@ export function aiPlans(world: WorldState, rng: Rng, events: WorldEvent[]): void
     if (rng.next() * 1000 >= arch.ambition) continue;
     const budget = spendable(lord);
     const targets = purchasableBy(world, lord)
-      .map((f) => ({ f, v: fiefValue(f) }))
+      .map((f) => ({ f, v: askingValue(world, f, lord.id) }))
       .filter((t) => t.v <= budget)
       .sort((a, b) => a.v - b.v || (a.f.id < b.f.id ? -1 : 1));
     const pick = arch.id === "conquerant" ? targets[targets.length - 1] : targets[0];

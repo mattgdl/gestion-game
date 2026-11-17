@@ -5,7 +5,7 @@
 
 ## En cours
 
-- **Partie test de J5 — Voisins IA et commerce** (critère : signer et honorer au moins deux accords, dont un de vente d'outils ou de vêtements ; voir au moins un achat entre seigneurs IA et une rumeur ; la carte change). Puis **J6 — Guerre et conquête**. Critère J3 (deux successions) encore à vérifier dans une partie longue.
+- Rien. Prochain jalon : **J6 — Guerre et conquête**. Critère J3 (deux successions) encore à vérifier dans une partie longue.
 
 ## À faire
 
@@ -46,7 +46,7 @@
 - *(vide)*
 
 ## Fait
-- 16/11/2026 : **J5 — Voisins IA et commerce** livré, à valider en partie test.
+- 17/11/2026 : **J5 — Voisins IA et commerce** validé par le joueur (partie test n° 6), avec corrections (ventes en route, guérisseur, répit des épidémies, propositions IA).
   - 10 archétypes de seigneurs IA, économie et croissance au bilan, rumeurs et achats entre seigneurs, relation.
   - Accords de commerce dans les deux sens, prix selon le terrain, relais et charrettes sur la carte.
 - 16/11/2026 : **J4c — Réglages** validé par le joueur (guérisseur : soigne tout son fief) : couverture proportionnelle et chaîne expliquée, malus « Bras inoccupés », natalité freinée sans vêtements, guérisseur, foire plus rentable.
@@ -113,6 +113,8 @@
 - 12/11/2026 : brief fondateur, DESIGN.md v0.1 à v0.3, réponses aux questions Q1 à Q8, création de cette ROADMAP.
 
 ## Idées notées (à trier)
+- Le relais prend les vêtements et outils dont le village a besoin : pas de priorité entre besoins du village et accords (partie test n° 6 : 13 à 18 vêtements livrés sur 25 en rejouant la partie).
+- Un guérisseur ne soigne que son fief : un fief acheté en demande un autre ; à rappeler à l'achat.
 - Commerce entre seigneurs IA, et seigneurs IA qui dépensent leur or (bâtir, armer) : leur or s'accumule (J5).
 - Le joueur type de `simulate` ne commerce pas encore : à ajouter pour l'équilibrage (J9).
 - **Retours de la partie test n° 5 (J4b, 22 ans, environ 70 min)** :

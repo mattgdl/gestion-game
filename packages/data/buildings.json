@@ -324,7 +324,7 @@
     "utilite": "Prépare des remèdes avec les herbes de la forêt voisine (20 par an, gardés sur place). Pendant une épidémie, il soigne tout son fief : les malades meurent quatre fois moins.",
     "stockMax": 20,
     "travailleurs": 1,
-    "prioriteEmploi": 5
+    "prioriteEmploi": 2
   },
   "relais": {
     "nom": "Relais",

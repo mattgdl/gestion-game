@@ -130,7 +130,7 @@ export function domainSnapshot(sim: DomainSim): Record<string, unknown> {
       // arrivent après ce relevé, et apparaissent donc au bilan suivant.
       derniereFoire: { annee: sim.state.fair.year, achats: sim.state.fair.bought, ventes: sim.state.fair.sold },
       chaine: sim.needs.chain(),
-      sansEmploi: sim.population.idleMalus(),
+      sansEmploi: (({ pct, malus }) => ({ pct, malus }))(sim.population.idleMalus()),
     },
     expansion: {
       fiefs: Object.keys(sim.state.fiefs).length,
@@ -179,6 +179,8 @@ export function worldSnapshot(world: WorldState, sim: DomainSim): Record<string,
       .sort((a, b) => b.fiefs - a.fiefs || b.or - a.or)
       .slice(0, 5),
     rumeurs: ais.filter((l) => l.ai!.plan).map((l) => ({ seigneur: l.name, cible: l.ai!.plan!.fiefId })),
+    // Règlements de ce bilan (les compteurs des accords sont déjà remis à zéro quand on écrit le bilan).
+    affaires: sim.barrierEvents.filter((e) => e.type === "tradeNews").map((e) => (e as { text: string }).text),
   };
 }
 

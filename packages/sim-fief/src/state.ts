@@ -286,6 +286,8 @@ export interface DomainState {
   needs: { outils: NeedState; vetements: NeedState };
   /** Épidémie en cours (J4b). */
   epidemic: Epidemic | null;
+  /** Fin de la dernière épidémie (tick) : un répit suit (J5, retour de partie). */
+  epidemicEndTick?: number;
   /** Achats et ventes à la foire d'automne de l'année (plafonds). */
   fair: { year: number; bought: Goods; sold: Goods };
   /** Commerce avec les seigneurs IA (J5) : propositions, accords, convois. */
@@ -368,6 +370,8 @@ export interface Convoy {
   arriveTick: number;
   returnTick: number;
   status: "aller" | "retour";
+  /** Vente déjà comptée au bilan alors que la charrette roulait encore : ne pas la recompter à l'arrivée. */
+  counted?: boolean;
 }
 
 /** Offre d'achat d'un fief voisin, résolue par le Monde au bilan d'automne. */

@@ -1,7 +1,7 @@
 # DESIGN.md — Jeu de gestion médiéval à dynastie
 
 > **Titre provisoire :** « Seigneurie » (nom de travail, à remplacer) · **Version du document :** 0.9 · **Dernière mise à jour :** 16/11/2026
-> **Statut :** J5 livré (voisins IA et commerce), à valider en partie test. Ensuite : guerre (J6), événements et traits (J7), multi (J8).
+> **Statut :** J5 validé par le joueur (partie test n° 6). Prochain jalon : guerre et conquête (J6), puis événements et traits (J7), multi (J8).
 > Ce document est la référence du projet. En cas de doute, c'est lui qui tranche, et chaque décision y est consignée avec sa raison (section 11).
 
 ## Sommaire
@@ -232,6 +232,16 @@ Règles décidées pendant le développement, à contester si elles ne te convie
 | Relais | 3 × 2 ; 40 bois, 20 pierre, 20 or ; 3 charretiers, 3 porteurs (10 par voyage). Les porteurs y rassemblent ce qu'il faut livrer et rangent ce qui a été acheté. Une charrette par charretier, 30 marchandises au plus, 10 jours de route par fief de distance (aller), autant au retour. Vente : comptée à l'arrivée, payée au bilan (par l'or du seigneur IA). Achat : la charrette ne part que si le trésor peut payer, paie sur place. | Choix du joueur : convois visibles et temps de trajet. Un voisin lointain = moins d'allers-retours par an ; des emplois. |
 | Interface | Panneau Commerce : propositions (accepter, refuser), accords en cours (livré / dû, charrettes, rompre en deux clics), vos propositions (retirer), fenêtre « Proposer un accord » avec le marché du seigneur (ce qu'il vend, ce qui lui manque, ses prix). Domaine et voisins : archétype et relation de chaque voisin, rumeurs. Étiquettes de la vue Monde : archétype, relation, « convoite … ». Charrettes dessinées sur la carte à tous les zooms. Alertes : rumeur, proposition en attente, accord sans relais ou sans charretier, accord en retard à l'automne. Bilan : accords réglés dans « Affaires ». Touche Y : relais. | |
 | Sauvegardes | Format v8 : les seigneurs IA des vieilles parties reçoivent leur archétype (tiré de la graine du monde). | |
+
+**Corrections après la partie test n° 6 (J5 validé, 11 ans) :**
+
+| Sujet | Règle | Raison |
+|---|---|---|
+| Ventes en route au bilan | Une charrette de vente partie avant le bilan compte pour cette année-là (elle a quitté le domaine), et ne compte pas une seconde fois à son arrivée. En fin d'année (moins de 10 jours plus le trajet avant le bilan), une charrette part sans attendre d'être pleine. | L'accord de vêtements avec Hautrive affichait 0 / 15 une année sur deux (relation −3 à tort) : la charrette arrivait juste après le bilan. |
+| Guérisseur | Priorité d'emploi 2 (juste après les fermes) au lieu de 5. Le message d'épidémie dit l'état réel des soins : aucun guérisseur dans ce fief, pas de travailleur, plus de remèdes, ou le nombre de remèdes. | Le guérisseur bâti à l'an 6 n'a jamais eu de travailleur : 20 morts de maladie en 3 ans sur 60 habitants, alors que le message disait « un guérisseur sauve des vies ». |
+| Répit après une épidémie | Aucune autre épidémie pendant 240 jours après la fin de la précédente. | Deux épidémies coup sur coup à l'an 8 (12 morts). |
+| Propositions des seigneurs IA | Un besoin du seigneur (ce que le joueur peut lui vendre) compte trois fois plus qu'un surplus, à quantité plafonnée. | Le joueur a refusé 8 propositions sur 10 : surtout 60 pierre, bois ou laine à acheter. Rejouée avec la correction, la partie reçoit des demandes de vêtements. |
+| Achats entre seigneurs IA | L'acheteur IA estime le fief avec le caractère du vendeur (un avare vend cher). | La Maison de Hautrive a visé le même fief 6 ans de suite, en vain. |
 
 **Ce que montre un monde sans joueur sur 40 ans** (graines orge-349, a, b) : aucun achat les 5 premières années, puis 1 à 3 achats entre seigneurs vers l'an 10, 5 à 14 vers l'an 20 ; il reste 9 à 16 seigneurs à l'an 40 (24 au départ). Le joueur reçoit environ une proposition par an. L'or des seigneurs IA s'accumule (3 000 à 6 000 à l'an 40) : à surveiller à l'équilibrage (J9).
 
@@ -524,6 +534,7 @@ jeu-medieval/
 | 16/11/2026 | J4c : couverture des besoins proportionnelle, chaîne expliquée, vêtements 0,4 par an, malus de moral « Bras inoccupés », natalité = moral × besoins, guérisseur sans fausse alerte, foire plus rentable. Règles en section 4.7. | Partie test n° 5. |
 | 16/11/2026 | J4c validé par le joueur ; le guérisseur soigne tout son fief au lieu de 12 cases autour de lui. | Retour du joueur : condition de placement trop particulière. |
 | 16/11/2026 | J5 : 10 archétypes de seigneurs IA (économie au bilan, croissance, rumeurs et achats entre seigneurs, relation), accords de commerce proposés dans les deux sens, prix selon le terrain, relais et charrettes visibles. Règles en section 4.8. | Choix du joueur (questions du 16/11) : archétypes, concurrence pour les terres, accords + convois visibles, prix géographiques. |
+| 17/11/2026 | J5 validé (partie test n° 6). Corrections : ventes en route comptées au bilan, guérisseur prioritaire à l'emploi et message de soins exact, répit après une épidémie, propositions IA tournées vers ses besoins, achats IA selon le caractère du vendeur. Section 4.8. | Analyse du journal de partie. |
 | 16/11/2026 | Partie test n° 4 (orge-349 en 5 × 5, 25 ans, environ 45 min) : église par fief, routes en or et pierre, correction du ravitaillement entre fiefs, alerte de vivres lointains. Chômage et ennui de fin de partie notés pour la suite. | Retours du joueur et analyse du journal. |
 | 16/11/2026 | J4 : carte 5 × 5, fiefs achetés avec leur village et une maison forte, négociation avec prix plancher secret, titres par fiefs et population. Règles en section 4.5. | Choix du joueur (questions du 16/11). |
 | 16/11/2026 | Partie test n° 3 (chêne-832, 13 ans, 33 min) : famille noble servie dans toutes les réserves ; alertes de déficit de nourriture et de bras inoccupés. | Analyse du journal de partie. |
