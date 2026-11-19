@@ -179,3 +179,27 @@ describe("commerce", () => {
     expect(lord.ai!.relations[PLAYER_ID]).toBe(IA.commerce.relation.rompu);
   });
 });
+
+describe("propositions selon les besoins du joueur (partie test J6)", () => {
+  it("un domaine qui manque de bois reçoit des offres de bois ; sinon les propositions varient", () => {
+    const world = createWorld("manque-bois");
+    for (const l of world.lords) if (l.ai) l.ai.archetype = "marchand";
+    const short = { ...summary, shortages: ["bois" as const] };
+    const goods: string[] = [];
+    for (let i = 0; i < 8; i++) {
+      const r = resolveBarrier(world, [{ ownerId: PLAYER_ID, summary: short, ready: true, actions: [] }]);
+      for (const e of r.events) if (e.type === "tradeProposed") goods.push(`${e.terms.side}:${e.terms.good}`);
+      world.proposals = [];
+    }
+    expect(goods).toContain("achat:bois");
+    const world2 = createWorld("sans-manque");
+    for (const l of world2.lords) if (l.ai) l.ai.archetype = "marchand";
+    const kinds = new Set<string>();
+    for (let i = 0; i < 10; i++) {
+      const r = resolveBarrier(world2, input());
+      for (const e of r.events) if (e.type === "tradeProposed") kinds.add(e.terms.side);
+      world2.proposals = [];
+    }
+    expect(kinds.size).toBe(2);
+  });
+});

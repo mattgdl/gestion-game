@@ -23,6 +23,7 @@ import {
   type LineageSetup,
   type ProposeAction,
   type ResourceId,
+  type TradeGood,
   type Resources,
   type TerrainId,
   type WorldDims,
@@ -443,7 +444,18 @@ export class DomainSim {
       gold: this.state.treasury,
       prestige: this.dynasty.prestige().total,
       lineageAlive: this.state.dynasty.lordId !== null,
+      shortages: this.shortages(),
     };
+  }
+
+  /** Ce qui manque au domaine : bois et pierre presque épuisés, vivres pour moins de 90 jours. */
+  shortages(): TradeGood[] {
+    const out: TradeGood[] = [];
+    const need = this.population.dailyFoodNeed();
+    if (need > 0 && (this.population.foodAvailable() * 1000) / need < 90) out.push("nourriture");
+    if (this.economy.stockOf("bois") < 40) out.push("bois");
+    if (this.economy.stockOf("pierre") < 30) out.push("pierre");
+    return out;
   }
 
   // ---------------------------------------------------------------- commandes

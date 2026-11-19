@@ -94,3 +94,21 @@ describe("guerres des seigneurs IA", () => {
     expect(fiefById(world, "f-2-2")!.ownerId).toBe(PLAYER_ID);
   });
 });
+
+describe("textes de guerre", () => {
+  it("« vous déclare la guerre », pas « déclare la guerre à vous »", () => {
+    const world = createWorld("texte-guerre");
+    for (const l of world.lords) if (l.ai) l.ai.archetype = "conquerant";
+    for (const f of world.fiefs) if (f.ownerId !== PLAYER_ID) f.households = 14;
+    const texts: string[] = [];
+    for (let i = 0; i < 15; i++) {
+      const r = resolveBarrier(world, input([army(0)]));
+      for (const e of r.events) if (e.type === "warDeclared" && e.war.defenderId === PLAYER_ID) texts.push(e.text);
+    }
+    expect(texts.length).toBeGreaterThan(0);
+    for (const t of texts) {
+      expect(t).toContain("vous déclare la guerre");
+      expect(t).not.toContain("à vous");
+    }
+  });
+});

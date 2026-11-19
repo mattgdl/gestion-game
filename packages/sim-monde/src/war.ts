@@ -147,8 +147,11 @@ function declare(world: WorldState, attackerId: string, meta: FiefMeta, goal: Wa
   }
   const what = goal === "conquete" ? `pour prendre ${meta.name}` : `pour piller ${meta.name}`;
   const att = nameOf(world, attackerId);
+  const Att = `${att.charAt(0).toUpperCase()}${att.slice(1)}`;
   const text = isAi(attackerId)
-    ? `${att.charAt(0).toUpperCase()}${att.slice(1)} déclare la guerre à ${nameOf(world, defenderId)} ${what} : premier assaut au bilan de l'an ${war.firstYear}.`
+    ? isAi(defenderId)
+      ? `${Att} déclare la guerre à ${nameOf(world, defenderId)} ${what} : premier assaut au bilan de l'an ${war.firstYear}.`
+      : `${Att} vous déclare la guerre ${what} : premier assaut au bilan de l'an ${war.firstYear}.`
     : `Vous déclarez la guerre à ${nameOf(world, defenderId)} ${what} : premier assaut au bilan de l'an ${war.firstYear}.`;
   events.push({ type: "warDeclared", war: { ...war }, text });
 }

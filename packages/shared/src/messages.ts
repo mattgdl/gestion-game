@@ -24,6 +24,8 @@ export interface FiefSummary {
   gold: number;
   prestige: number;
   lineageAlive: boolean;
+  /** Marchandises qui manquent au domaine (J5, retour de partie) : les voisins proposent d'en vendre. */
+  shortages?: TradeGood[];
 }
 
 /** Intention envoyée par un fief au Monde pendant l'année (résolue à la barrière). */

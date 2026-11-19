@@ -105,6 +105,8 @@
 - 12/11/2026 : brief fondateur, DESIGN.md v0.1 à v0.3, réponses aux questions Q1 à Q8, création de cette ROADMAP.
 
 ## Idées notées (à trier)
+- Partie test n° 7 : le bois a manqué toute la partie (stock 0 à 48 malgré 3 bûcherons : chauffage + constructions) et le joueur n'a jamais pu acheter de fief en 16 ans (or 120 à 530). Rythme lent : à regarder à l'équilibrage (J9), ou avant si le joueur s'ennuie.
+- Famine dès l'an 2 sur certaines cartes (5 morts, des adultes de 21 à 25 ans) : début de partie toujours fragile.
 - Murs et palissades (bonus de défense), alliances, paix achetée, tribut : écartés de J6 (choix du joueur).
 - La carte se consolide vite (4 à 8 seigneurs IA à l'an 30) : à surveiller à l'équilibrage (J9).
 - Le relais prend les vêtements et outils dont le village a besoin : pas de priorité entre besoins du village et accords (partie test n° 6 : 13 à 18 vêtements livrés sur 25 en rejouant la partie).

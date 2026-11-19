@@ -147,13 +147,22 @@ export function aiProposals(world: WorldState, rng: Rng, players: string[], even
       // D'abord ce qui lui manque (le joueur peut le fournir), sinon ce qu'il a en trop ; à valeur
       // égale d'un accord (quantité plafonnée à 60), un besoin compte trois fois plus qu'un surplus.
       // (Partie test J5 : il proposait surtout de vendre 60 pierre ou bois, que le joueur refusait.)
-      let best: { good: TradeGood; side: "vente" | "achat"; qty: number; score: number } | null = null;
+      // Partie test J6 : rien que des demandes de vêtements, refusées 15 ans de suite, alors que le
+      // joueur manquait de bois. On tient donc compte de ce qui manque au domaine (son résumé), et
+      // on alterne au hasard entre ce que le seigneur veut acheter et ce qu'il a à vendre.
+      const shortages = world.lastSummaries[ownerId]?.shortages ?? [];
+      type Option = { good: TradeGood; side: "vente" | "achat"; qty: number; score: number };
+      let want = null as Option | null;
+      let sell = null as Option | null;
       for (const g of TRADE_GOODS) {
         const room = lordTradeRoom(world, lord, g);
-        const want = { good: g, side: "vente" as const, qty: room.manque, score: Math.min(60, room.manque) * c.prixBase[g] * 3 };
-        const sell = { good: g, side: "achat" as const, qty: room.surplus, score: Math.min(60, room.surplus) * c.prixBase[g] };
-        for (const o of [want, sell]) if (o.qty >= 10 && (!best || o.score > best.score)) best = o;
+        const w = { good: g, side: "vente" as const, qty: room.manque, score: Math.min(60, room.manque) * c.prixBase[g] };
+        const s2 = { good: g, side: "achat" as const, qty: room.surplus, score: Math.min(60, room.surplus) * c.prixBase[g] * (shortages.includes(g) ? 10 : 1) };
+        if (w.qty >= 10 && (!want || w.score > want.score)) want = w;
+        if (s2.qty >= 10 && (!sell || s2.score > sell.score)) sell = s2;
       }
+      const sellWanted = sell !== null && shortages.includes(sell.good);
+      const best = sellWanted ? sell : want && sell ? (rng.next() < 0.5 ? want : sell) : (want ?? sell);
       if (!best) continue;
       const perYear = Math.min(60, Math.max(10, Math.floor(best.qty / 5) * 5));
       if (best.side === "vente" && perYear * unitPrice(world, lord, near.fief, best.good, "vente", ownerId) > spendable(lord) + ai.gold / 2) continue;

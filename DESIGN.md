@@ -268,6 +268,8 @@ Règles décidées pendant le développement, à contester si elles ne te convie
 | Interface | Panneau Guerre : armée, force, défense, guerres en cours (rapport de forces estimé), déclaration en attente, mercenaires. Bouton « Guerre… » sur chaque voisin (fenêtre : forces, règles, réputation ; Piller ou Conquérir). Étiquette « assiégé » sur la carte du monde. Alertes de siège avec rapport de forces. Assauts et pillages dans « Affaires » au bilan et dans la chronique. Touches V caserne, I armurerie. Depuis le 17/11, ces sections sont dans le panneau Voisins (section 4.8 bis). | |
 | Sauvegardes | Format v9 (aucune guerre en cours, pas d'armée). | |
 
+**Après la partie test n° 7 (tilleul-372, 16 ans, 57 min) :** les propositions des seigneurs IA tiennent compte de ce qui manque au domaine (son résumé de bilan dit si le bois, la pierre ou les vivres manquent) : un seigneur qui en a à vendre le propose d'abord ; sinon, il alterne au hasard entre ce qu'il veut acheter et ce qu'il a à vendre. Texte corrigé : « la Maison X vous déclare la guerre ».
+
 **Ce que montre un monde sur 30 ans** (6 graines, joueur passif avec 4 soldats après l'an 10) : 17 à 28 guerres entre seigneurs, 7 à 14 conquêtes ; il reste 4 à 8 seigneurs IA à l'an 30. Le joueur est attaqué 1 à 5 fois, le plus souvent après l'an 25, parfois dès l'an 7-10 (voisin conquérant) : les IA s'attaquent d'abord entre elles. À juger en partie test.
 
 ## 5. Systèmes clés
@@ -563,6 +565,7 @@ jeu-medieval/
 | 17/11/2026 | J5 validé (partie test n° 6). Corrections : ventes en route comptées au bilan, guérisseur prioritaire à l'emploi et message de soins exact, répit après une épidémie, propositions IA tournées vers ses besoins, achats IA selon le caractère du vendeur. Section 4.8. | Analyse du journal de partie. |
 | 17/11/2026 | J6 : caserne et armurerie (soldats villageois, armes), mercenaires en appoint, siège sur plusieurs années (un assaut par bilan), pillage ou conquête, fief de départ seulement pillable, réputation, IA qui s'attaquent entre elles et attaquent le joueur. Section 4.9. | Choix du joueur (questions du 17/11). |
 | 17/11/2026 | Interface : panneau Domaine (chez soi) et panneau Voisins (achats, guerre, commerce) ; barre de construction par familles. Section 4.8 bis. | Retour du joueur : trop d'informations mêlées, barre de construction illisible. |
+| 19/11/2026 | Partie test n° 7 : propositions IA selon les manques du domaine (nouveau champ `shortages` du résumé de bilan) et en alternance achat / vente ; texte de déclaration de guerre corrigé. | Analyse du journal : 15 demandes de vêtements refusées alors que le bois manquait. |
 | 16/11/2026 | Partie test n° 4 (orge-349 en 5 × 5, 25 ans, environ 45 min) : église par fief, routes en or et pierre, correction du ravitaillement entre fiefs, alerte de vivres lointains. Chômage et ennui de fin de partie notés pour la suite. | Retours du joueur et analyse du journal. |
 | 16/11/2026 | J4 : carte 5 × 5, fiefs achetés avec leur village et une maison forte, négociation avec prix plancher secret, titres par fiefs et population. Règles en section 4.5. | Choix du joueur (questions du 16/11). |
 | 16/11/2026 | Partie test n° 3 (chêne-832, 13 ans, 33 min) : famille noble servie dans toutes les réserves ; alertes de déficit de nourriture et de bras inoccupés. | Analyse du journal de partie. |
