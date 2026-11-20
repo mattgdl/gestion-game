@@ -40,6 +40,8 @@ export type Command =
   | { type: "cancelWarDeclaration"; actionId: string }
   /** Lève un siège que l'on mène (au bilan). */
   | { type: "endWar"; warId: string }
+  /** Répond à l'offre d'un autre joueur sur l'un de ses fiefs (J7) : la réponse part au bilan. */
+  | { type: "answerFiefOffer"; offerId: string; accept: boolean }
   /** Loue des mercenaires pour les assauts du prochain bilan. */
   | { type: "hireMercenaries"; count: number };
 

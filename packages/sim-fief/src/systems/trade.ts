@@ -204,7 +204,7 @@ export class Trade {
       case "refuseTradeProposal": {
         const p = t.proposals.find((x) => x.terms.id === cmd.proposalId);
         if (!p) return { ok: false, reason: "Cette proposition n'existe plus." };
-        if (cmd.type === "acceptTradeProposal") {
+        if (cmd.type === "acceptTradeProposal" && p.terms.ownerId === this.sim.state.ownerId) {
           const clash = t.agreements.find((a) => a.terms.good === p.terms.good && a.terms.side !== p.terms.side);
           if (clash) return { ok: false, reason: `Vous ne pouvez pas à la fois acheter et vendre des ${goodName(p.terms.good)}.` };
         }
@@ -234,8 +234,13 @@ export class Trade {
       case "acceptTradeProposal": {
         const p = t.proposals.find((x) => x.terms.id === cmd.proposalId)!;
         t.proposals = t.proposals.filter((x) => x !== p);
-        t.agreements.push({ terms: { ...p.terms }, done: 0, paid: 0, startTick: tick });
         t.accepted.push(p.terms.id);
+        if (p.terms.ownerId !== this.sim.state.ownerId) {
+          // Un autre joueur vous vend (J7) : c'est lui qui livre ; vous payez à la livraison, au bilan.
+          this.sim.addLog(`Achat accepté : ${p.terms.perYear} ${goodName(p.terms.good)} par an à ${p.terms.price} or l'unité, livrés et payés à chaque bilan à partir de l'an prochain.`);
+          return;
+        }
+        t.agreements.push({ terms: { ...p.terms }, done: 0, paid: 0, startTick: tick });
         this.sim.addLog(`Accord conclu : ${p.terms.side === "vente" ? "vous livrez" : "vous achetez"} ${p.terms.perYear} ${goodName(p.terms.good)} par an à ${p.terms.price} or l'unité, jusqu'en l'an ${p.terms.lastYear}.${this.relays().length === 0 ? " Bâtissez un relais pour les convois." : ""}`);
         return;
       }

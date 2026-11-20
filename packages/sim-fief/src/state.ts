@@ -295,6 +295,8 @@ export interface DomainState {
   trade: TradeState;
   /** Armée et guerres (J6). */
   army: ArmyState;
+  /** Affaires entre joueurs (J7) : offres reçues sur ses fiefs et réponses à remettre au bilan. */
+  deals: DealsState;
   /** Fin de partie : le temps s'arrête. */
   gameOver: GameOver | null;
   nextId: number;
@@ -322,6 +324,18 @@ export interface Epidemic {
   deaths: number;
   /** Jours de soins donnés depuis le dernier remède pris, par guérisseur. */
   care: Record<string, number>;
+}
+
+/** Affaires entre joueurs (J7). */
+export interface DealsState {
+  /** Offres d'achat reçues d'autres joueurs (renouvelées à chaque bilan). */
+  incoming: { offerId: string; buyerId: string; fiefId: string; price: number }[];
+  /** Réponses à remettre au prochain bilan. */
+  answers: { offerId: string; accept: boolean; households: number }[];
+}
+
+export function emptyDeals(): DealsState {
+  return { incoming: [], answers: [] };
 }
 
 /** Armée et guerres du domaine (J6). */

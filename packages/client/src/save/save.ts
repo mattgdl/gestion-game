@@ -6,7 +6,7 @@
  * sauvegardes restent lisibles.
  */
 import { SAVE_VERSION } from "@jeu/shared";
-import { DomainSim, emptyArmy, emptyDynasty, emptyTrade, type DomainState } from "@jeu/sim-fief";
+import { DomainSim, emptyArmy, emptyDeals, emptyDynasty, emptyTrade, type DomainState } from "@jeu/sim-fief";
 import { FIEFS, PLAYER_ID, describeLand, lineageSetupFor, setupAiLords, type WorldState } from "@jeu/sim-monde";
 import { Rng, deriveSeed } from "@jeu/shared";
 
@@ -114,6 +114,8 @@ const MIGRATIONS: Record<number, (save: any) => any> = {
   },
   /** v8 → v9 (J6) : guerres et armées (aucune guerre en cours, pas d'armée). */
   8: (s) => ({ ...s, saveVersion: 9, world: { ...s.world, wars: [], armies: {} }, domain: { ...s.domain, army: emptyArmy() } }),
+  /** v9 → v10 (J7) : affaires entre joueurs (offres reçues, réponses), vides. */
+  9: (s) => ({ ...s, saveVersion: 10, world: { ...s.world, fiefOffers: [] }, domain: { ...s.domain, deals: emptyDeals() } }),
 };
 
 export function makeSave(world: WorldState, domain: DomainState, now: Date = new Date(), gameId?: string): SaveGame {

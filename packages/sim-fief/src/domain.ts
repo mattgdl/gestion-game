@@ -30,7 +30,7 @@ import {
 } from "@jeu/shared";
 import type { CheckResult, Command } from "./commands";
 import { BUILDINGS, DEMOGRAPHY, ECONOMY, TITLES, titleDef, type BuildingDef } from "./data";
-import { BUILD_GOODS, GOOD_IDS, GOOD_NAMES, IMMIGRATION_LEVELS, SUCCESSION_LAWS, emptyArmy, emptyTrade, emptyYearStats, type Building, type DomainState, type FiefTiles, type Goods } from "./state";
+import { BUILD_GOODS, GOOD_IDS, GOOD_NAMES, IMMIGRATION_LEVELS, SUCCESSION_LAWS, emptyArmy, emptyDeals, emptyTrade, emptyYearStats, type Building, type DomainState, type FiefTiles, type Goods } from "./state";
 import { Dynasty, bySex, emptyDynasty } from "./systems/dynasty";
 import { annexFief } from "./systems/annex";
 import { Needs } from "./systems/needs";
@@ -149,6 +149,7 @@ export class DomainSim {
       needs: { outils: { owed: 0, coverage: 0 }, vetements: { owed: 0, coverage: 0 } },
       trade: emptyTrade(),
       army: emptyArmy(),
+      deals: emptyDeals(),
       epidemic: null,
       fair: { year: 0, bought: {}, sold: {} },
       gameOver: null,
@@ -503,6 +504,12 @@ export class DomainSim {
       case "endWar":
       case "hireMercenaries":
         return this.army.check(cmd);
+      case "answerFiefOffer": {
+        const offer = this.state.deals.incoming.find((o) => o.offerId === cmd.offerId);
+        if (!offer) return { ok: false, reason: "Cette offre n'existe plus." };
+        if (this.state.buildings.some((b) => b.type === "manoir" && b.fiefId === offer.fiefId)) return { ok: false, reason: "Le fief du manoir ne se vend pas." };
+        return { ok: true };
+      }
     }
   }
 
@@ -537,6 +544,15 @@ export class DomainSim {
     }
     if (cmd.type === "acceptTradeProposal" || cmd.type === "refuseTradeProposal" || cmd.type === "proposeTrade" || cmd.type === "withdrawTradeProposal" || cmd.type === "cancelTrade") {
       this.trade.apply(cmd);
+      return result;
+    }
+    if (cmd.type === "answerFiefOffer") {
+      const offer = this.state.deals.incoming.find((o) => o.offerId === cmd.offerId)!;
+      // Les foyers qui habitent ce fief partent avec lui (ils fondent le village du nouveau seigneur).
+      const households = this.state.families.filter((f) => !f.noble && f.houseId !== null && this.building(f.houseId)?.fiefId === offer.fiefId).length;
+      this.state.deals.answers = this.state.deals.answers.filter((a) => a.offerId !== cmd.offerId);
+      this.state.deals.answers.push({ offerId: cmd.offerId, accept: cmd.accept, households });
+      this.addLog(cmd.accept ? "Vente acceptée : le fief changera de mains au bilan d'automne." : "Offre refusée : réponse au bilan d'automne.");
       return result;
     }
     if (cmd.type === "declareWar" || cmd.type === "cancelWarDeclaration" || cmd.type === "endWar" || cmd.type === "hireMercenaries") {
@@ -814,7 +830,16 @@ export class DomainSim {
   /** Offres d'achat remises au Monde à la barrière. */
   barrierActions(): ProposeAction[] {
     const offers: ProposeAction[] = this.state.offers.map((o) => ({ type: "buyFief", actionId: o.actionId, ownerId: this.state.ownerId, fiefId: o.fiefId, price: o.price }));
-    return [...offers, ...this.trade.barrierActions(), ...this.army.barrierActions()];
+    const me = this.state.ownerId;
+    const answers: ProposeAction[] = this.state.deals.answers.map((a) => ({
+      type: "answerFiefOffer",
+      actionId: `${me}-${this.state.tick}-reponse-${a.offerId}`,
+      ownerId: me,
+      offerId: a.offerId,
+      accept: a.accept,
+      households: a.households,
+    }));
+    return [...offers, ...answers, ...this.trade.barrierActions(), ...this.army.barrierActions()];
   }
 
   /** Événements produits par la dernière barrière (achats, refus, titres), lus par l'interface. */
@@ -822,11 +847,29 @@ export class DomainSim {
 
   applyBarrierResult(result: BarrierResult): void {
     const me = this.state.ownerId;
+    // Un domaine absent du bilan (J7, partie à plusieurs) garde ses intentions pour le suivant.
+    const participated = !result.participants || result.participants.includes(me);
+    if (participated) this.state.deals.incoming = [];
     for (const e of result.events) {
+      if (e.type === "fiefOfferReceived" && e.ownerId === me) {
+        this.state.deals.incoming = this.state.deals.incoming.filter((o) => o.offerId !== e.offerId);
+        this.state.deals.incoming.push({ offerId: e.offerId, buyerId: e.buyerId, fiefId: e.fiefId, price: e.price });
+        const text = `Un seigneur voisin offre ${e.price} or pour l'un de vos fiefs : répondez avant le prochain bilan (panneau Voisins).`;
+        this.addLog(text);
+        this.barrierEvents.push({ type: "tradeNews", text });
+      }
+      if (e.type === "goodsDelivered" && e.ownerId === me) {
+        this.economy.deposit({ [e.good]: e.qty });
+        this.state.treasury = Math.max(0, this.state.treasury - e.gold);
+        this.addLog(e.text);
+        this.barrierEvents.push({ type: "tradeNews", text: e.text });
+      }
       const news = this.trade.applyEvent(e) ?? this.army.applyEvent(e);
       if (news) this.barrierEvents.push({ type: "tradeNews", text: news });
       if (e.type === "fiefTransferred" && e.fromOwnerId === me && e.toOwnerId !== me) {
-        const text = `${e.name} est perdu : ses maisons, ses ateliers et ses habitants passent à l'ennemi.`;
+        const text = e.conquest
+          ? `${e.name} est perdu : ses maisons, ses ateliers et ses habitants passent à l'ennemi.`
+          : `${e.name} est vendu ${e.price} or : ses maisons, ses ateliers et ses habitants passent au nouveau seigneur.`;
         this.loseFief(e.fiefId);
         this.addLog(text);
         this.dynasty.chronicle(text);
@@ -854,8 +897,11 @@ export class DomainSim {
         this.checkTitle();
       }
     }
-    this.trade.afterBarrier(result.resolved.year);
-    this.army.afterBarrier();
+    if (participated) {
+      this.trade.afterBarrier(result.resolved.year);
+      this.army.afterBarrier();
+      this.state.deals.answers = [];
+    }
     this.state.awaitingBarrier = false;
     this.state.lastBarrierTick = this.state.tick;
   }
