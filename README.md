@@ -1,4 +1,4 @@
-# Seigneurie (nom de travail)
+# Field Lords
 
 Jeu de gestion médiéval à dynastie, jouable dans le navigateur.
 Les règles et décisions sont dans **DESIGN.md**, l'avancement dans **ROADMAP.md**.

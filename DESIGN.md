@@ -1,6 +1,6 @@
 # DESIGN.md — Jeu de gestion médiéval à dynastie
 
-> **Titre provisoire :** « Seigneurie » (nom de travail, à remplacer) · **Version du document :** 0.9 · **Dernière mise à jour :** 16/11/2026
+> **Titre :** « Field Lords » (choisi le 20/11/2026 ; « Seigneurie » était le nom de travail) · **Version du document :** 0.9 · **Dernière mise à jour :** 20/11/2026
 > **Statut :** J6 livré (guerre et conquête). J7 multijoueur à 8 livré le 20/11, à valider en partie à plusieurs. Ensuite : événements et traits (J8), équilibrage et graphismes (J9).
 > Ce document est la référence du projet. En cas de doute, c'est lui qui tranche, et chaque décision y est consignée avec sa raison (section 11).
 
@@ -582,6 +582,7 @@ jeu-medieval/
 | 19/11/2026 | Partie test n° 7 : propositions IA selon les manques du domaine (nouveau champ `shortages` du résumé de bilan) et en alternance achat / vente ; texte de déclaration de guerre corrigé. | Analyse du journal : 15 demandes de vêtements refusées alors que le bois manquait. |
 | 20/11/2026 | J7 : multijoueur à 8 sur GitHub Pages, liaison directe entre navigateurs (l'hôte fait tourner le Monde), carte 7 × 7, durée et vitesse communes, 60 s d'attente au bilan, achat de fief, commerce, guerre et messages entre joueurs, classement au prestige, salle reprenable. Section 4.10. | Choix du joueur (questions du 20/11). |
 | 20/11/2026 | Ponts : une route peut passer sur l'eau pour 10 bois et 10 pierre par case. Section 4.1. | Retour du joueur : la rivière coupait jusqu'aux deux tiers d'un fief, berges fertiles comprises ; la pierre trouve un usage. |
+| 20/11/2026 | Nom du jeu : « Field Lords » (au singulier, forme correcte en anglais). Les clés internes (sauvegardes, salles, préfixe « seigneurie- ») et l'adresse du site restent inchangées. | Choix du joueur. Garder les clés évite de perdre les parties et salles en cours. |
 | 16/11/2026 | Partie test n° 4 (orge-349 en 5 × 5, 25 ans, environ 45 min) : église par fief, routes en or et pierre, correction du ravitaillement entre fiefs, alerte de vivres lointains. Chômage et ennui de fin de partie notés pour la suite. | Retours du joueur et analyse du journal. |
 | 16/11/2026 | J4 : carte 5 × 5, fiefs achetés avec leur village et une maison forte, négociation avec prix plancher secret, titres par fiefs et population. Règles en section 4.5. | Choix du joueur (questions du 16/11). |
 | 16/11/2026 | Partie test n° 3 (chêne-832, 13 ans, 33 min) : famille noble servie dans toutes les réserves ; alertes de déficit de nourriture et de bras inoccupés. | Analyse du journal de partie. |
