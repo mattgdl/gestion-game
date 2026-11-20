@@ -3,9 +3,11 @@
  * Aucun Phaser ici : l'affichage lit la session, l'interface lui envoie des commandes.
  */
 import { DomainSim, TICKS_PER_SECOND, type Command, type CheckResult, type SimEvent } from "@jeu/sim-fief";
-import { PLAYER_ID, createWorld, fiefsOwnedBy, lineageSetupFor } from "@jeu/sim-monde";
+import { PLAYER_ID, createWorld, fiefsOwnedBy, lineageSetupFor, type WorldState } from "@jeu/sim-monde";
 import { makeSave, type SaveGame } from "../save/save";
 import { LocalWorld, type WorldGateway } from "../world-gateway/LocalWorld";
+import { RoomWorld } from "../net/gateway";
+import type { RoomLike } from "../net/room";
 
 export type Speed = 1 | 2 | 3;
 
@@ -19,6 +21,8 @@ export class Session {
   private accumulator = 0;
   private waitingForWorld = false;
   private listeners: ((events: SimEvent[]) => void)[] = [];
+  /** Salle d'une partie à plusieurs (J7) ; absente en solo. */
+  room: RoomLike | null = null;
 
   constructor(
     public readonly gateway: WorldGateway,
@@ -37,6 +41,46 @@ export class Session {
       lineage: lineageSetupFor(world, PLAYER_ID),
     });
     return new Session(new LocalWorld(world), sim);
+  }
+
+  /** Partie à plusieurs (J7) : le domaine du joueur sur le monde reçu de l'hôte. */
+  static multi(room: RoomLike, playerId: string, world: WorldState, gameId: string): Session {
+    const owned = fiefsOwnedBy(world, playerId);
+    const sim = DomainSim.create({
+      ownerId: playerId,
+      dims: world.dims,
+      fiefs: owned.map((f) => ({ id: f.id, col: f.col, row: f.row })),
+      lineage: lineageSetupFor(world, playerId),
+    });
+    const s = new Session(new RoomWorld(room), sim, gameId);
+    s.followRoom(room);
+    return s;
+  }
+
+  /** Vitesse et pause suivent celles de la salle (réglées par l'hôte). */
+  private followRoom(room: RoomLike): void {
+    this.room = room;
+    this.speed = room.speed;
+    this.paused = room.paused;
+    room.on({
+      control: (speed, paused) => {
+        if (this.room !== room) return;
+        this.speed = speed;
+        this.paused = paused;
+      },
+    });
+  }
+
+  /** Reprise d'une partie à plusieurs : le domaine sauvegardé chez ce joueur. */
+  static multiFromSave(room: RoomLike, save: SaveGame): Session {
+    const s = new Session(new RoomWorld(room), DomainSim.fromState(save.domain), save.gameId ?? newGameId());
+    s.followRoom(room);
+    return s;
+  }
+
+  /** En attente des autres seigneurs au bilan (partie à plusieurs). */
+  get waiting(): boolean {
+    return this.waitingForWorld;
   }
 
   static fromSave(save: SaveGame): Session {
