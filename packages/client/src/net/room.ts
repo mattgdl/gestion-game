@@ -18,6 +18,9 @@ import type { HostEndpoint, Link, Network } from "./transport";
 export const MAX_PLAYERS = 8;
 /** Attente maximale d'un absent au bilan, en millisecondes. */
 export const BARRIER_TIMEOUT_MS = 60_000;
+/** Reconnexion d'un joueur dont la liaison tombe : nombre d'essais et délai entre deux. */
+const RECONNECT_TRIES = 5;
+export const RECONNECT_DELAY_MS = 2_000;
 
 export interface Clock {
   now(): number;
@@ -187,7 +190,7 @@ export class HostRoom extends Emitter implements RoomLike {
           seat = { id: `j${this.seats.length + 1}`, pseudo: msg.pseudo.slice(0, 24) || "Seigneur", token: msg.token, link: null };
           this.seats.push(seat);
         }
-        seat.link?.close();
+        if (seat.link && seat.link !== link) seat.link.close();
         seat.link = link;
         this.broadcastLobby();
         if (this.started) {
@@ -403,16 +406,54 @@ export class ClientRoom extends Emitter implements RoomLike {
     readonly code: string,
     readonly pseudo: string,
     readonly token: string,
+    private readonly clock: Clock = realClock,
   ) {
     super();
   }
 
+  private network: Network | null = null;
+  private closing = false;
+
   async open(network: Network): Promise<void> {
-    const link = await network.join(this.code);
+    this.network = network;
+    this.attach(await network.join(this.code));
+  }
+
+  private attach(link: Link): void {
     this.link = link;
-    link.onMessage((msg) => this.handle(msg));
-    link.onClose(() => this.emit("closed"));
-    link.send({ t: "hello", version: PROTOCOL_VERSION, pseudo: this.pseudo, token: this.token });
+    link.onMessage((msg) => {
+      if (this.link === link) this.handle(msg);
+    });
+    link.onClose(() => {
+      if (this.link !== link) return;
+      this.link = null;
+      if (!this.closing) void this.reconnect();
+    });
+    this.hello();
+  }
+
+  /** Liaison perdue : on retente quelques fois (le jeton garde la place), puis on prévient. */
+  private async reconnect(): Promise<void> {
+    for (let attempt = 0; attempt < RECONNECT_TRIES && !this.closing; attempt++) {
+      await new Promise<void>((r) => this.clock.setTimeout(r, RECONNECT_DELAY_MS));
+      if (this.closing || !this.network) return;
+      try {
+        this.attach(await this.network.join(this.code));
+        // Un bilan en attente repart : l'hôte renvoie le résultat s'il est déjà tranché.
+        if (this.pending && this.lastInput) this.link?.send({ t: "barrier", year: this.pending.year, input: this.lastInput });
+        return;
+      } catch {
+        // Nouvel essai.
+      }
+    }
+    if (!this.closing) this.emit("closed");
+  }
+
+  private lastHello = 0;
+
+  private hello(): void {
+    this.lastHello = Date.now();
+    this.link?.send({ t: "hello", version: PROTOCOL_VERSION, pseudo: this.pseudo, token: this.token });
   }
 
   private handle(msg: NetMessage): void {
@@ -421,6 +462,8 @@ export class ClientRoom extends Emitter implements RoomLike {
         this.players = msg.players;
         this.settings = msg.settings;
         this.emit("lobby", msg.players, msg.settings);
+        // Partie lancée sans que le départ soit arrivé ici : on se représente pour le recevoir.
+        if (msg.started && this.playerId === null && Date.now() - this.lastHello > 3000) this.hello();
         return;
       case "start":
         this.playerId = msg.playerId;
@@ -460,8 +503,11 @@ export class ClientRoom extends Emitter implements RoomLike {
     }
   }
 
+  private lastInput: BarrierInput | null = null;
+
   submitBarrier(input: BarrierInput): Promise<BarrierResult> {
     const year = this.world?.year ?? 1;
+    this.lastInput = input;
     return new Promise((resolve) => {
       this.pending = { year, resolve };
       this.link?.send({ t: "barrier", year, input });
@@ -477,6 +523,7 @@ export class ClientRoom extends Emitter implements RoomLike {
   }
 
   close(): void {
+    this.closing = true;
     this.link?.close();
   }
 }

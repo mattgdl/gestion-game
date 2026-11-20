@@ -94,7 +94,9 @@ export function tradePanelHtml(world: WorldState, sim: DomainSim): string {
 
 /** Seigneurs IA avec qui l'on peut commercer, du plus proche au plus lointain. */
 export function tradePartners(world: WorldState, ownerId: string): { lord: Lord; fiefId: string; distance: number }[] {
-  return activeAiLords(world)
+  // Les autres joueurs (J7) aussi : on ne peut que leur vendre.
+  const players = world.lords.filter((l) => !l.ai && l.id !== ownerId && world.fiefs.some((f) => f.ownerId === l.id));
+  return [...activeAiLords(world), ...players]
     .map((lord) => {
       const near = nearestFiefOf(world, lord.id, ownerId);
       return near ? { lord, fiefId: near.fief.id, distance: near.distance } : null;
@@ -107,6 +109,7 @@ export function tradePartners(world: WorldState, ownerId: string): { lord: Lord;
 export function partnerMarketHtml(world: WorldState, ownerId: string, lordId: string): string {
   const lord = lordById(world, lordId);
   const near = lord ? nearestFiefOf(world, lordId, ownerId) : null;
+  if (lord && !lord.ai && near) return `<p class="small">${e(lord.pseudo ?? lord.name)} est un autre joueur : vous pouvez seulement lui <strong>vendre</strong> (il accepte ou refuse lui-même, et paie à chaque livraison). Pour lui acheter, demandez-lui par message de vous faire une proposition.</p>`;
   if (!lord?.ai || !near) return "";
   const rows = TRADE_GOODS.map((g) => {
     const room = lordTradeRoom(world, lord, g);
@@ -128,7 +131,7 @@ export function proposeHtml(world: WorldState, sim: DomainSim, lordId?: string):
   const options = partners
     .map((p) => {
       const fief = fiefById(world, p.fiefId);
-      return `<option value="${e(p.lord.id)}" ${p.lord.id === chosen ? "selected" : ""}>${e(p.lord.name)} (${e(archetypeOf(p.lord.ai!.archetype).nom)}, ${p.distance} fief${p.distance > 1 ? "s" : ""} ${fief ? `· ${e(fief.name)}` : ""})</option>`;
+      return `<option value="${e(p.lord.id)}" ${p.lord.id === chosen ? "selected" : ""}>${e(p.lord.pseudo ? `${p.lord.pseudo} — ${p.lord.name}` : p.lord.name)} (${e(p.lord.ai ? archetypeOf(p.lord.ai.archetype).nom : "joueur")}, ${p.distance} fief${p.distance > 1 ? "s" : ""} ${fief ? `· ${e(fief.name)}` : ""})</option>`;
     })
     .join("");
   const goods = TRADE_GOODS.map((g) => `<option value="${g}">${e(GOOD_NAMES[g as TradeGood])}</option>`).join("");

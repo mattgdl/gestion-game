@@ -5,13 +5,13 @@
 
 ## En cours
 
-- **Partie test de J6 — Guerre et conquête** (critère : bâtir une armée armée, mener un siège jusqu'au bout — pillage ou conquête — et subir ou repousser une attaque ; voir des guerres entre IA). Puis **J7 — Multijoueur à 8** (en cours). Critère J3 (deux successions) encore à vérifier dans une partie longue.
+- **Partie test de J6 — Guerre et conquête** (critère : bâtir une armée armée, mener un siège jusqu'au bout — pillage ou conquête — et subir ou repousser une attaque ; voir des guerres entre IA). Puis **partie test de J7 — Multijoueur à 8** (livré le 20/11, à jouer sur https://mattgdl.github.io/gestion-game/ une fois le dépôt public et Pages activé). Critère J3 (deux successions) encore à vérifier dans une partie longue.
 
 ## À faire
 
 > **Ordre revu le 16/11/2026** (choix du joueur) : une partie de la V2 passe avant le multi. Elle donne plus de jeu au solo et de la matière pour l'équilibrage. Garde-fou : chaque nouveauté se résout au bilan d'automne, passe par les messages de `shared/src/messages.ts` et reste déterministe, pour que le multi n'ait rien à réécrire.
 
-### J7 — Multijoueur à 8 (en cours)
+### J7 — Multijoueur à 8 (livré, à valider)
 > Avancé le 20/11/2026 (choix du joueur), avant les événements.
 - Jeu hébergé sur GitHub Pages (dépôt rendu public), publication automatique à chaque envoi.
 - Liaison directe entre navigateurs (PeerJS) : le navigateur du créateur de la salle fait tourner le Monde et la barrière ; les autres s'y connectent avec un code de salle.
@@ -19,6 +19,7 @@
 - Durée choisie au lancement (30, 60, 100 ans), vitesse commune choisie par l'hôte, pause pour toute la salle, 60 s d'attente maximale d'un absent au bilan, classement au prestige à la fin, salle sauvegardée pour reprendre.
 - Entre joueurs : guerre, commerce, achat de fief (le vendeur accepte ou refuse), messagerie.
 - La version claude.ai reste le jeu solo.
+- Testé : 3 puis 8 navigateurs reliés en local (salon, lancement, messages, vitesse de l'hôte, bilans, 9e joueur refusé, classement).
 - **Critère de fin :** plusieurs joueurs sur plusieurs PC jouent une partie ensemble jusqu'au classement.
 
 ### J8 — Événements et traits

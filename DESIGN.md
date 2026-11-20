@@ -1,7 +1,7 @@
 # DESIGN.md — Jeu de gestion médiéval à dynastie
 
 > **Titre provisoire :** « Seigneurie » (nom de travail, à remplacer) · **Version du document :** 0.9 · **Dernière mise à jour :** 16/11/2026
-> **Statut :** J6 livré (guerre et conquête). En cours : J7 multijoueur à 8 (avancé le 20/11). Ensuite : événements et traits (J8), équilibrage et graphismes (J9).
+> **Statut :** J6 livré (guerre et conquête). J7 multijoueur à 8 livré le 20/11, à valider en partie à plusieurs. Ensuite : événements et traits (J8), équilibrage et graphismes (J9).
 > Ce document est la référence du projet. En cas de doute, c'est lui qui tranche, et chaque décision y est consignée avec sa raison (section 11).
 
 ## Sommaire
@@ -271,6 +271,20 @@ Règles décidées pendant le développement, à contester si elles ne te convie
 **Après la partie test n° 7 (tilleul-372, 16 ans, 57 min) :** les propositions des seigneurs IA tiennent compte de ce qui manque au domaine (son résumé de bilan dit si le bois, la pierre ou les vivres manquent) : un seigneur qui en a à vendre le propose d'abord ; sinon, il alterne au hasard entre ce qu'il veut acheter et ce qu'il a à vendre. Texte corrigé : « la Maison X vous déclare la guerre ».
 
 **Ce que montre un monde sur 30 ans** (6 graines, joueur passif avec 4 soldats après l'an 10) : 17 à 28 guerres entre seigneurs, 7 à 14 conquêtes ; il reste 4 à 8 seigneurs IA à l'an 30. Le joueur est attaqué 1 à 5 fois, le plus souvent après l'an 25, parfois dès l'an 7-10 (voisin conquérant) : les IA s'attaquent d'abord entre elles. À juger en partie test.
+
+### 4.10 J7 — Multijoueur à 8
+
+| Sujet | Règle | Raison |
+|---|---|---|
+| Hébergement | Le jeu est publié sur GitHub Pages (https://mattgdl.github.io/gestion-game/) à chaque envoi sur `main`. La version claude.ai reste le jeu solo : elle ne peut pas se relier aux autres navigateurs, et le dit. | Choix du joueur : hébergement GitHub, gratuit. |
+| Liaison | Navigateur à navigateur (PeerJS, WebRTC). Le serveur public de PeerJS sert seulement à se trouver par le code de salle (5 lettres). L'hôte fait tourner le Monde et la barrière ; chaque joueur fait tourner son domaine. Les messages de plus de 5 000 caractères partent en morceaux. Un joueur dont la liaison tombe se reconnecte seul (5 essais, 2 s d'écart) et garde sa place. | Choix du joueur : l'hôte fait serveur. Pas de serveur à payer. |
+| Salle | Jusqu'à 8 joueurs ; personne n'entre après le lancement, sauf pour reprendre sa place (un jeton par navigateur). Durée 30, 60 ou 100 ans ; vitesse ×1 à ×3 et pause communes, réglées par l'hôte seul. Les fenêtres (bilan, famille, foire) n'arrêtent plus le temps. | Choix du joueur : durée choisie, vitesse commune. |
+| Carte | 7 × 7 fiefs, 8 emplacements de départ espacés (tirés selon la graine), seigneurs IA entre les joueurs. Couleurs vives propres aux joueurs. | Choix du joueur. |
+| Bilan | L'hôte attend le bilan de chaque joueur présent ; 60 s au plus après le premier arrivé, puis il résout sans les retardataires (leurs intentions attendent le bilan suivant). Bandeau « En attente de … ». Un joueur sans domaine n'est plus attendu. | Choix du joueur : 60 s. |
+| Entre joueurs | Achat de fief : l'offre arrive au vendeur au bilan, il accepte ou refuse avant le suivant (sans réponse d'un joueur présent : offre close après un an) ; le fief de départ ne se vend pas. Commerce : seul le vendeur propose, l'acheteur accepte ; payé à la livraison, plafonné par l'or de l'acheteur. Guerre : mêmes règles qu'avec les IA. Messages à toute la salle (300 caractères). | Choix du joueur : les quatre interactions. |
+| Simplification | Un fief vendu ou conquis à un joueur arrive comme un village neuf (autant de foyers), pas avec ses bâtiments. Les villes des autres joueurs ne se voient pas sur la carte (NeighborView en V2). | Garder le jalon dans un périmètre tenable. |
+| Fin | À la durée choisie : classement au prestige (puis fiefs, habitants). | Choix du joueur. |
+| Sauvegardes | Domaine de chaque joueur dans son navigateur, à chaque bilan et toutes les 30 s ; la salle chez l'hôte, qui la reprend depuis le panneau Partie. Les parties solo ne sont pas touchées. Format v10. | Choix du joueur : salle reprenable. |
 
 ## 5. Systèmes clés
 
@@ -566,6 +580,7 @@ jeu-medieval/
 | 17/11/2026 | J6 : caserne et armurerie (soldats villageois, armes), mercenaires en appoint, siège sur plusieurs années (un assaut par bilan), pillage ou conquête, fief de départ seulement pillable, réputation, IA qui s'attaquent entre elles et attaquent le joueur. Section 4.9. | Choix du joueur (questions du 17/11). |
 | 17/11/2026 | Interface : panneau Domaine (chez soi) et panneau Voisins (achats, guerre, commerce) ; barre de construction par familles. Section 4.8 bis. | Retour du joueur : trop d'informations mêlées, barre de construction illisible. |
 | 19/11/2026 | Partie test n° 7 : propositions IA selon les manques du domaine (nouveau champ `shortages` du résumé de bilan) et en alternance achat / vente ; texte de déclaration de guerre corrigé. | Analyse du journal : 15 demandes de vêtements refusées alors que le bois manquait. |
+| 20/11/2026 | J7 : multijoueur à 8 sur GitHub Pages, liaison directe entre navigateurs (l'hôte fait tourner le Monde), carte 7 × 7, durée et vitesse communes, 60 s d'attente au bilan, achat de fief, commerce, guerre et messages entre joueurs, classement au prestige, salle reprenable. Section 4.10. | Choix du joueur (questions du 20/11). |
 | 16/11/2026 | Partie test n° 4 (orge-349 en 5 × 5, 25 ans, environ 45 min) : église par fief, routes en or et pierre, correction du ravitaillement entre fiefs, alerte de vivres lointains. Chômage et ennui de fin de partie notés pour la suite. | Retours du joueur et analyse du journal. |
 | 16/11/2026 | J4 : carte 5 × 5, fiefs achetés avec leur village et une maison forte, négociation avec prix plancher secret, titres par fiefs et population. Règles en section 4.5. | Choix du joueur (questions du 16/11). |
 | 16/11/2026 | Partie test n° 3 (chêne-832, 13 ans, 33 min) : famille noble servie dans toutes les réserves ; alertes de déficit de nourriture et de bras inoccupés. | Analyse du journal de partie. |

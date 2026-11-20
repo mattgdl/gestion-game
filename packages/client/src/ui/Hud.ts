@@ -25,7 +25,11 @@ import {
   type TaxLevel,
   type YearStats,
 } from "@jeu/sim-fief";
-import { PLAYER_ID, fiefById, lordById, type FiefMeta } from "@jeu/sim-monde";
+import { fiefById, lordById, type FiefMeta } from "@jeu/sim-monde";
+import type { Multiplayer } from "../net/multiplayer";
+import type { RankingRow, RoomPlayer, RoomSettings } from "../net/protocol";
+import { hostRoomCodes } from "../save/storage";
+import { chatLogHtml, createFormHtml, incomingOffersHtml, joinFormHtml, lobbyHtml, lordLabel, multiMenuHtml, multiStatusHtml, playersHtml, rankingHtml } from "./multi";
 import { TILE } from "../camera/InputController";
 import type { CameraController } from "../camera/CameraController";
 import type { Game, Tool } from "../game/Game";
@@ -48,6 +52,10 @@ export interface HudActions {
   focusFief(fiefId: string): void;
   focusHome(): void;
   worldView(): void;
+  /** Partie à plusieurs (J7). */
+  multi: Multiplayer;
+  /** Retour à la partie seule après avoir quitté une salle. */
+  backToSolo(): void;
 }
 
 interface ToolDef {
@@ -253,6 +261,7 @@ export class Hud {
             <button type="button" class="speed-btn" data-speed="2" title="Vitesse ×2 (2)">×2</button>
             <button type="button" class="speed-btn" data-speed="3" title="Vitesse ×3 (3)">×3</button>
           </div>
+          <div class="wait-banner small" data-el="waitBanner" hidden></div>
         </div>
         <div class="panel-toggles" role="group" aria-label="Panneaux">
           <button type="button" class="panel-toggle" data-panel-toggle="domaine" title="Votre domaine : village, lignée, logistique, fiefs">Domaine</button>
@@ -312,6 +321,14 @@ export class Hud {
         <section class="panel-section" data-panel="domaine">
           <h2>Vos fiefs</h2>
           <div class="domain" data-el="fiefList"></div>
+        </section>
+        <section class="panel-section" data-panel="voisins" data-el="playersSection" hidden>
+          <h2>Joueurs</h2>
+          <div data-el="players"></div>
+          <div data-el="incoming"></div>
+          <h3>Messages</h3>
+          <ol class="chat" data-el="chatLog"></ol>
+          <form class="chat-form" data-el="chatForm"><input name="msg" maxlength="300" autocomplete="off" placeholder="Écrire à toute la salle…" /><button type="submit" class="btn btn-small">Envoyer</button></form>
         </section>
         <section class="panel-section" data-panel="voisins">
           <h2>Fiefs voisins</h2>
@@ -399,6 +416,21 @@ export class Hud {
       } else if (target.dataset.fief) this.actions.focusFief(target.dataset.fief);
     };
     this.el.fiefList!.addEventListener("click", fiefClicks);
+    this.el.incoming!.addEventListener("click", (ev) => {
+      const target = (ev.target as HTMLElement).closest<HTMLElement>("[data-answer]");
+      if (!target) return;
+      const result = this.game.command({ type: "answerFiefOffer", offerId: target.dataset.answer!, accept: target.dataset.accept === "1" });
+      if (!result.ok && result.reason) this.game.toast(result.reason, "error");
+      this.renderMulti(true);
+    });
+    this.el.chatForm!.addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      const input = this.el.chatForm!.querySelector<HTMLInputElement>("input")!;
+      const text = input.value.trim();
+      if (!text) return;
+      this.actions.multi.say(text);
+      input.value = "";
+    });
     this.el.neighbors!.addEventListener("click", fiefClicks);
     this.el.war!.addEventListener("click", (ev) => {
       const target = (ev.target as HTMLElement).closest<HTMLElement>("[data-endwar],[data-unwar],[data-act]");
@@ -479,6 +511,16 @@ export class Hud {
 
   private setSpeed(speed: number): void {
     const s = this.game.session;
+    if (s.room) {
+      // Partie à plusieurs : l'hôte règle la vitesse et la pause de toute la salle.
+      if (!s.room.isHost) {
+        this.game.toast("Seul l'hôte règle la vitesse et la pause de la salle.");
+        return;
+      }
+      if (speed === 0) this.actions.multi.setControl(s.room.speed, !s.room.paused);
+      else this.actions.multi.setControl(speed as Speed, false);
+      return;
+    }
     if (speed === 0) s.paused = !s.paused;
     else {
       s.paused = false;
@@ -1052,10 +1094,12 @@ export class Hud {
     const world = this.game.session.world;
     const sim = this.game.session.sim;
     const start = world.dims.startFief;
-    const home = world.fiefs.find((f) => f.ownerId === PLAYER_ID && (!start || (f.col === start.col && f.row === start.row))) ?? world.fiefs.find((f) => f.ownerId === PLAYER_ID);
+    const me = sim.state.ownerId;
+    const home = world.fiefs.find((f) => f.ownerId === me && (!start || (f.col === start.col && f.row === start.row))) ?? world.fiefs.find((f) => f.ownerId === me);
     const realm = home ? realmName(sim, home.name) : "Votre lignée";
     if (this.el.realmName!.textContent !== realm) this.el.realmName!.textContent = realm;
-    this.el.realmSub!.textContent = `Graine « ${world.seedText} »`;
+    const room = this.game.session.room;
+    this.el.realmSub!.textContent = room ? `Salle ${this.actions.multi.code ?? ""} · ${room.players.length} joueurs` : `Graine « ${world.seedText} »`;
     const put = (box: HTMLElement, html: string) => {
       if (box.dataset.html !== html) {
         box.dataset.html = html;
@@ -1065,7 +1109,10 @@ export class Hud {
     put(this.el.fiefList!, myFiefsHtml(world, sim));
     put(this.el.neighbors!, neighborsHtml(world, sim));
     // Pastille du bouton Voisins : ce qui attend une décision (propositions, guerres).
-    const waiting = sim.state.trade.proposals.length + sim.state.army.wars.filter((w) => w.defenderId === sim.state.ownerId).length;
+    const waiting =
+      sim.state.trade.proposals.length +
+      sim.state.army.wars.filter((w) => w.defenderId === sim.state.ownerId).length +
+      sim.state.deals.incoming.filter((o) => !sim.state.deals.answers.some((a) => a.offerId === o.offerId)).length;
     const badge = this.el.voisinsBadge!;
     badge.hidden = waiting === 0;
     badge.textContent = String(waiting);
@@ -1096,6 +1143,7 @@ export class Hud {
     this.renderDomain();
     this.renderTrade(true);
     this.renderWar(true);
+    this.renderMulti(true);
   }
 
   private renderWar(force = false): void {
@@ -1257,7 +1305,7 @@ export class Hud {
       const forSale = neighbors.has(f.id);
       label.classList.toggle("for-sale", forSale);
       label.innerHTML = `<span class="fl-name">${escapeHtml(f.name)}</span>${forSale ? '<span class="fl-sale">à vendre</span>' : ""}
-        <span class="fl-owner">${escapeHtml(f.ownerId === PLAYER_ID ? "Votre lignée" : (lord?.name ?? "Sans seigneur"))}</span>
+        <span class="fl-owner">${escapeHtml(f.ownerId === this.game.session.sim.state.ownerId ? "Votre lignée" : lordLabel(world, f.ownerId))}</span>
         ${lord?.ai ? `<span class="fl-terrain">${lordTag(lord, this.game.session.sim.state.ownerId)}</span>` : ""}
         ${lord?.ai?.plan ? `<span class="fl-sale">convoite ${escapeHtml(world.fiefs.find((x) => x.id === lord.ai!.plan!.fiefId)?.name ?? "")}</span>` : ""}
         ${world.wars.some((w) => w.fiefId === f.id) ? `<span class="fl-sale fl-war">assiégé</span>` : ""}
@@ -1295,7 +1343,17 @@ export class Hud {
           <button type="submit" class="btn">${this.confirmNewGame ? "Confirmer" : "Lancer"}</button>
         </div>
         ${this.confirmNewGame ? `<p class="warn small">La sauvegarde automatique de la partie en cours sera remplacée. Sauvegardez-la d'abord pour la garder, puis cliquez sur Confirmer.</p>` : ""}
-      </form>`;
+      </form>
+      <div class="multi-box">${this.actions.multi.room && this.actions.multi.code ? multiStatusHtml(this.actions.multi.code, this.actions.multi.isHost) : multiMenuHtml(hostRoomCodes(), Boolean(window.claude), SITE_URL)}</div>`;
+    box.querySelectorAll<HTMLButtonElement>("[data-mp]").forEach((b) =>
+      b.addEventListener("click", () => {
+        const what = b.dataset.mp;
+        if (what === "create") this.openCreateRoom();
+        else if (what === "join") this.openJoinRoom();
+        else if (what === "resume") void this.runMulti(() => this.actions.multi.resume(b.dataset.code!));
+        else if (what === "leave") this.leaveRoom();
+      }),
+    );
     const input = box.querySelector<HTMLInputElement>("#seed-input")!;
     input.value = randomSeed();
     box.querySelector('[data-act="save"]')?.addEventListener("click", () => {
@@ -1325,6 +1383,154 @@ export class Hud {
       this.confirmNewGame = false;
       this.actions.newGame(seed);
     });
+  }
+
+  // ------------------------------------------------------------ partie à plusieurs (J7)
+
+  private lastChat = -1;
+
+  /** Section Joueurs (panneau Voisins) : présents, offres reçues, messages. */
+  renderMulti(force = false): void {
+    const session = this.game.session;
+    const room = session.room;
+    this.el.playersSection!.hidden = !room;
+    if (!room) return;
+    const put = (box: HTMLElement, html: string) => {
+      if (force || box.dataset.html !== html) {
+        box.dataset.html = html;
+        box.innerHTML = html;
+      }
+    };
+    put(this.el.players!, playersHtml(session.world, room.players, session.sim.state.ownerId));
+    put(this.el.incoming!, incomingOffersHtml(session.world, session.sim));
+    const chat = this.actions.multi.chat;
+    if (force || chat.length !== this.lastChat) {
+      this.lastChat = chat.length;
+      this.el.chatLog!.innerHTML = chatLogHtml(chat, room.players);
+      this.el.chatLog!.scrollTop = this.el.chatLog!.scrollHeight;
+    }
+  }
+
+  /** Bandeau « En attente de … » au bilan. */
+  setWaiting(text: string | null): void {
+    const el = this.el.waitBanner!;
+    el.hidden = text === null;
+    if (text !== null) el.textContent = text;
+  }
+
+  private storedPseudo(): string {
+    try {
+      return localStorage.getItem("seigneurie.pseudo") ?? "";
+    } catch {
+      return "";
+    }
+  }
+
+  private storePseudo(p: string): void {
+    try {
+      localStorage.setItem("seigneurie.pseudo", p);
+    } catch {
+      // Stockage indisponible.
+    }
+  }
+
+  /** Lance une action réseau ; une erreur s'affiche dans la fenêtre ouverte, sinon en bandeau. */
+  private async runMulti(fn: () => Promise<void>, error?: HTMLElement, button?: HTMLButtonElement): Promise<boolean> {
+    if (button) button.disabled = true;
+    try {
+      await fn();
+      this.renderSaves();
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (error) {
+        error.hidden = false;
+        error.textContent = msg;
+      } else this.game.toast(msg, "error");
+      this.actions.multi.leave();
+      return false;
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+
+  private openCreateRoom(): void {
+    const body = this.openModal("Créer une salle", createFormHtml(this.storedPseudo()));
+    const form = body.querySelector<HTMLFormElement>("form")!;
+    const error = body.querySelector<HTMLElement>('[data-el="mpError"]')!;
+    form.addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      const data = new FormData(form);
+      const pseudo = String(data.get("pseudo") ?? "").trim().slice(0, 20);
+      if (!pseudo) return;
+      this.storePseudo(pseudo);
+      const years = Number(data.get("years"));
+      const speed = Number(data.get("speed")) as Speed;
+      const seed = randomSeed();
+      error.hidden = true;
+      error.textContent = "";
+      const btn = form.querySelector<HTMLButtonElement>('[type="submit"]')!;
+      btn.textContent = "Ouverture…";
+      void this.runMulti(() => this.actions.multi.create(pseudo, { seed, years, speed }), error, btn).then(() => (btn.textContent = "Créer"));
+    });
+  }
+
+  private openJoinRoom(): void {
+    const body = this.openModal("Rejoindre une salle", joinFormHtml(this.storedPseudo(), ""));
+    const form = body.querySelector<HTMLFormElement>("form")!;
+    const error = body.querySelector<HTMLElement>('[data-el="mpError"]')!;
+    form.querySelector<HTMLInputElement>('[name="code"]')?.focus();
+    form.addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      const data = new FormData(form);
+      const pseudo = String(data.get("pseudo") ?? "").trim().slice(0, 20);
+      const code = String(data.get("code") ?? "").trim().toUpperCase();
+      if (!pseudo || !code) return;
+      this.storePseudo(pseudo);
+      error.hidden = true;
+      const btn = form.querySelector<HTMLButtonElement>('[type="submit"]')!;
+      btn.textContent = "Connexion…";
+      void this.runMulti(() => this.actions.multi.join(code, pseudo), error, btn).then(() => (btn.textContent = "Rejoindre"));
+    });
+  }
+
+  /** Salon : la liste se met à jour à chaque arrivée. */
+  showLobby(players: RoomPlayer[], settings: RoomSettings, code: string, isHost: boolean, resumed: boolean): void {
+    const body = this.openModal(`Salle ${code}`, lobbyHtml(players, settings, code, isHost, resumed));
+    body.querySelector('[data-act="copyCode"]')?.addEventListener("click", () => {
+      navigator.clipboard?.writeText(code).then(
+        () => this.game.toast("Code copié."),
+        () => this.game.toast(`Code : ${code}`),
+      );
+    });
+    body.querySelector('[data-act="mpLaunch"]')?.addEventListener("click", () => {
+      this.closeModal();
+      this.actions.multi.launch();
+    });
+    body.querySelector('[data-act="mpLeave"]')?.addEventListener("click", () => {
+      this.closeModal();
+      this.leaveRoom();
+    });
+  }
+
+  /** Le salon est-il la fenêtre ouverte ? (pour le rafraîchir sans en ouvrir un autre) */
+  lobbyOpen(): boolean {
+    return !this.el.modal!.hidden && (this.el.modalTitle!.textContent ?? "").startsWith("Salle ");
+  }
+
+  closeLobby(): void {
+    if (this.lobbyOpen()) this.closeModal();
+  }
+
+  showRanking(ranking: RankingRow[], me: string | null): void {
+    this.openModal("Fin de la partie", rankingHtml(ranking, me));
+  }
+
+  private leaveRoom(): void {
+    const wasPlaying = this.game.session.room !== null;
+    this.actions.multi.leave();
+    this.renderSaves();
+    if (wasPlaying) this.actions.backToSolo();
   }
 
   refreshSaves(): void {
@@ -1446,6 +1652,7 @@ export class Hud {
       this.renderDomain();
       this.renderTrade();
       this.renderWar();
+      this.renderMulti();
       this.renderAlerts();
       this.renderLogistics();
       this.renderSelectionLive();
@@ -1592,6 +1799,9 @@ export class Hud {
 }
 
 const SEED_WORDS = ["blé", "chêne", "orge", "seigle", "lin", "houblon", "tilleul", "aulne", "frêne", "saule", "noyer", "avoine"];
+/** Adresse du jeu publié sur GitHub Pages, où se joue la partie à plusieurs. */
+const SITE_URL = "https://mattgdl.github.io/gestion-game/";
+
 function randomSeed(): string {
   const w = SEED_WORDS[Math.floor(Math.random() * SEED_WORDS.length)] ?? "blé";
   return `${w}-${Math.floor(Math.random() * 900 + 100)}`;

@@ -11,6 +11,7 @@ import { MapScene } from "./scenes/MapScene";
 import { Hud, pauseAtBilan, type HudActions } from "./ui/Hud";
 import { parseSave, serializeSave, type SaveGame } from "./save/save";
 import { readSlot, writeSlot } from "./save/storage";
+import { Multiplayer } from "./net/multiplayer";
 import { Journal, type JournalDb } from "./telemetry/journal";
 
 interface HotData {
@@ -128,11 +129,26 @@ function start(data: HotData = {}): void {
     frame(c.x, c.y, S, S, 1);
   };
 
+  /** Sauvegarde automatique : l'emplacement « auto » en solo, celui de la salle à plusieurs. */
+  const saveAuto = (s: Session): boolean => {
+    if (s.room) {
+      if (s === game.session) multi.saveNow();
+      return false;
+    }
+    return writeSlot("auto", s.toSave());
+  };
+
   const attachSession = (s: Session): void => {
+    // À plusieurs, le résultat du bilan arrive après coup : on rafraîchit à son arrivée.
+    s.onBarrierDone(() => {
+      if (!s.room) return;
+      hud.refreshWorld();
+      saveAuto(s);
+    });
     s.onEvents((events) => {
       if (events.some((e) => e.type === "barrier")) {
         hud.refreshWorld();
-        if (writeSlot("auto", s.toSave())) hud.refreshSaves();
+        if (saveAuto(s)) hud.refreshSaves();
         journal.onBarrier();
         if (pauseAtBilan()) {
           const wasPaused = s.paused;
@@ -144,7 +160,7 @@ function start(data: HotData = {}): void {
       }
       for (const ev of events) {
         if (ev.type === "succession") {
-          if (writeSlot("auto", s.toSave())) hud.refreshSaves();
+          if (saveAuto(s)) hud.refreshSaves();
           const wasPaused = s.paused;
           s.paused = true;
           hud.showSuccession(ev.deadId, ev.heirId, () => {
@@ -152,10 +168,12 @@ function start(data: HotData = {}): void {
           });
         } else if (ev.type === "fiefAcquired") {
           hud.refreshWorld();
-          if (writeSlot("auto", s.toSave())) hud.refreshSaves();
+          if (saveAuto(s)) hud.refreshSaves();
           game.toast(`${ev.name} rejoint votre domaine.`);
         } else if (ev.type === "epidemic") {
           game.toast("Une maladie se déclare dans le domaine !");
+        } else if (ev.type === "tradeNews" && s.room) {
+          game.toast(ev.text);
         } else if (ev.type === "offerRefused") {
           game.toast(ev.reason);
         } else if (ev.type === "title") {
@@ -167,28 +185,76 @@ function start(data: HotData = {}): void {
         }
       }
       if (events.some((e) => e.type === "gameOver")) {
-        writeSlot("auto", s.toSave());
+        saveAuto(s);
         void journal.flush();
-        hud.showGameOver(() => actions.newGame(initialSeed()));
+        if (s.room) {
+          // Domaine perdu dans une partie à plusieurs : la salle n'attend plus ce joueur.
+          multi.retire();
+          game.toast("Votre lignée est hors jeu : vous pouvez suivre la partie jusqu'au classement.", "error");
+        } else hud.showGameOver(() => actions.newGame(initialSeed()));
       }
     });
   };
 
+  /** Remplace la partie affichée (taille du monde comprise : 7 × 7 à plusieurs). */
+  const play = (s: Session): void => {
+    attachSession(s);
+    game.replaceSession(s);
+    journal.setSession(s);
+    const d = s.world.dims;
+    camera.setWorld(d.cols * d.fiefSize * TILE, d.rows * d.fiefSize * TILE);
+    focusHome(true);
+  };
+
+  const multi = new Multiplayer({
+    play(s, resumedGame) {
+      hud.closeLobby();
+      play(s);
+      hud.refreshSaves();
+      game.toast(resumedGame ? `Partie reprise : an ${s.sim.date.year}.` : "La partie commence ! Vos voisins sont aussi des joueurs : panneau Voisins.");
+    },
+    lobby(players, settings, code, isHost, started) {
+      // En cours de partie, les arrivées et départs se voient dans le panneau Voisins.
+      if (game.session.room && !hud.lobbyOpen()) {
+        hud.renderMulti(true);
+        return;
+      }
+      hud.showLobby(players, settings, code, isHost, started);
+    },
+    waiting(text) {
+      hud.setWaiting(text);
+    },
+    said(from, text) {
+      hud.renderMulti();
+      if (from !== multi.room?.playerId) game.toast(`${multi.pseudoOf(from)} : ${text}`);
+    },
+    ended(ranking) {
+      multi.saveNow();
+      hud.showRanking(ranking, multi.room?.playerId ?? null);
+    },
+    error(text) {
+      hud.closeLobby();
+      game.toast(text, "error");
+      hud.refreshSaves();
+    },
+  });
+
   const actions: HudActions = {
+    multi,
+    backToSolo() {
+      const save = latestSave();
+      const s = save && !save.domain.gameOver ? Session.fromSave(save) : Session.newGame(initialSeed());
+      play(s);
+      game.toast("Retour à votre partie seule.");
+    },
     newGame(seedText) {
-      const s = Session.newGame(seedText);
-      attachSession(s);
-      game.replaceSession(s);
-      journal.setSession(s);
-      focusHome(true);
+      if (multi.room) multi.leave();
+      play(Session.newGame(seedText));
       game.toast(`Nouvelle partie : graine « ${seedText} ».`);
     },
     load(save: SaveGame) {
-      const s = Session.fromSave(save);
-      attachSession(s);
-      game.replaceSession(s);
-      journal.setSession(s);
-      focusHome(true);
+      if (multi.room) multi.leave();
+      play(Session.fromSave(save));
       game.toast(`Partie chargée : an ${save.world.year}.`);
     },
     focusFief,
@@ -202,7 +268,7 @@ function start(data: HotData = {}): void {
   let sinceAutosave = 0;
   const autosave = () => {
     sinceAutosave = 0;
-    writeSlot("auto", game.session.toSave());
+    saveAuto(game.session);
   };
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "hidden") return;
@@ -240,7 +306,7 @@ function start(data: HotData = {}): void {
   else focusHome(true);
 
   // Accès de débogage depuis la console du navigateur (window.__jeu.game, window.__jeu.camera).
-  (window as unknown as { __jeu: unknown }).__jeu = { game, camera, TILE, actions, journal };
+  (window as unknown as { __jeu: unknown }).__jeu = { game, camera, TILE, actions, journal, multi };
 
   window.claude?.hot?.snapshot?.(() => ({
     save: serializeSave(game.session.toSave()),

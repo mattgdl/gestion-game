@@ -16,8 +16,11 @@ const TICK_MS = 1000 / TICKS_PER_SECOND;
 const MAX_TICKS_PER_FRAME = 60;
 
 export class Session {
-  paused = false;
+  private pausedFlag = false;
+  /** Domaine perdu : le temps s'arrête pour ce joueur. */
+  stopped = false;
   speed: Speed = 1;
+  private barrierDone: (() => void)[] = [];
   private accumulator = 0;
   private waitingForWorld = false;
   private listeners: ((events: SimEvent[]) => void)[] = [];
@@ -57,16 +60,33 @@ export class Session {
     return s;
   }
 
+  /**
+   * Pause. En partie à plusieurs, seul l'hôte la règle pour toute la salle : les pauses locales
+   * (fenêtres de bilan, de famille, de foire) n'arrêtent pas le temps.
+   */
+  get paused(): boolean {
+    return this.pausedFlag || this.stopped;
+  }
+
+  set paused(value: boolean) {
+    if (!this.room) this.pausedFlag = value;
+  }
+
+  /** Appelé une fois le bilan du monde appliqué au domaine (tout de suite en solo, à l'arrivée du résultat à plusieurs). */
+  onBarrierDone(listener: () => void): void {
+    this.barrierDone.push(listener);
+  }
+
   /** Vitesse et pause suivent celles de la salle (réglées par l'hôte). */
   private followRoom(room: RoomLike): void {
     this.room = room;
     this.speed = room.speed;
-    this.paused = room.paused;
+    this.pausedFlag = room.paused;
     room.on({
       control: (speed, paused) => {
         if (this.room !== room) return;
         this.speed = speed;
-        this.paused = paused;
+        this.pausedFlag = paused;
       },
     });
   }
@@ -127,7 +147,7 @@ export class Session {
         break;
       }
       if (stepEvents.some((e) => e.type === "gameOver")) {
-        this.paused = true;
+        this.stopped = true;
         this.accumulator = 0;
         break;
       }
@@ -144,9 +164,11 @@ export class Session {
       void result.then((r) => {
         this.sim.applyBarrierResult(r);
         this.waitingForWorld = false;
+        for (const l of this.barrierDone) l();
       });
     } else {
       this.sim.applyBarrierResult(result);
+      for (const l of this.barrierDone) l();
     }
   }
 }

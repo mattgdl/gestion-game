@@ -4,9 +4,11 @@
  */
 import { DOMINANTS, deNom } from "@jeu/shared";
 import { TITLES, titleDef, type DomainSim } from "@jeu/sim-fief";
-import { PLAYER_ID, adjacent, archetypeOf, lordById, priceRange, type FiefMeta, type WorldState } from "@jeu/sim-monde";
+import { adjacent, archetypeOf, isStartFief, lordById, priceRange, type FiefMeta, type WorldState } from "@jeu/sim-monde";
 import { escapeHtml } from "./format";
 import { lordTag, rumors } from "./trade";
+import { lordLabel } from "./multi";
+import { lordColor } from "../render/palette";
 
 const e = escapeHtml;
 
@@ -16,11 +18,16 @@ export interface NeighborFief {
   offer: number | null;
 }
 
-/** Fiefs IA qui touchent le domaine : les seuls qu'on peut acheter. */
+/**
+ * Fiefs qui touchent le domaine et qu'on peut acheter : ceux des seigneurs IA, et ceux des autres
+ * joueurs (J7) sauf leur fief de départ, celui du manoir.
+ */
 export function neighborFiefs(world: WorldState, sim: DomainSim): NeighborFief[] {
-  const mine = world.fiefs.filter((f) => f.ownerId === PLAYER_ID);
+  const me = sim.state.ownerId;
+  const mine = world.fiefs.filter((f) => f.ownerId === me);
   return world.fiefs
-    .filter((f) => f.ownerId !== null && f.ownerId !== PLAYER_ID && f.ownerId.startsWith("ia-") && mine.some((m) => adjacent(m, f)))
+    .filter((f) => f.ownerId !== null && f.ownerId !== me && mine.some((m) => adjacent(m, f)))
+    .filter((f) => f.ownerId!.startsWith("ia-") || !isStartFief(world, f))
     .map((meta) => ({ meta, range: priceRange(world, meta, sim.state.ownerId), offer: sim.state.offers.find((o) => o.fiefId === meta.id)?.price ?? null }));
 }
 
@@ -50,9 +57,11 @@ export function nextTitleHtml(sim: DomainSim): string {
 
 /** Panneau Domaine : titre, progression, vos fiefs. */
 export function myFiefsHtml(world: WorldState, sim: DomainSim): string {
-  const mine = world.fiefs.filter((f) => f.ownerId === PLAYER_ID);
+  const me = sim.state.ownerId;
+  const mine = world.fiefs.filter((f) => f.ownerId === me);
+  const color = lordColor(lordById(world, me)?.colorIndex);
   const myList = mine
-    .map((f) => `<li><button type="button" class="fief-item" data-fief="${f.id}"><span class="blazon" style="background:#2f6fd0"></span><span class="fief-text"><span class="fief-name">${e(f.name)}</span><span class="fief-meta">${e(DOMINANTS[f.dominant].nom)}</span></span></button></li>`)
+    .map((f) => `<li><button type="button" class="fief-item" data-fief="${f.id}"><span class="blazon" style="background:${color}"></span><span class="fief-text"><span class="fief-name">${e(f.name)}</span><span class="fief-meta">${e(DOMINANTS[f.dominant].nom)}</span></span></button></li>`)
     .join("");
   return `${nextTitleHtml(sim)}<ul class="fief-list">${myList}</ul>`;
 }
@@ -71,14 +80,14 @@ export function neighborsHtml(world: WorldState, sim: DomainSim): string {
       const warBtn = siege ? `<span class="small warn">Assiégé</span>` : `<button type="button" class="btn btn-small" data-war="${meta.id}">Guerre…</button>`;
       return `<li class="sale">
         <button type="button" class="sale-name" data-fief="${meta.id}">${e(meta.name)}</button>
-        <span class="muted small">${e(DOMINANTS[meta.dominant].nom)} · ${e(lord?.name ?? "")}${lord?.ai ? ` · ${lordTag(lord, sim.state.ownerId)}` : ""}</span>
+        <span class="muted small">${e(DOMINANTS[meta.dominant].nom)} · ${e(lordLabel(world, meta.ownerId))}${lord?.ai ? ` · ${lordTag(lord, sim.state.ownerId)}` : ""}</span>
         <span class="small">Village : ${meta.households} foyer${meta.households > 1 ? "s" : ""} · ${landText(meta)}</span>
         <span class="small">Estimé entre <strong>${range[0]}</strong> et <strong>${range[1]}</strong> or</span>
         <span class="sale-actions">${action}${warBtn}</span>
       </li>`;
     })
     .join("");
-  const others = world.fiefs.filter((f) => f.ownerId !== PLAYER_ID).length - neighbors.length;
+  const others = world.fiefs.filter((f) => f.ownerId !== sim.state.ownerId).length - neighbors.length;
   const talk = rumors(world, sim.state.ownerId);
   const rumorHtml = talk.length > 0 ? `<h3>Rumeurs</h3><ul class="rumors">${talk.map((t) => `<li class="small warn">${e(t)}</li>`).join("")}</ul>` : "";
   return `${cards ? `<ul class="sales">${cards}</ul>` : `<p class="muted small">Aucun fief voisin ne touche les vôtres.</p>`}
@@ -97,7 +106,7 @@ export function offerHtml(world: WorldState, sim: DomainSim, fiefId: string): { 
     title: `Acheter ${n.meta.name}`,
     body: `<p>${e(lord?.name ?? "Son seigneur")} possède ${e(n.meta.name)} : ${e(DOMINANTS[n.meta.dominant].nom.toLowerCase())}, un village de ${n.meta.households} foyer${n.meta.households > 1 ? "s" : ""}, ${landText(n.meta)}.</p>
       ${lord?.ai ? `<p class="small">${e(lord.name)} : ${lordTag(lord, sim.state.ownerId)}. ${e(archetypeOf(lord.ai.archetype).description)}</p>` : ""}
-      <p>Vos conseillers l'estiment entre <strong>${n.range[0]}</strong> et <strong>${n.range[1]}</strong> or. Le seigneur a son prix, qu'il ne dit pas ; il change d'une année à l'autre, selon son caractère et ce qu'il pense de vous.</p>
+      <p>Vos conseillers l'estiment entre <strong>${n.range[0]}</strong> et <strong>${n.range[1]}</strong> or. ${lord?.ai ? "Le seigneur a son prix, qu'il ne dit pas ; il change d'une année à l'autre, selon son caractère et ce qu'il pense de vous." : `${e(lordLabel(world, n.meta.ownerId))} est un autre joueur : il accepte ou refuse lui-même, avant le bilan suivant.`}</p>
       <label class="offer-row">Votre offre <input type="number" min="1" max="${gold}" step="10" value="${suggested}" data-el="offerPrice" /> or <span class="muted small">(trésor : ${gold} or)</span></label>
       <p class="muted small">L'or est mis de côté tout de suite. Réponse au bilan d'automne : si le seigneur accepte, le fief et son village sont à vous ; sinon l'or revient, avec son avis. Vous pouvez retirer l'offre avant.</p>
       <p class="warn small" data-el="offerError" hidden></p>

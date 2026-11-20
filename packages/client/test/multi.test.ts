@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Session } from "../src/game/Session";
-import { ClientRoom, HostRoom, BARRIER_TIMEOUT_MS, type Clock } from "../src/net/room";
+import { ClientRoom, HostRoom, BARRIER_TIMEOUT_MS, RECONNECT_DELAY_MS, type Clock } from "../src/net/room";
 import { LoopbackNetwork } from "../src/net/transport";
 
 /** Horloge manuelle : le délai d'attente d'un absent se déclenche quand on avance le temps. */
@@ -36,7 +36,7 @@ async function setup(n: number) {
   await host.open(net);
   const clients: ClientRoom[] = [];
   for (let i = 2; i <= n; i++) {
-    const c = new ClientRoom("ABCD", `Joueur ${i}`, `tok-${i}`);
+    const c = new ClientRoom("ABCD", `Joueur ${i}`, `tok-${i}`, clock);
     await c.open(net);
     clients.push(c);
   }
@@ -162,4 +162,26 @@ describe("salle multijoueur (réseau en mémoire)", () => {
     expect(again.players.map((p) => p.id)).toEqual(["j1", "j2"]);
     expect(again.world!.year).toBe(host.world!.year);
   }, 60_000);
+  it("liaison coupée : le joueur se reconnecte seul et garde sa place", async () => {
+    const { host, clients, clock } = await setup(3);
+    host.start();
+    await flush();
+    const c = clients[0]!;
+    let closed = false;
+    c.on({ closed: () => (closed = true) });
+    (c as unknown as { link: { close(): void } }).link.close();
+    await flush();
+    expect(host.players.find((p) => p.id === "j2")?.online).toBe(false);
+    clock.advance(RECONNECT_DELAY_MS);
+    await flush();
+    await flush();
+    expect(host.players.find((p) => p.id === "j2")?.online).toBe(true);
+    expect(c.playerId).toBe("j2");
+    const heard: string[] = [];
+    c.on({ said: (_f, t) => heard.push(t) });
+    host.say("Toujours là ?");
+    await flush();
+    expect(heard).toEqual(["Toujours là ?"]);
+    expect(closed).toBe(false);
+  });
 });

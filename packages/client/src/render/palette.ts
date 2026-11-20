@@ -90,8 +90,12 @@ export const ROAD_COLORS: Rgb[] = [hex("#b39a6e"), hex("#b39a6e"), hex("#a98f63"
 /** Couleur 0 : le joueur (azur). Les seigneurs IA se partagent les autres, sans jamais reprendre l'azur. */
 export const LORD_COLORS: string[] = ["#2f6fd0", "#c0392b", "#2e8b57", "#d4a017", "#7d3c98", "#8a5a2b", "#1f8a8a", "#b0457a", "#6b7d2a", "#4a4a5a"];
 
+/** Couleurs vives des joueurs d'une partie à plusieurs (J7), bien distinctes de celles des IA. */
+const PLAYER_COLORS = ["#2f6fd0", "#d03a2f", "#e0b020", "#2fa64a", "#9b3fd0", "#e07a20", "#20b8c8", "#e04fa0"];
+
 export function lordColor(colorIndex: number | undefined): string {
   if (colorIndex === undefined) return "#777777";
+  if (colorIndex >= 1000) return PLAYER_COLORS[(colorIndex - 1000) % PLAYER_COLORS.length]!;
   if (colorIndex === 0) return LORD_COLORS[0]!;
   return LORD_COLORS[1 + ((colorIndex - 1) % (LORD_COLORS.length - 1))] ?? "#777777";
 }
