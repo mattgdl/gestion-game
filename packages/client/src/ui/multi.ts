@@ -12,7 +12,12 @@ import { escapeHtml } from "./format";
 
 const e = escapeHtml;
 
-export const DUREES = [30, 60, 100] as const;
+/** Durées proposées en années ; 0 = sans limite (l'hôte termine quand il veut). */
+export const DUREES = [30, 60, 100, 150, 200, 0] as const;
+
+export function dureeText(years: number): string {
+  return years > 0 ? `${years} ans` : "durée libre";
+}
 
 /** « Mathilde (Maison Clairfonds) » pour un joueur, le nom de la maison pour une IA. */
 export function lordLabel(world: WorldState, id: string | null): string {
@@ -39,9 +44,15 @@ export function multiMenuHtml(resumable: string[], inArtifact: boolean, siteUrl:
 }
 
 /** Bloc du panneau Partie pendant une partie à plusieurs. */
-export function multiStatusHtml(code: string, isHost: boolean): string {
+export function multiStatusHtml(code: string, isHost: boolean, years: number, year: number, confirmEnd: boolean): string {
+  const left = years > 0 ? `${Math.max(0, years - year + 1)} an${years - year + 1 > 1 ? "s" : ""} restant${years - year + 1 > 1 ? "s" : ""} sur ${years}` : "durée libre";
+  const endBtn = isHost
+    ? confirmEnd
+      ? `<p class="warn small">Terminer maintenant ? Le classement est fait sur le dernier bilan d'automne, pour toute la salle.</p><div class="save-row"><button type="button" class="btn btn-danger" data-mp="endConfirm">Oui, terminer</button><button type="button" class="btn" data-mp="endCancel">Non</button></div>`
+      : `<div class="save-row"><button type="button" class="btn" data-mp="end">Terminer la partie</button></div>`
+    : "";
   return `<h3>Partie à plusieurs</h3>
-    <p class="small">Salle <strong class="room-code">${e(code)}</strong>${isHost ? " · vous êtes l'hôte" : ""}.</p>
+    <p class="small">Salle <strong class="room-code">${e(code)}</strong>${isHost ? " · vous êtes l'hôte" : ""} · ${left}.</p>${endBtn}
     <p class="muted small">Votre domaine est sauvegardé dans ce navigateur à chaque bilan.${isHost ? " Fermer la page arrête la partie pour tout le monde ; elle se reprend depuis ce panneau." : ""}</p>
     <div class="save-row"><button type="button" class="btn" data-mp="leave">Quitter la salle</button></div>`;
 }
@@ -49,8 +60,9 @@ export function multiStatusHtml(code: string, isHost: boolean): string {
 export function createFormHtml(pseudo: string): string {
   return `<form data-el="mpForm" class="mp-form">
       <label class="offer-row">Votre nom <input name="pseudo" maxlength="20" value="${e(pseudo)}" required /></label>
-      <label class="offer-row">Durée <select name="years">${DUREES.map((d) => `<option value="${d}" ${d === 60 ? "selected" : ""}>${d} ans</option>`).join("")}</select></label>
+      <label class="offer-row">Durée <select name="years">${DUREES.map((d) => `<option value="${d}" ${d === 60 ? "selected" : ""}>${d > 0 ? `${d} ans` : "Sans limite"}</option>`).join("")}</select></label>
       <label class="offer-row">Vitesse <select name="speed"><option value="1">×1</option><option value="2" selected>×2</option><option value="3">×3</option></select></label>
+      <p class="muted small">Compter environ 1 à 1,5 min par an à ×3, 2 à 3 min à ×1-×2 avec les pauses. La partie se reprend en plusieurs séances. Sans limite : vous la terminez quand vous voulez depuis le panneau Partie.</p>
       <p class="muted small">Vous recevrez un code de salle à donner aux autres joueurs. La vitesse et la pause valent pour toute la salle ; vous seul les réglez.</p>
       <p class="warn small" data-el="mpError" hidden></p>
       <div class="modal-actions"><button type="button" class="btn" data-act="close">Annuler</button><button type="submit" class="btn btn-primary">Créer</button></div>
@@ -73,7 +85,7 @@ export function lobbyHtml(players: RoomPlayer[], settings: RoomSettings, code: s
     .map((p) => `<li><span class="dot ${p.online ? "on" : ""}"></span>${e(p.pseudo)}${p.id === "j1" ? ` <span class="muted small">(hôte)</span>` : ""}${p.online ? "" : ` <span class="muted small">absent</span>`}</li>`)
     .join("");
   return `<p>Code de la salle : <strong class="room-code big">${e(code)}</strong> <button type="button" class="btn btn-small" data-act="copyCode">Copier</button></p>
-    <p class="muted small">${settings.years} ans · vitesse ×${settings.speed} · ${players.length} / 8 joueurs</p>
+    <p class="muted small">${dureeText(settings.years)} · vitesse ×${settings.speed} · ${players.length} / 8 joueurs</p>
     <ul class="players">${list}</ul>
     ${
       isHost

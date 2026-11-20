@@ -184,4 +184,16 @@ describe("salle multijoueur (réseau en mémoire)", () => {
     expect(heard).toEqual(["Toujours là ?"]);
     expect(closed).toBe(false);
   });
+  it("durée libre : pas de fin automatique ; l'hôte termine quand il veut", async () => {
+    const { host, sessions, ended } = await setup(2);
+    host.settings = { ...host.settings, years: 0 };
+    host.start();
+    await flush();
+    await play(sessions, 2500);
+    expect(host.world!.year).toBeGreaterThan(4);
+    expect(ended).toHaveLength(0);
+    host.endNow();
+    await flush();
+    expect(ended.length).toBeGreaterThan(0);
+  }, 120_000);
 });

@@ -86,6 +86,11 @@ export class Multiplayer {
     else this.room.start();
   }
 
+  /** L'hôte termine la partie et affiche le classement. */
+  endNow(): void {
+    if (this.room instanceof HostRoom) this.room.endNow();
+  }
+
   setControl(speed: 1 | 2 | 3, paused: boolean): void {
     if (this.room instanceof HostRoom) this.room.setControl(speed, paused);
   }

@@ -1344,7 +1344,7 @@ export class Hud {
         </div>
         ${this.confirmNewGame ? `<p class="warn small">La sauvegarde automatique de la partie en cours sera remplacée. Sauvegardez-la d'abord pour la garder, puis cliquez sur Confirmer.</p>` : ""}
       </form>
-      <div class="multi-box">${this.actions.multi.room && this.actions.multi.code ? multiStatusHtml(this.actions.multi.code, this.actions.multi.isHost) : multiMenuHtml(hostRoomCodes(), Boolean(window.claude), SITE_URL)}</div>`;
+      <div class="multi-box">${this.actions.multi.room && this.actions.multi.code ? multiStatusHtml(this.actions.multi.code, this.actions.multi.isHost, this.actions.multi.room.settings?.years ?? 0, this.game.session.world.year, this.confirmEnd) : multiMenuHtml(hostRoomCodes(), Boolean(window.claude), SITE_URL)}</div>`;
     box.querySelectorAll<HTMLButtonElement>("[data-mp]").forEach((b) =>
       b.addEventListener("click", () => {
         const what = b.dataset.mp;
@@ -1352,6 +1352,14 @@ export class Hud {
         else if (what === "join") this.openJoinRoom();
         else if (what === "resume") void this.runMulti(() => this.actions.multi.resume(b.dataset.code!));
         else if (what === "leave") this.leaveRoom();
+        else if (what === "end" || what === "endCancel") {
+          this.confirmEnd = what === "end";
+          this.renderSaves();
+        } else if (what === "endConfirm") {
+          this.confirmEnd = false;
+          this.actions.multi.endNow();
+          this.renderSaves();
+        }
       }),
     );
     const input = box.querySelector<HTMLInputElement>("#seed-input")!;
@@ -1388,6 +1396,7 @@ export class Hud {
   // ------------------------------------------------------------ partie à plusieurs (J7)
 
   private lastChat = -1;
+  private confirmEnd = false;
 
   /** Section Joueurs (panneau Voisins) : présents, offres reçues, messages. */
   renderMulti(force = false): void {

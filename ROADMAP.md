@@ -16,10 +16,11 @@
 - Jeu hébergé sur GitHub Pages (dépôt rendu public), publication automatique à chaque envoi.
 - Liaison directe entre navigateurs (PeerJS) : le navigateur du créateur de la salle fait tourner le Monde et la barrière ; les autres s'y connectent avec un code de salle.
 - Carte 7 × 7 : jusqu'à 8 joueurs espacés, seigneurs IA entre eux.
-- Durée choisie au lancement (30, 60, 100 ans), vitesse commune choisie par l'hôte, pause pour toute la salle, 60 s d'attente maximale d'un absent au bilan, classement au prestige à la fin, salle sauvegardée pour reprendre.
+- Durée choisie au lancement (30, 60, 100, 150, 200 ans ou sans limite, fin possible par l'hôte), vitesse commune choisie par l'hôte, pause pour toute la salle, 60 s d'attente maximale d'un absent au bilan, classement au prestige à la fin, salle sauvegardée pour reprendre.
 - Entre joueurs : guerre, commerce, achat de fief (le vendeur accepte ou refuse), messagerie.
 - La version claude.ai reste le jeu solo.
 - Ponts ajoutés en marge (20/11) : une route peut franchir la rivière (10 bois, 10 pierre par case).
+- Partie lancée à 2 joueurs sur 2 appareils (20/11, retour du joueur).
 - Testé : 3 puis 8 navigateurs reliés en local (salon, lancement, messages, vitesse de l'hôte, bilans, 9e joueur refusé, classement).
 - **Critère de fin :** plusieurs joueurs sur plusieurs PC jouent une partie ensemble jusqu'au classement.
 

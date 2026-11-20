@@ -68,6 +68,8 @@ export interface RoomLike {
   players: RoomPlayer[];
   speed: 1 | 2 | 3;
   paused: boolean;
+  /** Réglages de la salle (connus du joueur dès le salon). */
+  readonly settings: RoomSettings | null;
   submitBarrier(input: BarrierInput): Promise<BarrierResult>;
   say(text: string): void;
   /** Ce joueur a perdu son domaine : on ne l'attend plus aux bilans. */
@@ -342,7 +344,8 @@ export class HostRoom extends Emitter implements RoomLike {
     }
     this.emit("result", year, result, this.world);
     if (inputs.some((i) => i.ownerId === "j1")) this.deliverOwn(result);
-    if (year >= this.settings.years) this.finish();
+    // Durée 0 : partie sans limite, que l'hôte termine quand il veut.
+    if (this.settings.years > 0 && year >= this.settings.years) this.finish();
   }
 
   private deliver(playerId: string, year: number, result: BarrierResult): void {
@@ -357,6 +360,11 @@ export class HostRoom extends Emitter implements RoomLike {
     const r = this.ownResolve;
     this.ownResolve = null;
     r?.(result);
+  }
+
+  /** L'hôte termine la partie maintenant (classement sur le dernier bilan). */
+  endNow(): void {
+    if (!this.ended) this.finish();
   }
 
   /** Fin de partie : classement au prestige (résumés du dernier bilan). */
