@@ -16,6 +16,7 @@ import { archetypeOf, clampRelation } from "./ai/archetypes";
 import { activeAiLords } from "./ai/neighbors";
 import { adjacent } from "./fiefs";
 import { fiefById, isStartFief, type FiefMeta, type Lord, type WorldState } from "./state";
+import { traitEffect } from "./events";
 
 export interface GuerreDef {
   forceSoldat: number;
@@ -329,6 +330,8 @@ export function aiWars(world: WorldState, rng: Rng, events: WorldEvent[]): void 
         if (!isAi(f.ownerId!)) {
           const rel = lord.ai!.relations[f.ownerId!] ?? 0;
           weight = Math.floor((g.ia.attraitJoueur * (1000 - Math.min(0, rel) * 10)) / 1000);
+          // Traits du seigneur (J8) : un Cruel, un Guerrier font hésiter.
+          weight = Math.max(100, Math.floor((weight * (1000 + traitEffect(world, f.ownerId!, "attraitGuerre"))) / 1000));
         }
         return { f, weight };
       });

@@ -6,7 +6,7 @@
  * sauvegardes restent lisibles.
  */
 import { SAVE_VERSION } from "@jeu/shared";
-import { DomainSim, emptyArmy, emptyDeals, emptyDynasty, emptyTrade, type DomainState } from "@jeu/sim-fief";
+import { DomainSim, emptyArmy, emptyDeals, emptyDynasty, emptyEvents, emptyTrade, rollTraits, type DomainState } from "@jeu/sim-fief";
 import { FIEFS, PLAYER_ID, describeLand, lineageSetupFor, setupAiLords, type WorldState } from "@jeu/sim-monde";
 import { Rng, deriveSeed } from "@jeu/shared";
 
@@ -118,6 +118,12 @@ const MIGRATIONS: Record<number, (save: any) => any> = {
   9: (s) => ({ ...s, saveVersion: 10, world: { ...s.world, fiefOffers: [] }, domain: { ...s.domain, deals: emptyDeals() } }),
   // Réglage du 20/11 : trêves après un pillage ou une conquête (aucune en cours).
   10: (s) => ({ ...s, saveVersion: 11, world: { ...s.world, truces: {} } }),
+  // J8 : événements (aucun en cours) et traits des personnages, tirés comme pour une lignée neuve.
+  11: (s) => {
+    const dyn = s.domain.dynasty;
+    const members = dyn.members.map((m: { id: number; name: string; birthTick: number; traits?: string[] }) => ({ ...m, traits: m.traits ?? rollTraits(`${dyn.name}|${m.id}|${m.name}|${m.birthTick}`) }));
+    return { ...s, saveVersion: 12, domain: { ...s.domain, events: emptyEvents(), dynasty: { ...dyn, members } } };
+  },
 };
 
 export function makeSave(world: WorldState, domain: DomainState, now: Date = new Date(), gameId?: string): SaveGame {

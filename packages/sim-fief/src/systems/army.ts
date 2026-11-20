@@ -123,7 +123,8 @@ export class Army {
       soldiers: this.soldiers().length,
       armed: this.armed(),
       mercenaries: this.a.mercenaries,
-      morale: this.sim.population.moraleFactor(),
+      // Le trait Guerrier du seigneur renforce l'armée (J8) : il passe par le facteur de moral.
+      morale: Math.floor((this.sim.population.moraleFactor() * (1000 + this.sim.events.rule().force)) / 1000),
       households: this.sim.state.families.filter((f) => !f.noble).length,
     });
     for (const p of this.a.pending) out.push({ type: "declareWar", actionId: p.actionId, ownerId: me, fiefId: p.fiefId, goal: p.goal });

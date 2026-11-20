@@ -453,7 +453,8 @@ export class Economy {
   private produce(tick: number): void {
     const season = dateOf(tick).seasonIndex;
     const stats = this.sim.state.yearStats;
-    const morale = Math.floor((this.sim.population.moraleFactor() * this.toolFactor()) / 1000);
+    // Moral, outils, puis traits du seigneur et événements (J8).
+    const morale = Math.floor((Math.floor((this.sim.population.moraleFactor() * this.toolFactor()) / 1000) * this.sim.events.productionFactor()) / 1000);
     for (const b of this.sim.state.buildings) {
       const def = BUILDINGS[b.type];
       if (!def) continue;
@@ -500,7 +501,7 @@ export class Economy {
         const k = this.harvestableField(b, def);
         if (k === undefined) continue;
         const [x, y] = this.sim.xy(k);
-        const amount = Math.floor((fieldYield(def, this.sim.fertilityAt(x, y) ?? 50) * this.toolFactor()) / 1000);
+        const amount = Math.floor((Math.floor((fieldYield(def, this.sim.fertilityAt(x, y) ?? 50) * this.toolFactor()) / 1000) * this.sim.events.harvestFactor()) / 1000);
         this.sim.state.crops[String(k)] = "recolte";
         b.stock.nourriture = (b.stock.nourriture ?? 0) + amount;
         b.lastWork = tick;

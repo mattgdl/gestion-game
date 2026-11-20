@@ -6,3 +6,4 @@ export * from "./trade";
 export * from "./ai/archetypes";
 export * from "./ai/neighbors";
 export * from "./war";
+export * from "./events";

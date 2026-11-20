@@ -1,0 +1,113 @@
+{
+  "_doc": "Traits des personnages (J8). Chaque membre de la lignée et chaque prétendant naît avec 1 trait (2 avec la chance deuxTraitsPourMille), jamais deux traits opposés. Les traits du seigneur régnant s'appliquent en plein, ceux de son conjoint à moitié (arrondi vers zéro). Effets : moral (points pour tous les foyers), impots (‰ ajoutés à l'impôt), production (‰ ajoutés aux ateliers), construction (‰ ajoutés au coût en bois et pierre), force (‰ ajoutés à la force de l'armée), prestige (points tant qu'il règne), natalite (‰ ajoutés aux naissances de la famille noble), relationIA (points par an avec chaque seigneur IA), attraitGuerre (‰ ajoutés au poids de ce domaine quand un seigneur IA choisit qui attaquer : négatif = on le craint).",
+  "deuxTraitsPourMille": 300,
+  "traits": [
+    {
+      "id": "batisseur",
+      "nom": "Bâtisseur",
+      "texte": "Les chantiers coûtent moins cher.",
+      "effets": {
+        "construction": -150
+      }
+    },
+    {
+      "id": "administrateur",
+      "nom": "Bon administrateur",
+      "texte": "Les ateliers tournent mieux.",
+      "oppose": "indolent",
+      "effets": {
+        "production": 80
+      }
+    },
+    {
+      "id": "indolent",
+      "nom": "Indolent",
+      "texte": "Le domaine tourne au ralenti.",
+      "oppose": "administrateur",
+      "effets": {
+        "production": -80,
+        "moral": 2
+      }
+    },
+    {
+      "id": "pieux",
+      "nom": "Pieux",
+      "texte": "Respecté du clergé et du peuple.",
+      "effets": {
+        "moral": 4,
+        "prestige": 30,
+        "relationIA": 1
+      }
+    },
+    {
+      "id": "juste",
+      "nom": "Juste",
+      "texte": "Ses jugements apaisent le village.",
+      "oppose": "cruel",
+      "effets": {
+        "moral": 5,
+        "relationIA": 1
+      }
+    },
+    {
+      "id": "cruel",
+      "nom": "Cruel",
+      "texte": "On le craint : les impôts rentrent, les voisins hésitent à l'attaquer.",
+      "oppose": "juste",
+      "effets": {
+        "moral": -8,
+        "impots": 500,
+        "relationIA": -2,
+        "attraitGuerre": -400
+      }
+    },
+    {
+      "id": "avare",
+      "nom": "Avare",
+      "texte": "Chaque denier compte.",
+      "oppose": "genereux",
+      "effets": {
+        "impots": 250,
+        "moral": -3
+      }
+    },
+    {
+      "id": "genereux",
+      "nom": "Généreux",
+      "texte": "Il donne plus qu'il ne prend.",
+      "oppose": "avare",
+      "effets": {
+        "impots": -250,
+        "moral": 6,
+        "prestige": 20,
+        "relationIA": 1
+      }
+    },
+    {
+      "id": "guerrier",
+      "nom": "Guerrier",
+      "texte": "Ses soldats se battent mieux ; on y regarde à deux fois avant de l'attaquer.",
+      "effets": {
+        "force": 250,
+        "attraitGuerre": -300
+      }
+    },
+    {
+      "id": "diplomate",
+      "nom": "Diplomate",
+      "texte": "Les seigneurs voisins l'apprécient.",
+      "effets": {
+        "relationIA": 3,
+        "attraitGuerre": -200
+      }
+    },
+    {
+      "id": "fecond",
+      "nom": "Fécond",
+      "texte": "Une famille nombreuse assure la succession.",
+      "effets": {
+        "natalite": 600
+      }
+    }
+  ]
+}

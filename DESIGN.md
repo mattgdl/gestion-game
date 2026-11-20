@@ -1,7 +1,7 @@
 # DESIGN.md — Jeu de gestion médiéval à dynastie
 
 > **Titre :** « Field Lords » (choisi le 20/11/2026 ; « Seigneurie » était le nom de travail) · **Version du document :** 0.9 · **Dernière mise à jour :** 20/11/2026
-> **Statut :** J6 livré (guerre et conquête). J7 multijoueur à 8 livré le 20/11, à valider en partie à plusieurs. Ensuite : événements et traits (J8), équilibrage et graphismes (J9).
+> **Statut :** J7 multijoueur à 8 et J8 événements et traits livrés le 20/11, à valider en partie. Ensuite : équilibrage et graphismes (J9).
 > Ce document est la référence du projet. En cas de doute, c'est lui qui tranche, et chaque décision y est consignée avec sa raison (section 11).
 
 ## Sommaire
@@ -287,6 +287,21 @@ Règles décidées pendant le développement, à contester si elles ne te convie
 | Simplification | Un fief vendu ou conquis à un joueur arrive comme un village neuf (autant de foyers), pas avec ses bâtiments. Les villes des autres joueurs ne se voient pas sur la carte (NeighborView en V2). | Garder le jalon dans un périmètre tenable. |
 | Fin | À la durée choisie, ou quand l'hôte la termine : classement au prestige (puis fiefs, habitants), sur le dernier bilan. | Choix du joueur. |
 | Sauvegardes | Domaine de chaque joueur dans son navigateur, à chaque bilan et toutes les 30 s ; la salle chez l'hôte, qui la reprend depuis le panneau Partie. Les parties solo ne sont pas touchées. Format v10. | Choix du joueur : salle reprenable. |
+
+### 4.11 J8 — Événements et traits
+
+| Sujet | Règle | Raison |
+|---|---|---|
+| Événements du domaine | En moyenne un tous les 300 jours (2,5 ans), pas avant l'an 2, un seul en attente à la fois. Tirés parmi ceux dont les conditions sont remplies (saison, an, habitants, bâtiment), selon leur poids : été sec, année bénie, loups, incendie, pèlerins, marchand itinérant, querelle de voisins, fête du village, beau filon, déserteurs, cathédrale. Catalogue dans `evenements.json`. | Choix du joueur : événements du domaine et du monde. |
+| Décision | 2 ou 3 options, chacune avec son résumé (coût, effet). Une option peut demander un bâtiment, des soldats ou de quoi payer. Réponse avant le bilan d'automne (au moins 30 jours) ; sinon l'option par défaut s'applique. Un événement à une seule option est une simple nouvelle. Rien ne met le jeu en pause : à plusieurs, chacun décide à son rythme. | Choix du joueur : choix à 2-3 options. Le multi n'a pas de pause. |
+| Effets | Or, marchandises, moral temporaire, récolte / ateliers / bois de chauffage (‰, pendant N jours, parfois plus tard), prestige, morts, bâtiment détruit (incendie), bâtiment débloqué, épidémie, portes fermées aux nouveaux venus. | Vocabulaire court, tout en données. |
+| Événements régionaux | Tirés par le Monde au bilan (25 % par an, pas avant l'an 3) : hiver rigoureux (l'hiver suivant, +50 % de bois), peste (épidémie, sauf portes fermées : 1 chance sur 3), disette (récolte −20 % l'an suivant). Zone : un fief tiré et ses voisins (3 × 3). Chaque domaine touché choisit sa réponse ; les villages IA de la zone perdent un foyer une fois sur deux. | Choix du joueur : des événements partagés en multi. |
+| Puits et cathédrale | Débloqués par un événement. Puits (1 case, 30 pierre, 5 bois) : un été sec ne coûte que la moitié. Cathédrale (4 × 4, 600 or, 300 pierre, 150 bois, 6 chanoines, une seule) : prestige +150 et moral +8 dans tout le domaine tant qu'elle a des travailleurs ; l'évêque la propose à partir de l'an 12, avec une église et 150 habitants. | Choix du joueur : quelques chantiers ; débouché de fin de partie pour l'or et les bras. |
+| Traits | Chaque membre de la lignée et chaque prétendant a 1 trait (2 trois fois sur dix), jamais deux opposés, visibles dans le panneau Lignée et sur les cartes de mariage. 11 traits : Bâtisseur (bois et pierre −15 %), Bon administrateur (ateliers +8 %), Indolent (ateliers −8 %, moral +2), Pieux, Juste, Cruel (impôts +50 %, moral −8, les IA hésitent à l'attaquer mais l'aiment moins), Avare, Généreux, Guerrier (armée +25 %), Diplomate, Fécond (naissances de la famille noble +60 %). Le seigneur régnant compte en plein, son conjoint à moitié. Catalogue dans `traits.json`. | Choix du joueur : seigneur, héritiers et conjoints ; effet sur les IA. |
+| Traits et IA | Le résumé du bilan dit les traits du seigneur. Chaque année, les seigneurs IA ajustent leur relation (Diplomate +3, Pieux et Juste +1, Cruel −2…) ; Cruel, Guerrier et Diplomate font hésiter une IA qui choisit sa cible. | Choix du joueur. |
+| Sauvegardes | Format v12 : aucun événement en cours ; les traits de la lignée sont tirés comme pour une lignée neuve. | |
+
+**Simulation 5 × 50 ans à 8 robots (20/11) :** environ une décision tous les 2,7 ans par joueur ; chaque domaine subit 2 à 3 événements régionaux en 50 ans ; 18 cathédrales bâties sur 40 robots ; prestige du vainqueur de 2 300 à 3 300 (contre 1 800 à 2 700 avant J8).
 
 ## 5. Systèmes clés
 
@@ -588,6 +603,7 @@ jeu-medieval/
 | 20/11/2026 | Multi : durées 150 et 200 ans et partie sans limite ; l'hôte peut terminer la partie à tout moment. Repère affiché : 1 à 1,5 min par an à ×3. | Demande du joueur après la première partie à 2 sur deux appareils. |
 | 20/11/2026 | Outil `tools/multi-sim.ts` : partie à 8 robots sur la carte 7 × 7 (bâtisseur, marchand, guerrier), sans ressources offertes. Constats de 5 parties de 50 ans notés dans ROADMAP (J9). | Demande du joueur : observer les seigneurs IA et les scores avant les longues parties. |
 | 20/11/2026 | Rééquilibrage des IA : cible tirée au hasard, joueurs moins visés, trêve de 4 ans après un pillage ou une conquête, entretien et mercenaires de défense pour l'or des IA, pas de rachat du dernier fief d'une IA. Section 4.9. Simulation 5 × 50 ans : pillages par joueur de 5,2 à 0,9 en moyenne (max 18 → 3), guerres IA contre joueurs de 234 à 44, entre IA de 73 à 264, rachats entre IA de 369 à 16. | Constats de la simulation du 20/11, accord du joueur. |
+| 20/11/2026 | J8 : événements du domaine (11, à options, défaut au bilan), événements régionaux du Monde (hiver rigoureux, peste, disette), traits du seigneur, des héritiers et des conjoints (11, effets en plein et à moitié, réaction des IA), puits et cathédrale débloqués par événement. Section 4.11. | Choix du joueur (questions du 20/11). |
 | 16/11/2026 | Partie test n° 4 (orge-349 en 5 × 5, 25 ans, environ 45 min) : église par fief, routes en or et pierre, correction du ravitaillement entre fiefs, alerte de vivres lointains. Chômage et ennui de fin de partie notés pour la suite. | Retours du joueur et analyse du journal. |
 | 16/11/2026 | J4 : carte 5 × 5, fiefs achetés avec leur village et une maison forte, négociation avec prix plancher secret, titres par fiefs et population. Règles en section 4.5. | Choix du joueur (questions du 16/11). |
 | 16/11/2026 | Partie test n° 3 (chêne-832, 13 ans, 33 min) : famille noble servie dans toutes les réserves ; alertes de déficit de nourriture et de bras inoccupés. | Analyse du journal de partie. |

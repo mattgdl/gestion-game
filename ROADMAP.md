@@ -5,13 +5,13 @@
 
 ## En cours
 
-- **Partie test de J6 — Guerre et conquête** (critère : bâtir une armée armée, mener un siège jusqu'au bout — pillage ou conquête — et subir ou repousser une attaque ; voir des guerres entre IA). Puis **partie test de J7 — Multijoueur à 8** (livré le 20/11, à jouer sur https://mattgdl.github.io/gestion-game/ une fois le dépôt public et Pages activé). Critère J3 (deux successions) encore à vérifier dans une partie longue.
+- **Partie test de J8 — Événements et traits** (voir son critère plus bas). Puis **partie test de J6 — Guerre et conquête** (critère : bâtir une armée armée, mener un siège jusqu'au bout — pillage ou conquête — et subir ou repousser une attaque ; voir des guerres entre IA). Puis **partie test de J7 — Multijoueur à 8** (sur https://mattgdl.github.io/gestion-game/). Critère J3 (deux successions) encore à vérifier dans une partie longue.
 
 ## À faire
 
 > **Ordre revu le 16/11/2026** (choix du joueur) : une partie de la V2 passe avant le multi. Elle donne plus de jeu au solo et de la matière pour l'équilibrage. Garde-fou : chaque nouveauté se résout au bilan d'automne, passe par les messages de `shared/src/messages.ts` et reste déterministe, pour que le multi n'ait rien à réécrire.
 
-### J7 — Multijoueur à 8 (livré, à valider)
+### J7 — Multijoueur à 8 (livré ; validation lors de la première vraie partie)
 > Avancé le 20/11/2026 (choix du joueur), avant les événements.
 - Jeu hébergé sur GitHub Pages (dépôt rendu public), publication automatique à chaque envoi.
 - Liaison directe entre navigateurs (PeerJS) : le navigateur du créateur de la salle fait tourner le Monde et la barrière ; les autres s'y connectent avec un code de salle.
@@ -24,9 +24,10 @@
 - Testé : 3 puis 8 navigateurs reliés en local (salon, lancement, messages, vitesse de l'hôte, bilans, 9e joueur refusé, classement).
 - **Critère de fin :** plusieurs joueurs sur plusieurs PC jouent une partie ensemble jusqu'au classement.
 
-### J8 — Événements et traits
-- Événements saisonniers annoncés, choix au bilan d'automne.
-- Traits des personnages (seigneur, héritiers, conjoints).
+### J8 — Événements et traits (livré le 20/11, à valider)
+- Événements du domaine à options (défaut au bilan), événements régionaux partagés en multi, traits du seigneur, des héritiers et des conjoints, puits et cathédrale (DESIGN 4.11).
+- **Critère de fin :** dans une partie de 20 ans ou plus, trancher au moins 5 événements, en voir un régional, choisir un conjoint d'après ses traits, et sentir l'effet des traits du seigneur.
+- À surveiller : lignées éteintes (3 robots sur 40 en 50 ans) ; équilibre des traits (Cruel peut-être trop rentable).
 
 ### J9 — Équilibrage et graphismes
 - Simulation 5 × 50 ans à 8 robots (20/11, `tools/multi-sim.ts`). Réglé le 20/11 : spirale des pillages (trêve), IA qui visaient surtout les joueurs, rachats entre IA, or des IA sans usage. Reste à trancher :

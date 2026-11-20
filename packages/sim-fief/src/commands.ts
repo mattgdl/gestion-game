@@ -42,6 +42,8 @@ export type Command =
   | { type: "endWar"; warId: string }
   /** Répond à l'offre d'un autre joueur sur l'un de ses fiefs (J7) : la réponse part au bilan. */
   | { type: "answerFiefOffer"; offerId: string; accept: boolean }
+  /** Répondre à un événement (J8). */
+  | { type: "answerEvent"; key: string; option: string }
   /** Loue des mercenaires pour les assauts du prochain bilan. */
   | { type: "hireMercenaries"; count: number };
 

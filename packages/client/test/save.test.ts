@@ -197,4 +197,19 @@ describe("sauvegarde", () => {
     expect(migrated.saveVersion).toBe(SAVE_VERSION);
     expect(migrated.world.truces).toEqual({});
   });
+
+  it("convertit une sauvegarde v11 : événements vides, traits tirés pour la lignée", () => {
+    const session = Session.newGame("traits-v11");
+    play(session, 20);
+    const v11 = session.toSave();
+    const { events: _e, ...domain } = v11.domain;
+    const dynasty = { ...v11.domain.dynasty, members: v11.domain.dynasty.members.map(({ traits: _t, ...m }) => m) };
+    const migrated = migrateSave(JSON.parse(JSON.stringify({ ...v11, saveVersion: 11, domain: { ...domain, dynasty } })));
+    expect(migrated.saveVersion).toBe(SAVE_VERSION);
+    expect(migrated.domain.events.pending).toEqual([]);
+    expect(migrated.domain.dynasty.members.map((m) => m.traits)).toEqual(v11.domain.dynasty.members.map((m) => m.traits));
+    const restored = Session.fromSave(migrated);
+    play(restored, 20);
+    expect(restored.sim.state.tick).toBeGreaterThan(v11.domain.tick);
+  });
 });

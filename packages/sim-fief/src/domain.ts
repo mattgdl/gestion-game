@@ -30,12 +30,13 @@ import {
 } from "@jeu/shared";
 import type { CheckResult, Command } from "./commands";
 import { BUILDINGS, DEMOGRAPHY, ECONOMY, TITLES, titleDef, type BuildingDef } from "./data";
-import { BUILD_GOODS, GOOD_IDS, GOOD_NAMES, IMMIGRATION_LEVELS, SUCCESSION_LAWS, emptyArmy, emptyDeals, emptyTrade, emptyYearStats, type Building, type DomainState, type FiefTiles, type Goods } from "./state";
+import { BUILD_GOODS, GOOD_IDS, GOOD_NAMES, IMMIGRATION_LEVELS, SUCCESSION_LAWS, emptyArmy, emptyDeals, emptyEvents, emptyTrade, emptyYearStats, type Building, type DomainState, type FiefTiles, type Goods } from "./state";
 import { Dynasty, bySex, emptyDynasty } from "./systems/dynasty";
 import { annexFief } from "./systems/annex";
 import { Needs } from "./systems/needs";
 import { Trade } from "./systems/trade";
 import { Army } from "./systems/army";
+import { Events } from "./systems/events";
 import { Economy, goodsTotal } from "./systems/economy";
 import { DAY_TICKS, Population } from "./systems/population";
 import { connectedRoads } from "./systems/roads";
@@ -61,7 +62,9 @@ export type SimEvent =
   /** Une épidémie se déclare (J4b). */
   | { type: "epidemic"; fiefId: string }
   /** Nouvelle du commerce au bilan (accord accepté, refusé, réglé) (J5). */
-  | { type: "tradeNews"; text: string };
+  | { type: "tradeNews"; text: string }
+  /** Un événement arrive (J8) : décision à prendre (choice) ou simple nouvelle. */
+  | { type: "domainEvent"; key: string; title: string; text: string; choice: boolean };
 
 export interface DomainInit {
   ownerId: string;
@@ -86,6 +89,7 @@ export class DomainSim {
   readonly needs: Needs;
   readonly trade: Trade;
   readonly army: Army;
+  readonly events: Events;
 
   private occupancy = new Map<number, Occupant>();
   private buildingsById = new Map<number, Building>();
@@ -102,6 +106,7 @@ export class DomainSim {
     this.needs = new Needs(this);
     this.trade = new Trade(this);
     this.army = new Army(this);
+    this.events = new Events(this);
     this.economy = new Economy(this);
     this.rebuildIndex();
   }
@@ -150,6 +155,7 @@ export class DomainSim {
       trade: emptyTrade(),
       army: emptyArmy(),
       deals: emptyDeals(),
+      events: emptyEvents(),
       epidemic: null,
       fair: { year: 0, bought: {}, sold: {} },
       gameOver: null,
@@ -446,6 +452,7 @@ export class DomainSim {
       prestige: this.dynasty.prestige().total,
       lineageAlive: this.state.dynasty.lordId !== null,
       shortages: this.shortages(),
+      traits: this.dynasty.member(this.state.dynasty.lordId)?.traits ?? [],
     };
   }
 
@@ -504,6 +511,8 @@ export class DomainSim {
       case "endWar":
       case "hireMercenaries":
         return this.army.check(cmd);
+      case "answerEvent":
+        return this.events.check(cmd.key, cmd.option);
       case "answerFiefOffer": {
         const offer = this.state.deals.incoming.find((o) => o.offerId === cmd.offerId);
         if (!offer) return { ok: false, reason: "Cette offre n'existe plus." };
@@ -526,6 +535,11 @@ export class DomainSim {
     }
     if (cmd.type === "decreeLaw") {
       this.dynasty.decree(cmd.law);
+      return result;
+    }
+    if (cmd.type === "answerEvent") {
+      this.withRng((rng) => this.events.choose(cmd.key, cmd.option, rng));
+      this.population.version += 1;
       return result;
     }
     if (cmd.type === "familyDecision") {
@@ -599,6 +613,7 @@ export class DomainSim {
   private checkBuild(type: string, x: number, y: number): CheckResult {
     const def = BUILDINGS[type];
     if (!def || (!def.constructible && !this.freeBuild)) return { ok: false, reason: "Ce bâtiment ne peut pas être construit." };
+    if (!this.freeBuild && this.events.locked(type)) return { ok: false, reason: `${def.nom} : pas encore débloqué (un événement l'ouvrira).` };
     if (def.unique && this.state.buildings.some((b) => b.type === type)) {
       return { ok: false, reason: `Un seul exemplaire possible : ${def.nom}.` };
     }
@@ -632,7 +647,7 @@ export class DomainSim {
         };
       }
     }
-    return this.withCost(def.cout);
+    return this.withCost(this.buildCost(def.cout));
   }
 
   private checkRoad(x: number, y: number): CheckResult {
@@ -713,6 +728,14 @@ export class DomainSim {
     }
   }
 
+  /** Un bâtiment disparaît sans remboursement (incendie, J8). */
+  destroyBuilding(id: number): void {
+    const b = this.buildingsById.get(id);
+    if (!b) return;
+    this.demolishAt(b.x, b.y, {});
+    this.mapVersion += 1;
+  }
+
   /** Les champs qui ne sont plus près d'aucune ferme sont abandonnés. */
   private removeOrphanFields(): void {
     this.rebuildIndex();
@@ -743,6 +766,15 @@ export class DomainSim {
       }
     }
     return false;
+  }
+
+  /** Coût d'un bâtiment, bois et pierre corrigés par le trait Bâtisseur du seigneur (J8). */
+  buildCost(cost: Cost): Cost {
+    const pm = this.events.rule().construction;
+    if (pm === 0) return cost;
+    const out: Cost = { ...cost };
+    for (const g of ["bois", "pierre"] as const) if (out[g]) out[g] = Math.max(1, Math.floor(((out[g] ?? 0) * (1000 + pm)) / 1000));
+    return out;
   }
 
   private withCost(cost: Cost): CheckResult {
@@ -791,6 +823,8 @@ export class DomainSim {
     if (s.awaitingBarrier || s.gameOver) return [];
     if ((s.tick + 1) % TICKS_PER_YEAR === BARRIER_OFFSET && s.lastBarrierTick !== s.tick) {
       s.awaitingBarrier = true;
+      // Les décisions échues passent à leur option par défaut avant le bilan.
+      this.withRng((rng) => this.events.beforeBarrier(rng));
       this.population.collectTaxes();
       this.army.upkeep();
       return [{ type: "barrier" }];
@@ -812,12 +846,14 @@ export class DomainSim {
         this.population.daily(rng);
         this.dynasty.daily(rng);
         this.needs.daily(rng);
+        this.events.daily(rng);
       });
       this.trade.daily();
       this.checkTitle();
       events.push(...this.dynasty.drainEvents());
       events.push(...this.needs.drainEvents());
       events.push(...this.barrierEvents.splice(0));
+      events.push(...this.events.drainEvents());
       if (!s.gameOver && s.villagers.length < DEMOGRAPHY.seuilDefaite) {
         s.gameOver = { reason: "depeuple", tick: s.tick };
         this.addLog(`Il ne reste que ${s.villagers.length} habitant${s.villagers.length > 1 ? "s" : ""} : le domaine se vide. Fin de la partie.`);
@@ -859,6 +895,7 @@ export class DomainSim {
         this.addLog(text);
         this.barrierEvents.push({ type: "tradeNews", text });
       }
+      if (e.type === "regionalEvent") this.withRng((rng) => this.events.onRegional(e.eventId, e.fiefIds, rng));
       if (e.type === "goodsDelivered" && e.ownerId === me) {
         this.economy.deposit({ [e.good]: e.qty });
         this.state.treasury = Math.max(0, this.state.treasury - e.gold);

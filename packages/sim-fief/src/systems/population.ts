@@ -516,6 +516,7 @@ export class Population {
     }
     let reason: string | null = null;
     if (perYear === 0) reason = "Accueil des nouveaux venus fermé.";
+    else if (this.sim.events.closedToNewcomers()) reason = "Portes fermées à cause de la peste.";
     else if (arrived >= perYear) reason = `${arrived > 1 ? `${arrived} familles déjà accueillies` : "Une famille déjà accueillie"} cette année : la suivante au printemps.`;
     else if (spare <= 0) reason = "Aucune maison libre et reliée que personne n'attend.";
     else if (foodDays < im.vivresMinJours) reason = `Il faut ${im.vivresMinJours} jours de vivres d'avance (vous en avez ${foodDays}).`;
@@ -586,9 +587,11 @@ export class Population {
       }
       if (season === 3) {
         // Sans maison, pas de foyer où faire du feu.
-        if (f.houseId !== null && f.wood >= DAILY_WOOD) {
-          f.wood -= DAILY_WOOD;
-          stats.burned = (stats.burned ?? 0) + DAILY_WOOD;
+        // Hiver rigoureux (J8) : il faut plus de bois.
+        const burn = Math.floor((DAILY_WOOD * this.sim.events.heatingFactor()) / 1000);
+        if (f.houseId !== null && f.wood >= burn) {
+          f.wood -= burn;
+          stats.burned = (stats.burned ?? 0) + burn;
           f.coldDays = 0;
         } else {
           f.coldDays += 1;
@@ -814,7 +817,9 @@ export class Population {
       if (tick - f.lastBirthTick < fec.ecartMinJours * DAY_TICKS) continue;
       if (f.hungryDays > 0) continue;
       // J4b : l'écart entre deux naissances dépend du bien-être (moral, vêtements, outils).
-      const p = 1 / Math.max(1, needs.birthInterval(f.morale) - fec.ecartMinJours);
+      let p = 1 / Math.max(1, needs.birthInterval(f.morale) - fec.ecartMinJours);
+      // Trait Fécond du seigneur ou de son conjoint (J8) : la famille noble a plus d'enfants.
+      if (f.noble) p = (p * (1000 + this.sim.events.rule().natalite)) / 1000;
       if (rng.next() >= p) continue;
       const sex: Sex = rng.chance(0.5) ? "F" : "M";
       const child = this.newVillager(rng, sex, tick, f.id, { fatherId: father.id, motherId: mother.id });
@@ -854,6 +859,8 @@ export class Population {
     if (this.sim.army.atWar()) parts.push({ label: "En guerre", value: GUERRE_FIEF.moralGuerre });
     const idle = this.idleMalus();
     if (idle.malus !== 0) parts.push({ label: `Bras inoccupés (${idle.pct} %)`, value: idle.malus });
+    // Événements, traits du seigneur, monuments (J8).
+    parts.push(...this.sim.events.moraleParts());
     const total = Math.max(0, Math.min(100, parts.reduce((s, p) => s + p.value, 0)));
     return { total, parts };
   }
@@ -895,7 +902,8 @@ export class Population {
   collectTaxes(): void {
     const rate = ECONOMY.impotsParFoyer[this.state.taxLevel];
     const housed = this.state.families.filter((f) => f.houseId !== null && !f.noble).length;
-    const amount = rate * housed;
+    // Traits du seigneur (J8) : un avare ou un cruel lève plus, un généreux moins.
+    const amount = Math.max(0, Math.floor((rate * housed * (1000 + this.sim.events.rule().impots)) / 1000));
     if (amount > 0) {
       this.state.treasury += amount;
       this.state.yearStats.taxes = (this.state.yearStats.taxes ?? 0) + amount;

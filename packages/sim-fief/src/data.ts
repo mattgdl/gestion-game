@@ -9,6 +9,8 @@ import fiefsJson from "@jeu/data/fiefs.json";
 import besoinsJson from "@jeu/data/besoins.json";
 import seasonsJson from "@jeu/data/seasons.json";
 import guerreJson from "@jeu/data/guerre.json";
+import evenementsJson from "@jeu/data/evenements.json";
+import traitsJson from "@jeu/data/traits.json";
 import type { Cost, Resources } from "@jeu/shared";
 import type { GoodId, SuccessionLaw } from "./state";
 
@@ -56,6 +58,10 @@ export interface BuildingDef {
   transport?: { porteurs: number; charge: number };
   /** Production en attente au-delà de laquelle le bâtiment s'arrête. */
   stockMax?: number;
+  /** Constructible seulement une fois débloqué par un événement (J8). */
+  verrou?: boolean;
+  /** Monument (J8) : prestige et moral de tout le domaine tant qu'il a des travailleurs. */
+  monument?: { prestige: number; moral: number };
 }
 
 const { _doc: _buildingsDoc, ...buildingDefs } = buildingsJson;
@@ -202,3 +208,82 @@ export interface GuerreFiefDef {
   moralGuerre: number;
 }
 export const GUERRE_FIEF = guerreJson as unknown as GuerreFiefDef;
+
+// ------------------------------------------------------------ événements et traits (J8)
+
+export interface EventEffects {
+  or?: number;
+  /** Part du trésor gagnée ou perdue (‰). */
+  orPourMille?: number;
+  biens?: Partial<Record<GoodId, number>>;
+  moral?: { valeur: number; jours: number };
+  recolte?: { pourMille: number; jours: number; debut?: number };
+  production?: { pourMille: number; jours: number; debut?: number };
+  chauffage?: { pourMille: number; jours: number; debut?: number };
+  prestige?: number;
+  morts?: number;
+  detruire?: boolean;
+  debloque?: string;
+  /** Chance (‰) qu'une épidémie se déclare tout de suite. */
+  epidemie?: number;
+  /** Jours sans nouveaux venus. */
+  accueilFerme?: number;
+}
+
+export interface EventOption {
+  id: string;
+  texte: string;
+  resume: string;
+  defaut?: boolean;
+  condition?: { batiment?: string; soldats?: number };
+  /** Coût : le prix du bâtiment visé (incendie). */
+  coutCible?: boolean;
+  effets: EventEffects;
+}
+
+export interface EventDef {
+  id: string;
+  titre: string;
+  texte: string;
+  poids?: number;
+  saisons?: number[];
+  conditions?: { batiment?: string; anMin?: number; habitantsMin?: number };
+  unique?: boolean;
+  /** L'événement vise un bâtiment tiré au hasard (texte : {batiment}). */
+  cible?: boolean;
+  /** Bâtiment qui divise par deux les effets négatifs sur la récolte. */
+  attenuePar?: string;
+  options: EventOption[];
+}
+
+export interface EventsDef {
+  frequence: { joursMoyens: number; graceAnnees: number; delaiMinJours: number };
+  regional: { chanceParAn: number; anMin: number; rayon: number; perteFoyerIA: number };
+  evenements: EventDef[];
+  regionaux: EventDef[];
+}
+
+export const EVENTS = evenementsJson as unknown as EventsDef;
+
+export interface TraitEffects {
+  moral?: number;
+  impots?: number;
+  production?: number;
+  construction?: number;
+  force?: number;
+  prestige?: number;
+  natalite?: number;
+  relationIA?: number;
+  attraitGuerre?: number;
+}
+
+export interface TraitDef {
+  id: string;
+  nom: string;
+  texte: string;
+  oppose?: string;
+  effets: TraitEffects;
+}
+
+export const TRAITS_DEF = traitsJson as unknown as { deuxTraitsPourMille: number; traits: TraitDef[] };
+export const TRAITS: Record<string, TraitDef> = Object.fromEntries(TRAITS_DEF.traits.map((t) => [t.id, t]));

@@ -18,6 +18,7 @@ import { FIEFS, adjacent, floorPrice } from "./fiefs";
 import { fiefById, isStartFief, lordById, type FiefOffer, type WorldState } from "./state";
 import { aiProposals, resolveTrade } from "./trade";
 import { aiWars, playerWarActions, resolveWars } from "./war";
+import { regionalEvents, traitReputation } from "./events";
 
 export function resolveBarrier(world: WorldState, inputs: BarrierInput[]): BarrierResult {
   const rng = new Rng(world.rngState);
@@ -38,8 +39,10 @@ export function resolveBarrier(world: WorldState, inputs: BarrierInput[]): Barri
   // 3. Guerres : déclarations et levées de siège des domaines, puis les assauts de l'année.
   playerWarActions(world, playerActions, events);
   resolveWars(world, rng, events);
-  // 4. Vie des seigneurs IA.
+  // 4. Vie des seigneurs IA, événements de la région (J8), réputation des traits.
   aiEconomy(world, rng);
+  regionalEvents(world, rng, events);
+  traitReputation(world, sorted);
   // 5. Projets des seigneurs IA pour l'an prochain.
   const players = world.lords.filter((l) => l.isPlayer).map((l) => l.id);
   aiPlans(world, rng, events);

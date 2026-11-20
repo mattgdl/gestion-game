@@ -176,6 +176,14 @@ export class Needs {
     if (st.epidemicEndTick !== undefined && st.tick < st.epidemicEndTick + m.repitJours * DAY_TICKS) return;
     const chance = Math.min(m.chanceMax, m.chanceParAn + (m.parCentHabitants * st.villagers.length) / 100);
     if (rng.next() >= chance / DAYS_PER_YEAR) return;
+    this.startEpidemic(rng);
+  }
+
+  /** Une épidémie se déclare (hasard du jour, ou peste venue de la région, J8). */
+  startEpidemic(rng: Rng): void {
+    const st = this.state;
+    const m = NEEDS.maladie;
+    if (st.epidemic) return;
     const housed = st.families.filter((f) => f.houseId !== null && !f.noble);
     if (housed.length === 0) return;
     const fam = housed[rng.int(0, housed.length - 1)]!;

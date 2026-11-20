@@ -40,6 +40,7 @@ import { readSlot, slotInfo, writeSlot, type SlotId } from "../save/storage";
 import type { Journal } from "../telemetry/journal";
 import { computeAlerts, foodDays } from "./alerts";
 import { chronicleHtml, decisionHtml, lineagePanelHtml, successionHtml } from "./lineage";
+import { affairsCount, affairsHtml } from "./events";
 import { myFiefsHtml, neighborFiefs, neighborsHtml, offerHtml, realmName } from "./expansion";
 import { lordTag, partnerMarketHtml, proposeHtml, suggestedPrice, tradePanelHtml } from "./trade";
 import { declareHtml, warPanelHtml } from "./war";
@@ -264,7 +265,7 @@ export class Hud {
           <div class="wait-banner small" data-el="waitBanner" hidden></div>
         </div>
         <div class="panel-toggles" role="group" aria-label="Panneaux">
-          <button type="button" class="panel-toggle" data-panel-toggle="domaine" title="Votre domaine : village, lignée, logistique, fiefs">Domaine</button>
+          <button type="button" class="panel-toggle" data-panel-toggle="domaine" title="Votre domaine : affaires, village, lignée, logistique, fiefs">Domaine<span class="badge" data-el="domaineBadge" hidden></span></button>
           <button type="button" class="panel-toggle" data-panel-toggle="voisins" title="Les seigneurs voisins : achats, guerre, commerce">Voisins<span class="badge" data-el="voisinsBadge" hidden></span></button>
         </div>
       </header>
@@ -287,6 +288,10 @@ export class Hud {
       <div class="toasts" data-el="toasts" aria-live="polite"></div>
 
       <aside class="panel" data-el="panel">
+        <section class="panel-section" data-panel="domaine" data-el="affairsSection" hidden>
+          <h2>Affaires du domaine</h2>
+          <div data-el="affairs"></div>
+        </section>
         <section class="panel-section" data-panel="domaine">
           <h2>Sélection</h2>
           <div data-el="selection"></div>
@@ -416,6 +421,13 @@ export class Hud {
       } else if (target.dataset.fief) this.actions.focusFief(target.dataset.fief);
     };
     this.el.fiefList!.addEventListener("click", fiefClicks);
+    this.el.affairs!.addEventListener("click", (ev) => {
+      const target = (ev.target as HTMLElement).closest<HTMLButtonElement>("[data-evkey]");
+      if (!target) return;
+      const r = this.game.command({ type: "answerEvent", key: target.dataset.evkey!, option: target.dataset.evopt! });
+      if (!r.ok && r.reason) this.game.toast(r.reason, "error");
+      this.renderAffairs(true);
+    });
     this.el.incoming!.addEventListener("click", (ev) => {
       const target = (ev.target as HTMLElement).closest<HTMLElement>("[data-answer]");
       if (!target) return;
@@ -1420,6 +1432,22 @@ export class Hud {
     }
   }
 
+  /** Affaires du domaine (J8) : décisions en attente et effets en cours. */
+  renderAffairs(force = false): void {
+    const sim = this.game.session.sim;
+    const html = affairsHtml(sim);
+    const box = this.el.affairs!;
+    if (force || box.dataset.html !== html) {
+      box.dataset.html = html;
+      box.innerHTML = html;
+    }
+    this.el.affairsSection!.hidden = html === "";
+    const n = affairsCount(sim);
+    const badge = this.el.domaineBadge!;
+    badge.hidden = n === 0;
+    badge.textContent = String(n);
+  }
+
   /** Bandeau « En attente de … » au bilan. */
   setWaiting(text: string | null): void {
     const el = this.el.waitBanner!;
@@ -1662,6 +1690,7 @@ export class Hud {
       this.renderTrade();
       this.renderWar();
       this.renderMulti();
+      this.renderAffairs();
       this.renderAlerts();
       this.renderLogistics();
       this.renderSelectionLive();

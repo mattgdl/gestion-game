@@ -26,6 +26,8 @@ export interface FiefSummary {
   lineageAlive: boolean;
   /** Marchandises qui manquent au domaine (J5, retour de partie) : les voisins proposent d'en vendre. */
   shortages?: TradeGood[];
+  /** Traits du seigneur régnant (J8) : les seigneurs IA y réagissent. */
+  traits?: string[];
 }
 
 /** Intention envoyée par un fief au Monde pendant l'année (résolue à la barrière). */
@@ -145,6 +147,8 @@ export type WorldEvent =
   /** Fin d'une guerre : fief conquis, pillé, siège levé ou abandonné. */
   | { type: "warEnded"; warId: string; attackerId: string; defenderId: string; fiefId: string; outcome: "conquis" | "pille" | "leve" | "abandon"; text: string }
   /** Un domaine est pillé : part de son or et de ses réserves perdue, quelques morts. */
+  /** Événement régional (J8) : il touche les domaines qui ont un fief dans la zone. */
+  | { type: "regionalEvent"; eventId: string; fiefIds: string[]; year: number; text: string }
   | { type: "pillaged"; ownerId: string; goldPermille: number; reservesPermille: number; deaths: number; text: string }
   /** Un seigneur IA propose un accord (J5) ; il tient jusqu'au bilan de expiresYear. */
   | { type: "tradeProposed"; ownerId: string; terms: TradeTerms; expiresYear: number }

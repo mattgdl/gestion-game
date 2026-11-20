@@ -1,0 +1,570 @@
+{
+  "_doc": "Événements (J8). Un événement du domaine survient en moyenne tous les joursMoyens jours (pas avant graceAnnees), tiré parmi ceux dont les conditions sont remplies, selon leur poids. Il propose des options ; sans réponse avant l'échéance (le bilan d'automne suivant, au moins delaiMinJours jours), l'option « defaut » s'applique. Effets : or (gain ou coût), biens (gain ou coût, par marchandise), moral (valeur, jours : malus ou bonus de moral temporaire), recolte / production / chauffage (pourMille ajoutés, jours, debut en jours), prestige, morts (villageois), detruire (le bâtiment visé est perdu), debloque (un bâtiment devient constructible), epidemie (pourMille : chance qu'une épidémie se déclare), accueilFerme (jours sans nouveaux venus). Une option avec un coût n'est possible que si le domaine peut payer ; une option peut aussi demander un bâtiment ou des soldats. Les événements régionaux sont tirés par le Monde au bilan (chanceParAn ‰, pas avant anMin), sur une zone de fiefs (rayon autour d'un fief tiré) ; chaque domaine touché reçoit l'événement, et les seigneurs IA de la zone en subissent l'effet.",
+  "frequence": {
+    "joursMoyens": 300,
+    "graceAnnees": 2,
+    "delaiMinJours": 30
+  },
+  "regional": {
+    "chanceParAn": 250,
+    "anMin": 3,
+    "rayon": 1,
+    "perteFoyerIA": 500
+  },
+  "evenements": [
+    {
+      "id": "ete-sec",
+      "titre": "Un été sec s'annonce",
+      "texte": "Les anciens lisent le ciel : pas une goutte de pluie avant l'automne. La moisson s'annonce maigre.",
+      "poids": 10,
+      "saisons": [
+        0
+      ],
+      "conditions": {
+        "batiment": "ferme",
+        "anMin": 2
+      },
+      "attenuePar": "puits",
+      "options": [
+        {
+          "id": "puits",
+          "texte": "Faire creuser des puits",
+          "resume": "30 pierre et 20 or : récolte −10 % ; le puits devient constructible.",
+          "effets": {
+            "biens": {
+              "pierre": -30
+            },
+            "or": -20,
+            "recolte": {
+              "pourMille": -100,
+              "jours": 100
+            },
+            "debloque": "puits"
+          }
+        },
+        {
+          "id": "prieres",
+          "texte": "Faire dire des prières",
+          "resume": "Récolte −20 %, moral +5, prestige +10.",
+          "condition": {
+            "batiment": "eglise"
+          },
+          "effets": {
+            "recolte": {
+              "pourMille": -200,
+              "jours": 100
+            },
+            "moral": {
+              "valeur": 5,
+              "jours": 90
+            },
+            "prestige": 10
+          }
+        },
+        {
+          "id": "attendre",
+          "texte": "Attendre la pluie",
+          "resume": "Récolte −30 %.",
+          "defaut": true,
+          "effets": {
+            "recolte": {
+              "pourMille": -300,
+              "jours": 100
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "bonne-annee",
+      "titre": "Une année bénie",
+      "texte": "Pluies douces et soleil franc : les champs promettent une moisson magnifique.",
+      "poids": 6,
+      "saisons": [
+        0
+      ],
+      "conditions": {
+        "batiment": "ferme"
+      },
+      "options": [
+        {
+          "id": "grace",
+          "texte": "Rendre grâce",
+          "resume": "Récolte +20 %.",
+          "defaut": true,
+          "effets": {
+            "recolte": {
+              "pourMille": 200,
+              "jours": 100
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "loups",
+      "titre": "Des loups rôdent",
+      "texte": "Une meute descend des bois : des brebis égorgées, des enfants qui n'osent plus sortir.",
+      "poids": 8,
+      "saisons": [
+        0,
+        2,
+        3
+      ],
+      "conditions": {
+        "anMin": 2
+      },
+      "options": [
+        {
+          "id": "battue",
+          "texte": "Payer une battue",
+          "resume": "30 or : la meute est chassée.",
+          "effets": {
+            "or": -30
+          }
+        },
+        {
+          "id": "soldats",
+          "texte": "Envoyer les soldats",
+          "resume": "La garnison s'en charge : prestige +5.",
+          "condition": {
+            "soldats": 2
+          },
+          "effets": {
+            "prestige": 5
+          }
+        },
+        {
+          "id": "laisser",
+          "texte": "Laisser les villageois se débrouiller",
+          "resume": "Un mort, laine perdue, moral −5.",
+          "defaut": true,
+          "effets": {
+            "biens": {
+              "laine": -30
+            },
+            "morts": 1,
+            "moral": {
+              "valeur": -5,
+              "jours": 90
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "incendie",
+      "titre": "Le feu prend",
+      "texte": "Un incendie se déclare : {batiment} brûle.",
+      "poids": 7,
+      "conditions": {
+        "habitantsMin": 30,
+        "anMin": 3
+      },
+      "cible": true,
+      "options": [
+        {
+          "id": "reconstruire",
+          "texte": "Reconstruire aux frais du seigneur",
+          "resume": "Le prix du bâtiment en matériaux : il est sauvé.",
+          "coutCible": true,
+          "effets": {
+            "moral": {
+              "valeur": 3,
+              "jours": 60
+            }
+          }
+        },
+        {
+          "id": "laisser",
+          "texte": "Laisser les villageois rebâtir seuls",
+          "resume": "Le bâtiment est perdu, moral −8.",
+          "defaut": true,
+          "effets": {
+            "detruire": true,
+            "moral": {
+              "valeur": -8,
+              "jours": 120
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "pelerins",
+      "titre": "Des pèlerins à la porte",
+      "texte": "Une troupe de pèlerins en route vers un sanctuaire demande le gîte et le couvert.",
+      "poids": 7,
+      "conditions": {
+        "anMin": 2
+      },
+      "options": [
+        {
+          "id": "accueillir",
+          "texte": "Les accueillir au manoir",
+          "resume": "40 nourriture : prestige +8, moral +3.",
+          "effets": {
+            "biens": {
+              "nourriture": -40
+            },
+            "prestige": 8,
+            "moral": {
+              "valeur": 3,
+              "jours": 60
+            }
+          }
+        },
+        {
+          "id": "eglise",
+          "texte": "Les loger à l'église",
+          "resume": "20 nourriture : prestige +12.",
+          "condition": {
+            "batiment": "eglise"
+          },
+          "effets": {
+            "biens": {
+              "nourriture": -20
+            },
+            "prestige": 12
+          }
+        },
+        {
+          "id": "renvoyer",
+          "texte": "Les renvoyer",
+          "resume": "Rien.",
+          "defaut": true,
+          "effets": {}
+        }
+      ]
+    },
+    {
+      "id": "marchand",
+      "titre": "Un marchand itinérant",
+      "texte": "Un colporteur déballe ses ballots sur la place : outils de bon fer et étoffes de laine.",
+      "poids": 7,
+      "conditions": {
+        "habitantsMin": 40,
+        "anMin": 3
+      },
+      "options": [
+        {
+          "id": "outils",
+          "texte": "Acheter des outils",
+          "resume": "60 or : 15 outils.",
+          "effets": {
+            "or": -60,
+            "biens": {
+              "outils": 15
+            }
+          }
+        },
+        {
+          "id": "etoffes",
+          "texte": "Acheter des vêtements",
+          "resume": "80 or : 15 vêtements.",
+          "effets": {
+            "or": -80,
+            "biens": {
+              "vetements": 15
+            }
+          }
+        },
+        {
+          "id": "passer",
+          "texte": "Le laisser passer son chemin",
+          "resume": "Rien.",
+          "defaut": true,
+          "effets": {}
+        }
+      ]
+    },
+    {
+      "id": "querelle",
+      "titre": "Une querelle de voisins",
+      "texte": "Deux familles se disputent une haie et un bout de champ ; le ton monte au village.",
+      "poids": 7,
+      "conditions": {
+        "habitantsMin": 40,
+        "anMin": 2
+      },
+      "options": [
+        {
+          "id": "severe",
+          "texte": "Juger sévèrement, amende à la clé",
+          "resume": "+20 or, moral −3.",
+          "effets": {
+            "or": 20,
+            "moral": {
+              "valeur": -3,
+              "jours": 90
+            }
+          }
+        },
+        {
+          "id": "concilier",
+          "texte": "Concilier, quitte à dédommager",
+          "resume": "20 or : moral +4.",
+          "effets": {
+            "or": -20,
+            "moral": {
+              "valeur": 4,
+              "jours": 90
+            }
+          }
+        },
+        {
+          "id": "laisser",
+          "texte": "Laisser faire",
+          "resume": "Moral −6.",
+          "defaut": true,
+          "effets": {
+            "moral": {
+              "valeur": -6,
+              "jours": 60
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "fete",
+      "titre": "Le village veut sa fête",
+      "texte": "La moisson rentrée, les villageois demandent une fête au manoir, comme du temps des anciens.",
+      "poids": 6,
+      "saisons": [
+        2
+      ],
+      "conditions": {
+        "habitantsMin": 30,
+        "anMin": 2
+      },
+      "options": [
+        {
+          "id": "offrir",
+          "texte": "Offrir la fête",
+          "resume": "40 or et 30 nourriture : moral +8.",
+          "effets": {
+            "or": -40,
+            "biens": {
+              "nourriture": -30
+            },
+            "moral": {
+              "valeur": 8,
+              "jours": 120
+            }
+          }
+        },
+        {
+          "id": "refuser",
+          "texte": "Refuser",
+          "resume": "Moral −3.",
+          "defaut": true,
+          "effets": {
+            "moral": {
+              "valeur": -3,
+              "jours": 60
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "filon",
+      "titre": "Un beau filon",
+      "texte": "Les carriers ont mis au jour une veine de pierre franche, facile à tailler.",
+      "poids": 4,
+      "conditions": {
+        "batiment": "carriere"
+      },
+      "options": [
+        {
+          "id": "extraire",
+          "texte": "Faire extraire",
+          "resume": "+60 pierre.",
+          "defaut": true,
+          "effets": {
+            "biens": {
+              "pierre": 60
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "deserteurs",
+      "titre": "Des déserteurs sur les routes",
+      "texte": "Une bande de soldats sans maître rançonne les charrois et vole le bétail.",
+      "poids": 5,
+      "conditions": {
+        "anMin": 6
+      },
+      "options": [
+        {
+          "id": "chasser",
+          "texte": "Les faire chasser par la garnison",
+          "resume": "Prestige +10.",
+          "condition": {
+            "soldats": 3
+          },
+          "effets": {
+            "prestige": 10
+          }
+        },
+        {
+          "id": "milice",
+          "texte": "Payer une milice",
+          "resume": "50 or : la route est sûre.",
+          "effets": {
+            "or": -50
+          }
+        },
+        {
+          "id": "laisser",
+          "texte": "Fermer les yeux",
+          "resume": "Un dixième du trésor volé, moral −4.",
+          "defaut": true,
+          "effets": {
+            "orPourMille": -100,
+            "moral": {
+              "valeur": -4,
+              "jours": 90
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "cathedrale",
+      "titre": "L'évêque rêve d'une cathédrale",
+      "texte": "Votre domaine est devenu riche et peuplé. L'évêque propose d'y élever une cathédrale : un chantier de plusieurs années, mais une gloire pour des siècles.",
+      "poids": 10,
+      "unique": true,
+      "conditions": {
+        "batiment": "eglise",
+        "habitantsMin": 150,
+        "anMin": 12
+      },
+      "options": [
+        {
+          "id": "accepter",
+          "texte": "Accepter le projet",
+          "resume": "Prestige +20 ; la cathédrale devient constructible.",
+          "effets": {
+            "prestige": 20,
+            "debloque": "cathedrale"
+          }
+        },
+        {
+          "id": "plus-tard",
+          "texte": "Remercier l'évêque, mais pas maintenant",
+          "resume": "Rien ; il pourra revenir à la charge.",
+          "defaut": true,
+          "effets": {}
+        }
+      ]
+    }
+  ],
+  "regionaux": [
+    {
+      "id": "hiver-rigoureux",
+      "titre": "Un hiver rigoureux s'annonce",
+      "texte": "Les anciens l'ont lu dans le vol des oies : l'hiver de l'an prochain sera terrible dans la région. Il faudra moitié plus de bois pour se chauffer.",
+      "options": [
+        {
+          "id": "provisions",
+          "texte": "Faire des provisions de bois dès maintenant",
+          "resume": "40 or : il ne faudra qu'un quart de bois en plus.",
+          "effets": {
+            "or": -40,
+            "chauffage": {
+              "pourMille": 250,
+              "debut": 120,
+              "jours": 30
+            }
+          }
+        },
+        {
+          "id": "endurer",
+          "texte": "S'en remettre à la Providence",
+          "resume": "Moitié plus de bois l'hiver prochain.",
+          "defaut": true,
+          "effets": {
+            "chauffage": {
+              "pourMille": 500,
+              "debut": 120,
+              "jours": 30
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "peste",
+      "titre": "La peste dans la région",
+      "texte": "Des marchands rapportent que la peste ravage les villages voisins. Elle sera bientôt à vos portes.",
+      "options": [
+        {
+          "id": "fermer",
+          "texte": "Fermer les portes et garder les routes",
+          "resume": "30 or, pas de nouveaux venus un an, moral −5 : une chance sur trois que la maladie entre.",
+          "effets": {
+            "or": -30,
+            "accueilFerme": 120,
+            "moral": {
+              "valeur": -5,
+              "jours": 120
+            },
+            "epidemie": 300
+          }
+        },
+        {
+          "id": "laisser",
+          "texte": "Laisser passer les voyageurs",
+          "resume": "La maladie entrera.",
+          "defaut": true,
+          "effets": {
+            "epidemie": 1000
+          }
+        }
+      ]
+    },
+    {
+      "id": "disette",
+      "titre": "La disette menace",
+      "texte": "Les greniers de la région sont vides après de mauvaises récoltes ; la prochaine moisson sera plus maigre partout.",
+      "options": [
+        {
+          "id": "greniers",
+          "texte": "Ouvrir les greniers du manoir",
+          "resume": "50 nourriture : moral +6, prestige +10 (récolte −20 %).",
+          "effets": {
+            "biens": {
+              "nourriture": -50
+            },
+            "moral": {
+              "valeur": 6,
+              "jours": 120
+            },
+            "prestige": 10,
+            "recolte": {
+              "pourMille": -200,
+              "jours": 220
+            }
+          }
+        },
+        {
+          "id": "garder",
+          "texte": "Garder les réserves",
+          "resume": "Récolte −20 % l'an prochain.",
+          "defaut": true,
+          "effets": {
+            "recolte": {
+              "pourMille": -200,
+              "jours": 220
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -422,5 +422,47 @@
     "travailleurs": 2,
     "prioriteEmploi": 4,
     "categorie": "armee"
+  },
+  "puits": {
+    "nom": "Puits",
+    "taille": [
+      1,
+      1
+    ],
+    "cout": {
+      "bois": 5,
+      "pierre": 30
+    },
+    "constructible": true,
+    "verrou": true,
+    "couleur": "#7a8fa0",
+    "description": "Un puits de pierre : l'eau ne manque plus quand la pluie se fait rare.",
+    "utilite": "Avec au moins un puits, un été sec ne coûte que la moitié de la récolte perdue. Débloqué par l'événement « Un été sec ».",
+    "categorie": "vivres"
+  },
+  "cathedrale": {
+    "nom": "Cathédrale",
+    "taille": [
+      4,
+      4
+    ],
+    "cout": {
+      "bois": 150,
+      "pierre": 300,
+      "or": 600
+    },
+    "constructible": true,
+    "verrou": true,
+    "unique": true,
+    "couleur": "#e6dcc8",
+    "description": "La gloire de votre lignée, pour des siècles.",
+    "utilite": "Avec ses 6 chanoines au travail : prestige +150 et moral +8 dans tout le domaine. Une seule. Débloquée par l'évêque (événement).",
+    "travailleurs": 6,
+    "prioriteEmploi": 6,
+    "monument": {
+      "prestige": 150,
+      "moral": 8
+    },
+    "categorie": "services"
   }
 }

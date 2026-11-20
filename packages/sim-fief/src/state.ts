@@ -201,6 +201,8 @@ export interface DynastyMember {
   house?: string;
   /** Le joueur a refusé de le remarier (veuf, veuve). */
   noRemarriage?: boolean;
+  /** Traits de caractère (J8). */
+  traits?: string[];
 }
 
 export interface Suitor {
@@ -210,6 +212,8 @@ export interface Suitor {
   /** Or apporté par le mariage. */
   dowry: number;
   house: string;
+  /** Traits de caractère (J8), visibles avant de choisir. */
+  traits?: string[];
 }
 
 /** Une affaire de famille en attente : l'avenir d'un membre majeur et non marié. */
@@ -297,6 +301,8 @@ export interface DomainState {
   army: ArmyState;
   /** Affaires entre joueurs (J7) : offres reçues sur ses fiefs et réponses à remettre au bilan. */
   deals: DealsState;
+  /** Événements du domaine et du monde (J8). */
+  events: EventsState;
   /** Fin de partie : le temps s'arrête. */
   gameOver: GameOver | null;
   nextId: number;
@@ -332,6 +338,44 @@ export interface DealsState {
   incoming: { offerId: string; buyerId: string; fiefId: string; price: number }[];
   /** Réponses à remettre au prochain bilan. */
   answers: { offerId: string; accept: boolean; households: number }[];
+}
+
+/** Un événement en attente de décision (J8). */
+export interface PendingEvent {
+  key: string;
+  eventId: string;
+  regional: boolean;
+  createdTick: number;
+  deadlineTick: number;
+  /** Bâtiment visé (incendie). */
+  targetId?: number;
+  /** Texte avec le bâtiment visé déjà nommé. */
+  text: string;
+}
+
+/** Effet temporaire d'un événement : moral, récolte, production ou chauffage (J8). */
+export interface TimedEffect {
+  kind: "moral" | "recolte" | "production" | "chauffage";
+  value: number;
+  fromTick: number;
+  untilTick: number;
+  label: string;
+}
+
+export interface EventsState {
+  pending: PendingEvent[];
+  effects: TimedEffect[];
+  /** Bâtiments débloqués par un événement. */
+  unlocked: string[];
+  /** Événements uniques déjà acceptés. */
+  done: string[];
+  /** Fin de l'accueil fermé (tick). */
+  closedUntil?: number;
+  nextKey: number;
+}
+
+export function emptyEvents(): EventsState {
+  return { pending: [], effects: [], unlocked: [], done: [], nextKey: 1 };
 }
 
 export function emptyDeals(): DealsState {

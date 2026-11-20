@@ -10,6 +10,7 @@
  *
  * Tout est parcouru dans un ordre fixe et tiré au sort avec le générateur à graine.
  */
+import { rollTraits } from "./traits";
 import type { LineageSetup } from "@jeu/shared";
 import { Rng, deNom } from "@jeu/shared";
 import { DEMOGRAPHY, DYNASTY, NAMES, titleDef } from "../data";
@@ -135,6 +136,8 @@ export class Dynasty {
       status: "vivant",
       endTick: null,
       spouseIds: [],
+      // Traits (J8) : tirés d'après le nom et la naissance, donc stables d'une partie à l'autre.
+      traits: rollTraits(`${this.d.name}|${v.id}|${v.name}|${v.birthTick}`),
     };
     this.d.members.push(m);
     return m;
@@ -407,7 +410,7 @@ export class Dynasty {
       birthTick: tick - this.ageTicks(rng, band.ageMin, band.ageMax),
       dowry: rng.int(band.dotMin, band.dotMax),
       house: this.pickHouse(rng),
-    }));
+    })).map((s) => ({ ...s, traits: rollTraits(`pretendant|${m.id}|${s.name}|${s.birthTick}|${s.house}`) }));
   }
 
   // ------------------------------------------------------------ commandes
@@ -461,6 +464,7 @@ export class Dynasty {
     const spouse = pop.addVillager({ name: s.name, sex: s.sex, birthTick: s.birthTick, familyId: 0, noble: true });
     const sm = this.addMember(spouse, false);
     sm.house = s.house;
+    if (s.traits) sm.traits = [...s.traits];
     this.link(m.id, spouse.id);
     const current = pop.family(v.familyId);
     const own = current && (current.husbandId === v.id || current.wifeId === v.id);
@@ -530,6 +534,10 @@ export class Dynasty {
       { label: "Église et alliances", value: d.prestigeAcquis },
       { label: "Titre", value: titleDef(d.title)?.prestige ?? 0 },
     ];
+    // J8 : traits du seigneur (et de son conjoint) et monuments.
+    const bonus = this.sim.events.prestigeBonus();
+    if (bonus.traits !== 0) parts.push({ label: "Traits du seigneur", value: bonus.traits });
+    if (bonus.monuments !== 0) parts.push({ label: "Monuments", value: bonus.monuments });
     return { total: parts.reduce((s, p) => s + p.value, 0), parts };
   }
 

@@ -4,6 +4,7 @@
  * (decreeLaw, familyDecision) envoyées par le Hud.
  */
 import {
+  TRAITS,
   DEMOGRAPHY,
   DYNASTY,
   LAW_HINTS,
@@ -22,6 +23,12 @@ function e(text: string): string {
 }
 
 /** « an 4, été » */
+/** Traits d'un personnage (J8), avec leur effet au survol. */
+export function traitsHtml(ids: string[] | undefined): string {
+  if (!ids || ids.length === 0) return "";
+  return ` <span class="traits">${ids.map((id) => `<span class="trait" title="${e(TRAITS[id]?.texte ?? "")}">${e(TRAITS[id]?.nom ?? id)}</span>`).join("")}</span>`;
+}
+
 export function when(tick: number): string {
   const d = dateOf(tick);
   return `an ${d.year}, ${d.seasonName.toLowerCase()}`;
@@ -53,7 +60,7 @@ export function relation(sim: DomainSim, m: DynastyMember): string {
 }
 
 function person(sim: DomainSim, m: DynastyMember): string {
-  return `${e(m.name)}, ${sim.dynasty.ageOf(m)} ans`;
+  return `${e(m.name)}, ${sim.dynasty.ageOf(m)} ans${traitsHtml(m.traits)}`;
 }
 
 /** Années fécondes d'un couple, et nombre d'enfants à attendre en moyenne. */
@@ -118,7 +125,7 @@ export function lineagePanelHtml(sim: DomainSim): string {
             const married = dyn.livingSpouse(m);
             const tag = rank >= 0 ? `<span class="kin-rank" title="Rang dans l'ordre de succession">n° ${rank + 1}</span>` : "";
             const note = married ? ` · ${bySex(m.sex, "marié", "mariée")}` : m.spouseIds.length > 0 ? ` · ${bySex(m.sex, "veuf", "veuve")}` : "";
-            return `<li>${tag}${e(m.name)} <span class="muted">${dyn.ageOf(m)} ans · ${relation(sim, m)}${note}</span></li>`;
+            return `<li>${tag}${e(m.name)} <span class="muted">${dyn.ageOf(m)} ans · ${relation(sim, m)}${note}</span>${traitsHtml(m.traits)}</li>`;
           })
           .join("")}</ul>`;
 
@@ -182,6 +189,7 @@ export function decisionHtml(sim: DomainSim, memberId: number): { title: string;
         <div class="suitor-name">${e(s.name)}, ${age} ans</div>
         <div class="muted small">${e(s.house)}</div>
         <div class="suitor-dowry">Dot : ${s.dowry} or</div>
+        ${traitsHtml(s.traits)}
         <div class="muted small">${f.years > 0 ? `${f.years} années fécondes, environ ${f.children} enfant${f.children > 1 ? "s" : ""}` : "Plus d'enfant à attendre"}</div>
         <button type="button" class="btn btn-primary btn-small" data-choice="${i}">Épouser</button>
       </div>`;

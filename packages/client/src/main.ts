@@ -12,6 +12,7 @@ import { Hud, pauseAtBilan, type HudActions } from "./ui/Hud";
 import { parseSave, serializeSave, type SaveGame } from "./save/save";
 import { readSlot, writeSlot } from "./save/storage";
 import { Multiplayer } from "./net/multiplayer";
+import { EVENTS } from "@jeu/sim-fief";
 import { Journal, type JournalDb } from "./telemetry/journal";
 
 interface HotData {
@@ -172,6 +173,9 @@ function start(data: HotData = {}): void {
           game.toast(`${ev.name} rejoint votre domaine.`);
         } else if (ev.type === "epidemic") {
           game.toast("Une maladie se déclare dans le domaine !");
+        } else if (ev.type === "domainEvent") {
+          game.toast(ev.choice ? `${ev.title} : décision à prendre (panneau Domaine).` : ev.text);
+          hud.renderAffairs(true);
         } else if (ev.type === "tradeNews" && s.room) {
           game.toast(ev.text);
         } else if (ev.type === "offerRefused") {
@@ -306,7 +310,7 @@ function start(data: HotData = {}): void {
   else focusHome(true);
 
   // Accès de débogage depuis la console du navigateur (window.__jeu.game, window.__jeu.camera).
-  (window as unknown as { __jeu: unknown }).__jeu = { game, camera, TILE, actions, journal, multi };
+  (window as unknown as { __jeu: unknown }).__jeu = { game, camera, TILE, actions, journal, multi, EVENTS };
 
   window.claude?.hot?.snapshot?.(() => ({
     save: serializeSave(game.session.toSave()),

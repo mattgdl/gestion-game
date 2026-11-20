@@ -11,3 +11,5 @@ export * from "./systems/annex";
 export * from "./systems/needs";
 export * from "./systems/trade";
 export * from "./systems/army";
+export * from "./systems/events";
+export * from "./systems/traits";

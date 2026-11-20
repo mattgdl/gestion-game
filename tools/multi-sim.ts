@@ -367,6 +367,9 @@ function act(bot: Bot): void {
     const cap = 1 + Math.floor(pop / 60);
     if (sim.state.needs.vetements.coverage < 600 && count(bot, "tisserand") < cap) build(bot, count(bot, "bergerie") < count(bot, "tisserand") || count(bot, "bergerie") === 0 ? "bergerie" : "tisserand");
   }
+  // Monuments et puits débloqués par les événements (J8).
+  if (sim.state.events.unlocked.includes("puits") && count(bot, "puits") === 0) build(bot, "puits");
+  if (sim.state.events.unlocked.includes("cathedrale") && count(bot, "cathedrale") === 0) build(bot, "cathedrale");
   if (pop >= 60 && count(bot, "guerisseur") < Object.keys(sim.state.fiefs).length) build(bot, "guerisseur");
   // 6. Place pour les jeunes couples et les nouveaux venus.
   const tick = sim.state.tick;
@@ -442,6 +445,15 @@ function familyMatters(bot: Bot): void {
     if (!r.ok) sim.apply({ type: "familyDecision", memberId: dec.memberId, choice: 0 });
   }
   for (const o of sim.state.deals.incoming) sim.apply({ type: "answerFiefOffer", offerId: o.offerId, accept: false });
+  // Événements (J8) : la première option possible qui n'est pas celle par défaut, sinon le défaut.
+  for (const p of [...sim.state.events.pending]) {
+    const v = sim.events.view(p);
+    if (!v) continue;
+    const pick = v.options.find((o) => o.ok && !o.option.defaut) ?? v.options.find((o) => o.option.defaut);
+    if (pick && sim.apply({ type: "answerEvent", key: p.key, option: pick.option.id }).ok) {
+      bot.stats.builds[`evenement:${p.eventId}`] = (bot.stats.builds[`evenement:${p.eventId}`] ?? 0) + 1;
+    }
+  }
 }
 
 // ------------------------------------------------------------------ boucle
@@ -481,7 +493,7 @@ for (let year = 1; year <= YEARS; year++) {
     let atBarrier = false;
     while (!atBarrier && !sim.state.gameOver && sim.state.tick < target + 10) {
       const ev = sim.step();
-      if (sim.state.dynasty.decisions.length > 0 || sim.state.deals.incoming.length > 0) familyMatters(bot);
+      if (sim.state.dynasty.decisions.length > 0 || sim.state.deals.incoming.length > 0 || sim.state.events.pending.length > 0) familyMatters(bot);
       if (sim.state.tick % ACT_EVERY === 0) act(bot);
       if (sim.state.tick % TICKS_PER_YEAR === 20) yearly(bot);
       if (ev.some((e) => e.type === "barrier")) atBarrier = true;
@@ -501,7 +513,7 @@ for (let year = 1; year <= YEARS; year++) {
     const sim = bot.sim;
     while (!sim.state.gameOver && sim.state.tick < year * TICKS_PER_YEAR) {
       sim.step();
-      if (sim.state.dynasty.decisions.length > 0) familyMatters(bot);
+      if (sim.state.dynasty.decisions.length > 0 || sim.state.events.pending.length > 0) familyMatters(bot);
       if (sim.state.tick % ACT_EVERY === 0) act(bot);
     }
   }
@@ -532,6 +544,7 @@ const players_out = bots.map((bot) => {
     caractere: bot.character,
     prestige: sim.dynasty.prestige().total,
     titre: sim.titleName(),
+    traits: sim.dynasty.member(sim.state.dynasty.lordId)?.traits ?? [],
     fiefs: world.fiefs.filter((f) => f.ownerId === bot.id).length,
     habitants: sim.state.villagers.length,
     or: sim.state.treasury,

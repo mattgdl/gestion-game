@@ -12,6 +12,8 @@ export function newGame(seed = "test", config = SMALL_WORLD): { world: WorldStat
     fiefs: fiefsOwnedBy(world, PLAYER_ID).map((f) => ({ id: f.id, col: f.col, row: f.row })),
     lineage: lineageSetupFor(world, PLAYER_ID),
   });
+  // Les tests des autres systèmes se passent des traits de la lignée (J8), qui ont leurs propres tests.
+  for (const m of sim.state.dynasty.members) m.traits = [];
   return { world, sim };
 }
 
