@@ -3,7 +3,7 @@
  * panneau du domaine, journal, sauvegardes, étiquettes des fiefs.
  * Elle lit l'état et envoie des commandes ; elle ne contient aucune règle de jeu.
  */
-import { DOMINANTS, RESOURCE_IDS, RESOURCE_NAMES, TERRAIN_NAMES, type TradeGood } from "@jeu/shared";
+import { DOMINANTS, RESOURCE_IDS, RESOURCE_NAMES, TERRAIN_NAMES, Terrain, type TradeGood } from "@jeu/shared";
 import {
   BUILDINGS,
   BUILDING_IDS,
@@ -825,7 +825,7 @@ export class Hud {
     } else if (tool.kind === "road") {
       html = `<div class="tc-head"><strong>Route</strong><span class="tc-size">${formatCost(ECONOMY.coutRoute)} par case</span></div>
         <p>Relie les bâtiments au manoir. Les porteurs ne circulent que sur les routes, par le plus court chemin.</p>
-        <ul class="tc-conds"><li>Glisser pour tracer ; la forêt est défrichée au passage.</li><li>Ni sur la roche, ni sur l'eau.</li></ul>`;
+        <ul class="tc-conds"><li>Glisser pour tracer ; la forêt est défrichée au passage.</li><li>Sur l'eau, la route devient un pont : ${formatCost(ECONOMY.coutPont)} par case.</li><li>Pas sur la roche.</li></ul>`;
     } else if (tool.kind === "field") {
       html = `<div class="tc-head"><strong>Champ</strong><span class="tc-size">gratuit</span></div>
         <p>Une ferme travaille au plus 12 champs, les plus proches d'abord. Les autres restent en friche (hachurés, aperçu orange).</p>
@@ -1719,7 +1719,7 @@ export class Hud {
       const occ = sim.occupantAt(hover.x, hover.y);
       let what = TERRAIN_NAMES[terrain];
       if (terrain === 0) what += ` · fertilité ${fert} %`;
-      if (occ?.kind === "road") what = `Route${sim.connectedRoads().has(sim.key(hover.x, hover.y)) ? " reliée" : " non reliée"}`;
+      if (occ?.kind === "road") what = `${sim.terrainAt(hover.x, hover.y) === Terrain.Eau ? "Pont" : "Route"}${sim.connectedRoads().has(sim.key(hover.x, hover.y)) ? " reliée" : " non reliée"}`;
       if (occ?.kind === "field") what = `Champ · fertilité ${fert} % · ${fieldState(this.game, hover.x, hover.y)}`;
       if (occ?.kind === "building") {
         const b = sim.building(occ.id);

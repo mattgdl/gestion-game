@@ -119,7 +119,25 @@ describe("routes", () => {
     expect(sim.totals().or).toBe(199);
   });
 
-  it("refuse l'eau et la roche", () => {
+  it("pose un pont sur l'eau : plus cher, l'eau reste, la démolition rend la moitié", () => {
+    const { sim } = newGame();
+    const fief = Object.values(sim.state.fiefs)[0]!;
+    const i = 5 * fief.size + 5;
+    fief.terrain[i] = Terrain.Eau;
+    const x = fief.originX + 5;
+    const y = fief.originY + 5;
+    const before = sim.totals();
+    expect(sim.apply({ type: "road", x, y }).ok).toBe(true);
+    expect(sim.terrainAt(x, y)).toBe(Terrain.Eau);
+    expect(sim.state.roads).toContain(sim.key(x, y));
+    const after = sim.totals();
+    expect(before.bois - after.bois).toBe(10);
+    expect(before.pierre - after.pierre).toBe(10);
+    expect(after.or).toBe(before.or);
+    expect(sim.check({ type: "demolish", x, y })).toMatchObject({ ok: true, refund: { bois: 5, pierre: 5 } });
+  });
+
+  it("refuse la roche", () => {
     const { sim } = newGame();
     const fief = Object.values(sim.state.fiefs)[0]!;
     const i = fief.terrain.findIndex((t) => t === Terrain.Roche);

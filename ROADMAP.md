@@ -19,6 +19,7 @@
 - Durée choisie au lancement (30, 60, 100 ans), vitesse commune choisie par l'hôte, pause pour toute la salle, 60 s d'attente maximale d'un absent au bilan, classement au prestige à la fin, salle sauvegardée pour reprendre.
 - Entre joueurs : guerre, commerce, achat de fief (le vendeur accepte ou refuse), messagerie.
 - La version claude.ai reste le jeu solo.
+- Ponts ajoutés en marge (20/11) : une route peut franchir la rivière (10 bois, 10 pierre par case).
 - Testé : 3 puis 8 navigateurs reliés en local (salon, lancement, messages, vitesse de l'hôte, bilans, 9e joueur refusé, classement).
 - **Critère de fin :** plusieurs joueurs sur plusieurs PC jouent une partie ensemble jusqu'au classement.
 
@@ -139,7 +140,6 @@
 - Épuisement des forêts et des carrières, repousse des arbres.
 - Déménager le contenu d'une réserve vers une autre à la demande.
 - Charrettes (charge plus grande, besoin d'une route plus large) pour les longues distances.
-- Ponts pour franchir les rivières (aujourd'hui l'eau bloque les routes).
 - Rotation des bâtiments (exclue de la V1).
 - Pincer pour zoomer sur écran tactile.
 - Rivières continues d'un fief à l'autre (aujourd'hui chaque rivière reste dans son fief).

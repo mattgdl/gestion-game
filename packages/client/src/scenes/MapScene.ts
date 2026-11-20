@@ -4,7 +4,7 @@
  * Lit l'état de la simulation, ne le modifie jamais.
  */
 import Phaser from "phaser";
-import { generateFiefTerrain, parseFiefId } from "@jeu/shared";
+import { Terrain, generateFiefTerrain, parseFiefId } from "@jeu/shared";
 import { BUILDINGS, GOOD_IDS, type Building, type DomainSim } from "@jeu/sim-fief";
 import { lordById } from "@jeu/sim-monde";
 import { CameraController } from "../camera/CameraController";
@@ -201,10 +201,33 @@ export class MapScene extends Phaser.Scene {
     const roadSet = new Set(sim.state.roads);
     const road = ROAD_COLORS[season] ?? ROAD_COLORS[0]!;
     const roadEdge = shade(road, 0.72);
+    const isWater = (k: number) => sim.terrainAt(k % W, Math.floor(k / W)) === Terrain.Eau;
     for (const k of sim.state.roads) {
       const x = (k % W) * TILE;
       const y = Math.floor(k / W) * TILE;
       const linked = connected.has(k);
+      if (isWater(k)) {
+        // Pont : tablier de planches, garde-corps du côté de l'eau.
+        const wood = hex(linked ? "#8a6238" : "#6f5233");
+        g.fillStyle(toInt(wood), 1);
+        g.fillRect(x, y, TILE, TILE);
+        const alongX = roadSet.has(k - 1) || roadSet.has(k + 1);
+        g.fillStyle(toInt(shade(wood, 0.7)), 1);
+        for (let i = 4; i < TILE; i += 6) {
+          if (alongX) g.fillRect(x + i, y, 1, TILE);
+          else g.fillRect(x, y + i, TILE, 1);
+        }
+        g.fillStyle(toInt(hex("#4a3420")), 1);
+        const rail = 3;
+        if (alongX) {
+          if (!roadSet.has(k - W)) g.fillRect(x, y, TILE, rail);
+          if (!roadSet.has(k + W)) g.fillRect(x, y + TILE - rail, TILE, rail);
+        } else {
+          if (!roadSet.has(k - 1)) g.fillRect(x, y, rail, TILE);
+          if (!roadSet.has(k + 1)) g.fillRect(x + TILE - rail, y, rail, TILE);
+        }
+        continue;
+      }
       g.fillStyle(toInt(linked ? road : shade(road, 0.82)), linked ? 1 : 0.85);
       g.fillRect(x, y, TILE, TILE);
       g.fillStyle(toInt(roadEdge), 1);

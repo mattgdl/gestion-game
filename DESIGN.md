@@ -76,7 +76,7 @@ Règles décidées pendant le développement, à contester si elles ne te convie
 | Bâtiments et frontières | Un bâtiment doit tenir entièrement dans un seul fief. Les routes, elles, traversent les frontières. | Un fief cédé (achat, héritage) part avec ses bâtiments entiers. |
 | Bâtiment « relié » | Relié si une route reliée au manoir touche un de ses côtés. Un bâtiment non relié porte un « ! » rouge. | Prépare J2a : un bâtiment non relié ne fonctionnera pas. |
 | Routes en biais | Un tracé en biais devient un escalier de cases (jamais de diagonale). | Les routes ne se relient que par les côtés. |
-| Défrichage | Une route peut passer sur la forêt : la case devient de l'herbe. Pas de route sur la roche ni sur l'eau. | Les ponts viendront plus tard. |
+| Défrichage | Une route peut passer sur la forêt : la case devient de l'herbe. Pas de route sur la roche. Sur l'eau, la route est un pont (10 bois et 10 pierre par case, au lieu d'1 or et 1 pierre) ; l'eau reste de l'eau, la démolition rend la moitié. | Ponts ajoutés le 20/11 : la rivière, du nord au sud, coupait les fiefs en deux. |
 | Champs | Peints à moins de 4 cases d'une ferme ; démolir la ferme abandonne ses champs. | Règle Q6. |
 | Démolition | Rend la moitié du coût. Le manoir ne se démolit pas. | Éviter les erreurs coûteuses sans rendre la construction gratuite. |
 | Bâtiments uniques | Manoir et église : un seul exemplaire. | L'église sera liée aux mariages et successions (J3). |
@@ -581,6 +581,7 @@ jeu-medieval/
 | 17/11/2026 | Interface : panneau Domaine (chez soi) et panneau Voisins (achats, guerre, commerce) ; barre de construction par familles. Section 4.8 bis. | Retour du joueur : trop d'informations mêlées, barre de construction illisible. |
 | 19/11/2026 | Partie test n° 7 : propositions IA selon les manques du domaine (nouveau champ `shortages` du résumé de bilan) et en alternance achat / vente ; texte de déclaration de guerre corrigé. | Analyse du journal : 15 demandes de vêtements refusées alors que le bois manquait. |
 | 20/11/2026 | J7 : multijoueur à 8 sur GitHub Pages, liaison directe entre navigateurs (l'hôte fait tourner le Monde), carte 7 × 7, durée et vitesse communes, 60 s d'attente au bilan, achat de fief, commerce, guerre et messages entre joueurs, classement au prestige, salle reprenable. Section 4.10. | Choix du joueur (questions du 20/11). |
+| 20/11/2026 | Ponts : une route peut passer sur l'eau pour 10 bois et 10 pierre par case. Section 4.1. | Retour du joueur : la rivière coupait jusqu'aux deux tiers d'un fief, berges fertiles comprises ; la pierre trouve un usage. |
 | 16/11/2026 | Partie test n° 4 (orge-349 en 5 × 5, 25 ans, environ 45 min) : église par fief, routes en or et pierre, correction du ravitaillement entre fiefs, alerte de vivres lointains. Chômage et ennui de fin de partie notés pour la suite. | Retours du joueur et analyse du journal. |
 | 16/11/2026 | J4 : carte 5 × 5, fiefs achetés avec leur village et une maison forte, négociation avec prix plancher secret, titres par fiefs et population. Règles en section 4.5. | Choix du joueur (questions du 16/11). |
 | 16/11/2026 | Partie test n° 3 (chêne-832, 13 ans, 33 min) : famille noble servie dans toutes les réserves ; alertes de déficit de nourriture et de bras inoccupés. | Analyse du journal de partie. |

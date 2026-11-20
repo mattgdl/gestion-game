@@ -638,13 +638,14 @@ export class DomainSim {
   private checkRoad(x: number, y: number): CheckResult {
     if (!this.fiefAt(x, y)) return { ok: false, reason: "Hors de votre domaine." };
     const terrain = this.terrainAt(x, y) as TerrainId;
-    if (terrain !== Terrain.Herbe && terrain !== Terrain.Foret) {
+    if (terrain !== Terrain.Herbe && terrain !== Terrain.Foret && terrain !== Terrain.Eau) {
       return { ok: false, reason: `Une route ne peut pas passer sur : ${TERRAIN_NAMES[terrain].toLowerCase()}.` };
     }
     const occ = this.occupantAt(x, y);
     if (occ?.kind === "road") return { ok: false, reason: "Il y a déjà une route ici." };
     if (occ) return { ok: false, reason: "Emplacement occupé." };
-    return this.withCost(ECONOMY.coutRoute);
+    // Sur l'eau, la route est un pont : plus cher (bois et pierre), le terrain reste de l'eau.
+    return this.withCost(terrain === Terrain.Eau ? ECONOMY.coutPont : ECONOMY.coutRoute);
   }
 
   private checkField(x: number, y: number): CheckResult {
@@ -665,7 +666,7 @@ export class DomainSim {
     const occ = this.occupantAt(x, y);
     if (!occ) return { ok: false, reason: "Rien à démolir ici." };
     if (occ.kind === "field") return { ok: true, refund: {} };
-    if (occ.kind === "road") return { ok: true, refund: this.refundOf(ECONOMY.coutRoute) };
+    if (occ.kind === "road") return { ok: true, refund: this.refundOf(this.terrainAt(x, y) === Terrain.Eau ? ECONOMY.coutPont : ECONOMY.coutRoute) };
     const b = this.buildingsById.get(occ.id);
     const def = b ? BUILDINGS[b.type] : undefined;
     if (!b || !def) return { ok: false, reason: "Rien à démolir ici." };

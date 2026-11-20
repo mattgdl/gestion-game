@@ -66,6 +66,8 @@ export interface EconomyDef {
   ressourcesDepart: Resources;
   impotsParFoyer: Record<"aucun" | "normal" | "lourd", number>;
   coutRoute: Cost;
+  /** Route posée sur l'eau (pont), par case. */
+  coutPont: Cost;
   coutChamp: Cost;
   remboursementDemolition: number;
   routesDepart: number;
