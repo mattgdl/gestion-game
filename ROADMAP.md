@@ -1,27 +1,29 @@
 # ROADMAP.md
 
-> Mise à jour : 16/11/2026 · Référence des règles : DESIGN.md (v0.9)
+> Mise à jour : 20/11/2026 · Référence des règles : DESIGN.md (v0.9)
 > Chaque jalon se termine par un jeu qui se lance et se joue. Une idée qui sort du jalon en cours est notée ici, pas codée.
 
 ## En cours
 
-- **Partie test de J6 — Guerre et conquête** (critère : bâtir une armée armée, mener un siège jusqu'au bout — pillage ou conquête — et subir ou repousser une attaque ; voir des guerres entre IA). Puis **J7 — Événements et traits**. Critère J3 (deux successions) encore à vérifier dans une partie longue.
+- **Partie test de J6 — Guerre et conquête** (critère : bâtir une armée armée, mener un siège jusqu'au bout — pillage ou conquête — et subir ou repousser une attaque ; voir des guerres entre IA). Puis **J7 — Multijoueur à 8** (en cours). Critère J3 (deux successions) encore à vérifier dans une partie longue.
 
 ## À faire
 
 > **Ordre revu le 16/11/2026** (choix du joueur) : une partie de la V2 passe avant le multi. Elle donne plus de jeu au solo et de la matière pour l'équilibrage. Garde-fou : chaque nouveauté se résout au bilan d'automne, passe par les messages de `shared/src/messages.ts` et reste déterministe, pour que le multi n'ait rien à réécrire.
 
-### J7 — Événements et traits
+### J7 — Multijoueur à 8 (en cours)
+> Avancé le 20/11/2026 (choix du joueur), avant les événements.
+- Jeu hébergé sur GitHub Pages (dépôt rendu public), publication automatique à chaque envoi.
+- Liaison directe entre navigateurs (PeerJS) : le navigateur du créateur de la salle fait tourner le Monde et la barrière ; les autres s'y connectent avec un code de salle.
+- Carte 7 × 7 : jusqu'à 8 joueurs espacés, seigneurs IA entre eux.
+- Durée choisie au lancement (30, 60, 100 ans), vitesse commune choisie par l'hôte, pause pour toute la salle, 60 s d'attente maximale d'un absent au bilan, classement au prestige à la fin, salle sauvegardée pour reprendre.
+- Entre joueurs : guerre, commerce, achat de fief (le vendeur accepte ou refuse), messagerie.
+- La version claude.ai reste le jeu solo.
+- **Critère de fin :** plusieurs joueurs sur plusieurs PC jouent une partie ensemble jusqu'au classement.
+
+### J8 — Événements et traits
 - Événements saisonniers annoncés, choix au bilan d'automne.
 - Traits des personnages (seigneur, héritiers, conjoints).
-
-### J8 — Prototype multi (2 joueurs)
-- Cloudflare Worker + Durable Object (une salle par partie), RemoteWorld, WebSockets.
-- Barrière annuelle en réseau, délai maximal pour un joueur absent.
-- Instantanés visuels des voisins (`NeighborView`), achat de terres entre joueurs.
-- Durée de partie choisie au lancement, classement au prestige, sauvegarde de la salle.
-- Architecture prête pour 8 joueurs ; tests à 2.
-- **Critère de fin :** deux joueurs sur deux PC finissent une partie de 30 ans.
 
 ### J9 — Équilibrage et graphismes
 - Équilibrage avec `simulate` et des parties tests (solo et multi).
@@ -30,7 +32,8 @@
 ## V2 — Candidats (après le multi)
 - Mariages diplomatiques et héritage de fiefs.
 - Branche cadette pour un joueur éliminé (option de partie).
-- Multi à 3-4 joueurs équilibré, puis mode « grande partie » à 8.
+- Instantané visuel des villes des autres joueurs sur la carte (`NeighborView`).
+- Serveur dédié (Cloudflare) si la liaison directe entre navigateurs pose problème.
 
 ## Peut-être (idées sans pilier validé)
 - *(vide)*

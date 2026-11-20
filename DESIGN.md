@@ -1,7 +1,7 @@
 # DESIGN.md — Jeu de gestion médiéval à dynastie
 
 > **Titre provisoire :** « Seigneurie » (nom de travail, à remplacer) · **Version du document :** 0.9 · **Dernière mise à jour :** 16/11/2026
-> **Statut :** J6 livré (guerre et conquête), à valider en partie test. Ensuite : événements et traits (J7), multi (J8).
+> **Statut :** J6 livré (guerre et conquête). En cours : J7 multijoueur à 8 (avancé le 20/11). Ensuite : événements et traits (J8), équilibrage et graphismes (J9).
 > Ce document est la référence du projet. En cas de doute, c'est lui qui tranche, et chaque décision y est consignée avec sa raison (section 11).
 
 ## Sommaire
