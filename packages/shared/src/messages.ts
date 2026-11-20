@@ -58,6 +58,8 @@ export type ProposeAction =
   | { type: "endWar"; actionId: string; ownerId: string; warId: string }
   /** Forces du domaine au bilan : soldats, soldats armés, mercenaires, moral (‰). */
   | { type: "armyReport"; actionId: string; ownerId: string; soldiers: number; armed: number; mercenaries: number; morale: number; households: number }
+  /** Réponse d'un joueur à une offre d'achat d'un autre joueur sur l'un de ses fiefs (J7). */
+  | { type: "answerFiefOffer"; actionId: string; ownerId: string; offerId: string; accept: boolean; households: number }
   /** Le domaine rompt un accord. */
   | { type: "cancelTrade"; actionId: string; ownerId: string; agreementId: string }
   /**
@@ -120,6 +122,10 @@ export type WorldEvent =
   /** Une offre est refusée ou annulée : l'or sous séquestre revient, avec la raison. */
   | { type: "escrowReleased"; ownerId: string; actionId: string; fiefId: string; gold: number; reason: string }
   | { type: "paymentReceived"; ownerId: string; gold: number; reason: string }
+  /** Un joueur offre d'acheter l'un de vos fiefs (J7) : répondre avant le prochain bilan. */
+  | { type: "fiefOfferReceived"; ownerId: string; offerId: string; buyerId: string; fiefId: string; price: number }
+  /** Marchandises livrées par un autre joueur au titre d'un accord (J7), et or payé pour elles. */
+  | { type: "goodsDelivered"; ownerId: string; agreementId: string; good: TradeGood; qty: number; gold: number; text: string }
   /** Une guerre est déclarée (J6). */
   | { type: "warDeclared"; war: WarInfo; text: string }
   /** Un assaut du siège, au bilan : forces, vainqueur, soldats perdus de chaque camp. */
@@ -170,4 +176,6 @@ export interface YearResolved {
 export interface BarrierResult {
   events: WorldEvent[];
   resolved: YearResolved;
+  /** Domaines dont les actions ont été prises en compte (J7 : un absent ne l'est pas). */
+  participants?: string[];
 }

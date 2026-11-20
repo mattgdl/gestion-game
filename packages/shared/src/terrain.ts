@@ -30,6 +30,8 @@ export interface WorldDims {
   dominants: DominantId[];
   /** Fief de départ du joueur : terrain adapté (centre dégagé, bois et pierre garantis). */
   startFief: { col: number; row: number } | null;
+  /** Partie à plusieurs (J7) : les fiefs de départ de tous les joueurs. */
+  startFiefs?: { col: number; row: number }[];
   startClearRadius: number;
   startMinForestTiles: number;
   startMinRockTiles: number;
@@ -146,7 +148,9 @@ export function generateFiefTerrain(dims: WorldDims, col: number, row: number): 
   const dominant = dims.dominants[row * dims.cols + col] ?? "plaines";
   if (DOMINANTS[dominant].riviere) carveRiver(dims, col, row, terrain, fertBase);
 
-  const isStart = dims.startFief !== null && dims.startFief.col === col && dims.startFief.row === row;
+  const isStart =
+    (dims.startFief !== null && dims.startFief.col === col && dims.startFief.row === row) ||
+    (dims.startFiefs ?? []).some((s) => s.col === col && s.row === row);
   if (isStart) prepareStartFief(dims, col, row, terrain);
 
   for (let i = 0; i < S * S; i++) {

@@ -15,7 +15,7 @@ import type { ProposeAction, Rng, WarGoal, WarInfo, WorldEvent } from "@jeu/shar
 import { archetypeOf, clampRelation } from "./ai/archetypes";
 import { activeAiLords } from "./ai/neighbors";
 import { adjacent } from "./fiefs";
-import { fiefById, type FiefMeta, type Lord, type WorldState } from "./state";
+import { fiefById, isStartFief, type FiefMeta, type Lord, type WorldState } from "./state";
 
 export interface GuerreDef {
   forceSoldat: number;
@@ -56,8 +56,7 @@ function nameOf(world: WorldState, id: string): string {
 
 /** Fief de départ d'un joueur : jamais conquis. */
 export function isHomeFief(world: WorldState, meta: FiefMeta): boolean {
-  const start = world.dims.startFief;
-  return meta.ownerId !== null && !isAi(meta.ownerId) && start != null && meta.col === start.col && meta.row === start.row;
+  return meta.ownerId !== null && !isAi(meta.ownerId) && isStartFief(world, meta);
 }
 
 /** Soldats d'un seigneur IA : selon ses foyers et son goût de la guerre, moins ses blessés. */

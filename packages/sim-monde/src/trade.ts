@@ -186,6 +186,16 @@ export function aiProposals(world: WorldState, rng: Rng, players: string[], even
   }
 }
 
+function isPlayerId(world: WorldState, id: string): boolean {
+  return world.lords.some((l) => l.id === id && l.isPlayer);
+}
+
+/** Nom d'un joueur dans les textes : son pseudo, sinon sa maison. */
+export function playerName(world: WorldState, id: string): string {
+  const l = world.lords.find((x) => x.id === id);
+  return l?.pseudo ? `${l.pseudo} (${l.name})` : (l?.name ?? "un seigneur");
+}
+
 function relationText(delta: number): string {
   return delta > 0 ? ` (relation +${delta})` : delta < 0 ? ` (relation ${delta})` : "";
 }
@@ -211,18 +221,37 @@ export function resolveTrade(world: WorldState, actions: ProposeAction[], rng: R
   // 1. Propositions IA acceptées pendant l'année : elles deviennent des accords.
   for (const a of sorted) {
     if (a.type !== "acceptTrade") continue;
-    const i = world.proposals.findIndex((p) => p.terms.id === a.proposalId && p.terms.ownerId === a.ownerId);
+    const i = world.proposals.findIndex((p) => p.terms.id === a.proposalId && (p.recipientId ?? p.terms.ownerId) === a.ownerId);
     if (i < 0) continue;
     const [p] = world.proposals.splice(i, 1);
-    world.agreements.push({ ...p!.terms });
+    if (p!.recipientId) {
+      // Entre joueurs (J7) : l'acheteur accepte pendant l'année ; les livraisons commencent l'an prochain.
+      const span = p!.terms.lastYear - p!.terms.firstYear;
+      const terms = { ...p!.terms, firstYear: world.year + 1, lastYear: world.year + 1 + span };
+      world.agreements.push(terms);
+      const buyer = lordOf(a.ownerId);
+      events.push({ type: "tradeAgreed", ownerId: terms.ownerId, actionId: terms.id, terms });
+      events.push({ type: "info", ownerId: a.ownerId, text: `Accord conclu avec ${playerName(world, terms.ownerId)} : livraisons de l'an ${terms.firstYear} à l'an ${terms.lastYear}.` });
+      void buyer;
+    } else {
+      world.agreements.push({ ...p!.terms });
+    }
   }
 
   // 2. Ruptures demandées par les domaines.
   for (const a of sorted) {
     if (a.type !== "cancelTrade") continue;
-    const i = world.agreements.findIndex((t) => t.id === a.agreementId && t.ownerId === a.ownerId);
+    const i = world.agreements.findIndex((t) => t.id === a.agreementId && (t.ownerId === a.ownerId || t.partnerId === a.ownerId));
     if (i < 0) continue;
     const [t] = world.agreements.splice(i, 1);
+    if (isPlayerId(world, t!.partnerId)) {
+      // Entre joueurs : chacun est prévenu, sans effet sur la relation (elle n'existe qu'avec les IA).
+      const other = a.ownerId === t!.ownerId ? t!.partnerId : t!.ownerId;
+      const text = `L'accord entre ${playerName(world, t!.ownerId)} et ${playerName(world, t!.partnerId)} est rompu.`;
+      events.push({ type: "tradeSettled", ownerId: t!.ownerId, agreementId: t!.id, quantity: 0, gold: 0, relation: 0, ended: true, text });
+      events.push({ type: "info", ownerId: other === t!.ownerId ? t!.partnerId : other, text });
+      continue;
+    }
     const lord = lordOf(t!.partnerId);
     const d = lord?.ai ? shift(lord, a.ownerId, c.relation.rompu) : 0;
     events.push({
@@ -238,6 +267,7 @@ export function resolveTrade(world: WorldState, actions: ProposeAction[], rng: R
   }
 
   // 3. Règlement de l'année pour chaque accord en cours.
+  const charged = new Map<string, number>();
   const reports = new Map<string, Extract<ProposeAction, { type: "tradeReport" }>>();
   for (const a of sorted) if (a.type === "tradeReport") reports.set(`${a.ownerId}|${a.agreementId}`, a);
   const reporting = new Set(sorted.map((a) => a.ownerId));
@@ -252,7 +282,26 @@ export function resolveTrade(world: WorldState, actions: ProposeAction[], rng: R
     const due = report?.due ?? t.perYear;
     let gold = 0;
     let text = "";
-    if (lord?.ai) {
+    if (lord && !lord.ai && lord.isPlayer) {
+      // Vente à un autre joueur (J7) : il paie selon son or, reçoit la marchandise au bilan.
+      const buyerGold = Math.max(0, (world.lastSummaries[lord.id]?.gold ?? 0) - (charged.get(lord.id) ?? 0));
+      gold = Math.min(q * t.price, buyerGold);
+      charged.set(lord.id, (charged.get(lord.id) ?? 0) + gold);
+      text = `Accord avec ${playerName(world, lord.id)} : ${q} ${label} livrés sur ${due}, ${gold} or reçus`;
+      if (gold < q * t.price) text += ` (il n'a pu payer que ${gold} or)`;
+      text += ".";
+      if (q > 0) {
+        events.push({
+          type: "goodsDelivered",
+          ownerId: lord.id,
+          agreementId: t.id,
+          good: t.good,
+          qty: q,
+          gold,
+          text: `${playerName(world, t.ownerId)} vous livre ${q} ${label} pour ${gold} or.`,
+        });
+      }
+    } else if (lord?.ai) {
       const ai = lord.ai;
       if (t.side === "vente") {
         gold = Math.min(q * t.price, ai.gold);
@@ -300,6 +349,30 @@ export function resolveTrade(world: WorldState, actions: ProposeAction[], rng: R
   // 4. Propositions des domaines : réponse des seigneurs IA, livraisons dès l'an prochain.
   for (const a of sorted) {
     if (a.type !== "proposeTrade") continue;
+    if (isPlayerId(world, a.partnerId)) {
+      // Entre joueurs (J7) : seul le vendeur propose ; l'acheteur répond pendant l'année.
+      const near = nearestFiefOf(world, a.ownerId, a.partnerId);
+      if (a.side !== "vente" || a.partnerId === a.ownerId || !near) {
+        events.push({ type: "tradeRefused", ownerId: a.ownerId, actionId: a.actionId, reason: "Entre joueurs, c'est le vendeur qui propose l'accord." });
+        continue;
+      }
+      const terms: TradeTerms = {
+        id: a.actionId,
+        ownerId: a.ownerId,
+        partnerId: a.partnerId,
+        partnerFiefId: nearestFiefOf(world, a.partnerId, a.ownerId)?.fief.id ?? near.fief.id,
+        good: a.good,
+        side: "vente",
+        perYear: a.perYear,
+        price: a.price,
+        firstYear: world.year + 1,
+        lastYear: world.year + a.years,
+      };
+      world.proposals.push({ terms, expiresYear: world.year + 1, recipientId: a.partnerId });
+      events.push({ type: "tradeProposed", ownerId: a.partnerId, terms, expiresYear: world.year + 1 });
+      events.push({ type: "info", ownerId: a.ownerId, text: `Votre proposition est transmise à ${playerName(world, a.partnerId)} : réponse avant le prochain bilan.` });
+      continue;
+    }
     const verdict = judgeProposal(world, a);
     if (!verdict.ok) {
       events.push({ type: "tradeRefused", ownerId: a.ownerId, actionId: a.actionId, reason: verdict.reason });

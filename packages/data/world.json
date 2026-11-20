@@ -16,5 +16,45 @@
   ],
   "startClearRadius": 6,
   "startMinForestTiles": 160,
-  "startMinRockTiles": 24
+  "startMinRockTiles": 24,
+  "multi": {
+    "_doc": "Partie à plusieurs (J7) : carte cols × rows, fiefs de départ des joueurs pris dans emplacements (dans l'ordre, tirés au sort entre joueurs), joueurs espacés d'au moins un fief IA.",
+    "cols": 7,
+    "rows": 7,
+    "emplacements": [
+      [
+        1,
+        1
+      ],
+      [
+        5,
+        5
+      ],
+      [
+        5,
+        1
+      ],
+      [
+        1,
+        5
+      ],
+      [
+        3,
+        1
+      ],
+      [
+        3,
+        5
+      ],
+      [
+        1,
+        3
+      ],
+      [
+        5,
+        3
+      ]
+    ],
+    "joueursMax": 8
+  }
 }

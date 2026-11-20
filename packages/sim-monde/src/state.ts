@@ -26,6 +26,8 @@ export interface Lord {
   colorIndex: number;
   /** Seigneur IA (J5) : son archétype, son or, ses réserves, ses relations. */
   ai?: AiLord;
+  /** Pseudo d'un joueur dans une partie à plusieurs (J7). */
+  pseudo?: string;
 }
 
 /** Ce que sait et possède un seigneur IA (J5). Il ne bâtit rien : tout se joue au bilan. */
@@ -49,6 +51,21 @@ export interface TradeProposal {
   terms: TradeTerms;
   /** Dernière année où le domaine peut l'accepter. */
   expiresYear: number;
+  /**
+   * Accord entre joueurs (J7) : celui qui doit répondre (l'acheteur). Les termes sont ceux du
+   * vendeur (terms.ownerId), qui livre ; absent pour une proposition d'un seigneur IA.
+   */
+  recipientId?: string;
+}
+
+/** Offre d'achat d'un joueur sur le fief d'un autre joueur, en attente de réponse (J7). */
+export interface FiefOffer {
+  offerId: string;
+  buyerId: string;
+  sellerId: string;
+  fiefId: string;
+  price: number;
+  year: number;
 }
 
 export interface WorldState {
@@ -70,6 +87,8 @@ export interface WorldState {
   proposals: TradeProposal[];
   /** Guerres en cours (J6). */
   wars: WarInfo[];
+  /** Offres d'achat entre joueurs en attente (J7). */
+  fiefOffers?: FiefOffer[];
   /** Dernière armée annoncée par chaque domaine joueur au bilan (J6). */
   armies: Record<string, { soldiers: number; armed: number; mercenaries: number; morale: number; households: number }>;
 }
@@ -91,11 +110,17 @@ export function fiefsOwnedBy(world: WorldState, ownerId: string): FiefMeta[] {
   return world.fiefs.filter((f) => f.ownerId === ownerId);
 }
 
+/** Fief de départ d'une lignée de joueur (solo : startFief ; à plusieurs : startFiefs). */
+export function isStartFief(world: WorldState, f: { col: number; row: number }): boolean {
+  const d = world.dims;
+  if (d.startFief && d.startFief.col === f.col && d.startFief.row === f.row) return true;
+  return (d.startFiefs ?? []).some((s) => s.col === f.col && s.row === f.row);
+}
+
 /** Message de création d'une lignée : le nom de sa maison (son fief de départ) et ses voisins. */
 export function lineageSetupFor(world: WorldState, ownerId: string): LineageSetup {
-  const start = world.dims.startFief;
   const owned = fiefsOwnedBy(world, ownerId);
-  const home = (start ? owned.find((f) => f.col === start.col && f.row === start.row) : undefined) ?? owned[0];
+  const home = owned.find((f) => isStartFief(world, f)) ?? owned[0];
   const neighbors = world.lords.filter((l) => l.id !== ownerId && !l.isPlayer).map((l) => l.name);
   return { houseName: home?.name ?? "Votre lignée", neighbors };
 }

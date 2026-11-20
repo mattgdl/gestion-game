@@ -9,10 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@jeu/shared": "*",
     "@jeu/data": "*",
+    "@jeu/shared": "*",
     "@jeu/sim-fief": "*",
     "@jeu/sim-monde": "*",
+    "peerjs": "^1.5.4",
     "phaser": "^4.2.1"
   },
   "devDependencies": {
