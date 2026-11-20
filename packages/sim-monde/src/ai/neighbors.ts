@@ -46,7 +46,7 @@ export function aiEconomy(world: WorldState, rng: Rng): void {
     }
     const cap = eco.reserveMax * fiefs.length;
     for (const g of TRADE_GOODS) if ((ai.stock[g] ?? 0) > cap) ai.stock[g] = cap;
-    ai.gold += eco.impotsParFoyer * households;
+    ai.gold += (eco.impotsParFoyer - eco.entretienParFoyer) * households;
     // Croissance des villages (ou famine).
     const c = IA.croissance;
     const v = FIEFS.village;
@@ -79,8 +79,10 @@ export function spendable(lord: Lord): number {
 /** Fiefs IA d'autres seigneurs qui touchent les siens : ceux qu'il peut acheter. */
 export function purchasableBy(world: WorldState, lord: Lord) {
   const mine = world.fiefs.filter((f) => f.ownerId === lord.id);
+  // Jamais le dernier fief d'un autre seigneur IA : les maisons ne disparaissent que par la guerre ou les joueurs.
+  const owned = (id: string) => world.fiefs.filter((f) => f.ownerId === id).length;
   return world.fiefs.filter(
-    (f) => f.ownerId !== null && f.ownerId !== lord.id && f.ownerId.startsWith("ia-") && mine.some((m) => adjacent(m, f)),
+    (f) => f.ownerId !== null && f.ownerId !== lord.id && f.ownerId.startsWith("ia-") && mine.some((m) => adjacent(m, f)) && owned(f.ownerId) >= 2,
   );
 }
 

@@ -186,10 +186,11 @@
     },
     "impotsParFoyer": 6,
     "reserveMax": 400,
-    "reserveDepartAnnees": 1
+    "reserveDepartAnnees": 1,
+    "entretienParFoyer": 2
   },
   "expansion": {
-    "_doc": "Un seigneur IA dont l'or disponible (au-delà de sa part d'épargne) couvre la valeur d'un fief voisin peut préparer son achat : la rumeur court pendant un an. Au bilan suivant, il offre la valeur × un facteur entre surenchereMin et surenchereMax (‰), selon son ambition, s'il a toujours l'or.",
+    "_doc": "Un seigneur IA dont l'or disponible (au-delà de sa part d'épargne) couvre la valeur d'un fief voisin peut préparer son achat : la rumeur court pendant un an. Au bilan suivant, il offre la valeur × un facteur entre surenchereMin et surenchereMax (‰), selon son ambition, s'il a toujours l'or. Un seigneur IA ne rachète jamais le dernier fief d'un autre seigneur IA (réglage du 20/11 : les IA disparaissaient presque toutes avant l'an 50).",
     "surenchereMin": 950,
     "surenchereMax": 1250
   },

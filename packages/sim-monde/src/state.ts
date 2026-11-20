@@ -89,6 +89,8 @@ export interface WorldState {
   wars: WarInfo[];
   /** Offres d'achat entre joueurs en attente (J7). */
   fiefOffers?: FiefOffer[];
+  /** Trêves (J7, réglage) : seigneur protégé de toute déclaration de guerre jusqu'à cette année incluse. */
+  truces?: Record<string, number>;
   /** Dernière armée annoncée par chaque domaine joueur au bilan (J6). */
   armies: Record<string, { soldiers: number; armed: number; mercenaries: number; morale: number; households: number }>;
 }

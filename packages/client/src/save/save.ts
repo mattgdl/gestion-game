@@ -116,6 +116,8 @@ const MIGRATIONS: Record<number, (save: any) => any> = {
   8: (s) => ({ ...s, saveVersion: 9, world: { ...s.world, wars: [], armies: {} }, domain: { ...s.domain, army: emptyArmy() } }),
   /** v9 → v10 (J7) : affaires entre joueurs (offres reçues, réponses), vides. */
   9: (s) => ({ ...s, saveVersion: 10, world: { ...s.world, fiefOffers: [] }, domain: { ...s.domain, deals: emptyDeals() } }),
+  // Réglage du 20/11 : trêves après un pillage ou une conquête (aucune en cours).
+  10: (s) => ({ ...s, saveVersion: 11, world: { ...s.world, truces: {} } }),
 };
 
 export function makeSave(world: WorldState, domain: DomainState, now: Date = new Date(), gameId?: string): SaveGame {

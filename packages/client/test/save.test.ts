@@ -186,4 +186,15 @@ describe("sauvegarde", () => {
     play(restored, 20);
     expect(restored.sim.state.tick).toBeGreaterThan(v8.domain.tick);
   });
+
+  it("convertit une sauvegarde v10 : aucune trêve en cours", () => {
+    const session = Session.newGame("treve");
+    play(session, 20);
+    const v10 = session.toSave();
+    const world = { ...v10.world } as Record<string, unknown>;
+    delete world.truces;
+    const migrated = migrateSave(JSON.parse(JSON.stringify({ ...v10, saveVersion: 10, world })));
+    expect(migrated.saveVersion).toBe(SAVE_VERSION);
+    expect(migrated.world.truces).toEqual({});
+  });
 });

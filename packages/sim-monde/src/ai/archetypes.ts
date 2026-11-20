@@ -32,6 +32,8 @@ export interface IaDef {
     productionParFoyer: Record<DominantId, Partial<Record<TradeGood, number>>>;
     consommationParFoyer: Partial<Record<TradeGood, number>>;
     impotsParFoyer: number;
+    /** Entretien du village et de la maison, en or par foyer et par an. */
+    entretienParFoyer: number;
     reserveMax: number;
     reserveDepartAnnees: number;
   };

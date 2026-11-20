@@ -29,12 +29,11 @@
 - Traits des personnages (seigneur, héritiers, conjoints).
 
 ### J9 — Équilibrage et graphismes
-- Constats de la simulation 5 × 50 ans à 8 robots (20/11, `tools/multi-sim.ts`), à trancher avec le joueur :
-  - Les seigneurs IA visent surtout les joueurs (234 guerres contre des joueurs, 73 entre IA ; 89 % finissent en pillage). Un joueur pillé tôt devient la cible la plus faible et l'est encore (jusqu'à 19 fois) : spirale de la défaite. Piste : trêve de quelques années après un pillage, cible tirée parmi les voisins plutôt que toujours la plus faible.
-  - Les IA se rachètent entre elles (369 achats) : de 41 seigneurs IA à 1 à 5 à l'an 50 ; les joueurs finissent avec 36 à 47 des 49 fiefs. Après l'an 40, plus grand-chose à acheter ni à attaquer.
-  - L'or des IA n'a pas d'usage : 550 en moyenne au départ, 6 000 à 25 000 à l'an 50.
-  - L'or des joueurs s'accumule aussi (5 000 à 14 000 pour les premiers) ; morts de froid fréquentes (le bois reste la ressource rare).
-  - Conquérir un fief IA devient presque impossible après l'an 20 (défenses de 500 à 900 contre 100 à 900 de force).
+- Simulation 5 × 50 ans à 8 robots (20/11, `tools/multi-sim.ts`). Réglé le 20/11 : spirale des pillages (trêve), IA qui visaient surtout les joueurs, rachats entre IA, or des IA sans usage. Reste à trancher :
+  - Les joueurs rachètent eux-mêmes les dernières IA : 0 à 7 seigneurs IA à l'an 50 (14 en médiane à l'an 40). Piste : dernier fief d'une maison IA bien plus cher.
+  - L'or des joueurs s'accumule (5 000 à 14 000 pour les premiers) ; il compte au prestige, mais rien à acheter en fin de partie (piste : monuments, J8).
+  - Conquérir un fief IA devient presque impossible après l'an 20 (la milice de tout le royaume IA défend chaque fief).
+  - Morts de froid fréquentes (le bois reste rare) ; 3 lignées robots éteintes sur 40 (à surveiller en vraie partie).
 - Équilibrage avec `simulate` et des parties tests (solo et multi).
 - Vrais visuels (vue 3/4), animations des porteurs et charrettes, sons.
 

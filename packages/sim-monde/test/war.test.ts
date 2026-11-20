@@ -78,6 +78,20 @@ describe("guerre déclarée par le joueur", () => {
 });
 
 describe("guerres des seigneurs IA", () => {
+  it("trêve : un seigneur pillé ne peut plus être attaqué pendant quelques années", () => {
+    const world = createWorld("treve");
+    const target = lordOf(world, "f-2-1");
+    target.ai!.gold = 1000;
+    resolveBarrier(world, input([army(0), declare("f-2-1", "pillage")]));
+    resolveBarrier(world, input([army(40)]));
+    expect(world.truces?.[target.id]).toBe(world.year - 1 + GUERRE.treveAnnees);
+    const verdict = checkWar(world, PLAYER_ID, "f-2-1", "pillage");
+    expect(verdict.ok).toBe(false);
+    expect(verdict.reason).toContain("trêve");
+    for (let i = 0; i < GUERRE.treveAnnees; i++) resolveBarrier(world, input([army(0)]));
+    expect(checkWar(world, PLAYER_ID, "f-2-1", "pillage").ok).toBe(true);
+  });
+
   it("un seigneur IA belliqueux et fort finit par attaquer un voisin faible (le joueur sans armée : pillage)", () => {
     const world = createWorld("ia-attaque");
     for (const l of world.lords) if (l.ai) l.ai.archetype = "conquerant";

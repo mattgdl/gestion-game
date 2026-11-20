@@ -47,6 +47,12 @@ describe("seigneurs IA à archétypes", () => {
     const buyer = lordOf(world, "f-0-1");
     buyer.ai!.archetype = "conquerant";
     buyer.ai!.gold = 100000;
+    // Un seigneur IA ne rachète pas le dernier fief d'un autre : chaque voisin en reçoit un second, loin.
+    const far = world.fiefs.filter((f) => f.ownerId?.startsWith("ia-") && f.ownerId !== buyer.id && !world.fiefs.some((m) => m.ownerId === buyer.id && adjacent(m, f)));
+    const neighbours = world.fiefs.filter((f) => f.ownerId?.startsWith("ia-") && f.ownerId !== buyer.id && world.fiefs.some((m) => m.ownerId === buyer.id && adjacent(m, f)));
+    neighbours.forEach((n, i) => {
+      if (far[i]) far[i]!.ownerId = n.ownerId;
+    });
     let year = 0;
     while (!buyer.ai!.plan && year < 20) {
       resolveBarrier(world, input());
@@ -75,7 +81,7 @@ describe("seigneurs IA à archétypes", () => {
     buyer.ai!.gold = 100000;
     buyer.ai!.archetype = "opportuniste";
     buyer.ai!.plan = { fiefId: target.id, year: world.year };
-    const taxes = IA.economie.impotsParFoyer * world.fiefs.filter((f) => f.ownerId === buyer.id).reduce((n, f) => n + f.households, 0);
+    const taxes = (IA.economie.impotsParFoyer - IA.economie.entretienParFoyer) * world.fiefs.filter((f) => f.ownerId === buyer.id).reduce((n, f) => n + f.households, 0);
     const price = Math.max(floorPrice(world, target, PLAYER_ID), fiefValue(target) * 2);
     const r = resolveBarrier(world, input([{ type: "buyFief", actionId: "a-1", ownerId: PLAYER_ID, fiefId: target.id, price }]));
     expect(target.ownerId).toBe(PLAYER_ID);
@@ -201,5 +207,17 @@ describe("propositions selon les besoins du joueur (partie test J6)", () => {
       world2.proposals = [];
     }
     expect(kinds.size).toBe(2);
+  });
+
+  it("un seigneur IA ne prépare jamais l'achat du dernier fief d'un autre seigneur IA", () => {
+    const world = createWorld("dernier-fief");
+    for (const l of world.lords) if (l.ai) l.ai.gold = 100000;
+    for (let i = 0; i < 6; i++) resolveBarrier(world, input());
+    for (const l of world.lords) {
+      const plan = l.ai?.plan;
+      if (!plan) continue;
+      const seller = fiefById(world, plan.fiefId)!.ownerId!;
+      expect(world.fiefs.filter((f) => f.ownerId === seller).length).toBeGreaterThanOrEqual(2);
+    }
   });
 });

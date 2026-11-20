@@ -39,6 +39,17 @@ export interface GuerreDef {
   ia: { soldatsParFoyer: number; recuperation: number; declarationParAn: number; graceAnnees: number; avantageRequis: number; mercenairesPartOr: number; attraitJoueur: number; mercenairesMax: number; avantageJoueur: number };
   relationCible: number;
   relationAutres: number;
+  treveAnnees: number;
+}
+
+/** Année de fin de trêve d'un seigneur (0 : aucune). */
+export function truceUntil(world: WorldState, id: string): number {
+  return world.truces?.[id] ?? 0;
+}
+
+function grantTruce(world: WorldState, id: string): void {
+  world.truces ??= {};
+  world.truces[id] = Math.max(truceUntil(world, id), world.year + GUERRE.treveAnnees);
 }
 export const GUERRE = guerreJson as unknown as GuerreDef;
 
@@ -107,6 +118,8 @@ export function checkWar(world: WorldState, attackerId: string, fiefId: string, 
   if (world.wars.some((w) => w.fiefId === fiefId)) return { ok: false, reason: `${meta.name} est déjà assiégé.` };
   if (world.wars.some((w) => w.attackerId === attackerId)) return { ok: false, reason: "Vous menez déjà une guerre : une à la fois." };
   if (goal === "conquete" && isHomeFief(world, meta)) return { ok: false, reason: "Le fief de départ d'une lignée ne peut être que pillé." };
+  const truce = truceUntil(world, meta.ownerId);
+  if (truce >= world.year) return { ok: false, reason: `${nameOf(world, meta.ownerId)} est en trêve jusqu'à l'an ${truce} : il se relève d'une défaite.` };
   return { ok: true, reason: "" };
 }
 
@@ -199,7 +212,11 @@ export function resolveWars(world: WorldState, rng: Rng, events: WorldEvent[]): 
     if (w.firstYear > world.year) continue;
     const roll = () => g.hasardMin + Math.floor(rng.next() * (g.hasardMax - g.hasardMin + 1));
     const attack = Math.floor((strengthOf(world, w.attackerId, false) * roll()) / 1000);
-    const defense = Math.floor((defenseOf(world, meta) * roll()) / 1000);
+    // Un seigneur IA assiégé loue des mercenaires pour l'assaut, avec la même part de son or.
+    const def = lordOf(world, w.defenderId);
+    const defMercs = def?.ai ? aiMercenaries(def) : 0;
+    if (def?.ai) def.ai.gold -= defMercs * g.prixMercenaire;
+    const defense = Math.floor(((defenseOf(world, meta) + Math.floor((defMercs * g.forceMercenaire * g.bonusDefense) / 1000)) * roll()) / 1000);
     const won = attack > defense;
     // Un seigneur IA qui attaque paie ses mercenaires à chaque assaut.
     const att = lordOf(world, w.attackerId);
@@ -224,9 +241,11 @@ export function resolveWars(world: WorldState, rng: Rng, events: WorldEvent[]): 
 
     if (won && w.goal === "pillage") {
       pillage(world, w, meta, events);
+      grantTruce(world, w.defenderId);
       end("pille", `${meta.name} est pillé.`);
     } else if (won && w.won >= g.assautsConquete) {
       conquer(world, w, meta, events);
+      grantTruce(world, w.defenderId);
       end("conquis", `${meta.name} tombe aux mains ${isAi(w.attackerId) ? `de la ${lordOf(world, w.attackerId)?.name}` : "de votre lignée"}.`);
     } else if (!won && w.lost >= g.assautsPerdus) {
       end("leve", `Le siège de ${meta.name} est levé : les défenseurs ont tenu.`);
@@ -295,23 +314,28 @@ export function aiWars(world: WorldState, rng: Rng, events: WorldEvent[]): void 
     const mine = world.fiefs.filter((f) => f.ownerId === lord.id);
     const targets = world.fiefs
       .filter((f) => f.ownerId && f.ownerId !== lord.id && mine.some((m) => adjacent(m, f)) && !world.wars.some((w) => w.fiefId === f.id))
+      // Trêve : un seigneur qui vient d'être pillé ou de perdre un fief se relève en paix.
+      .filter((f) => truceUntil(world, f.ownerId!) < world.year)
       .filter((f) => {
         // Un seigneur IA n'attaque pas un joueur avec qui il s'entend bien.
         if (!isAi(f.ownerId!) && (lord.ai!.relations[f.ownerId!] ?? 0) >= 30) return false;
         return attack * 1000 >= defenseOf(world, f) * (isAi(f.ownerId!) ? g.ia.avantageRequis : g.ia.avantageJoueur);
       })
+      .sort((a, b) => (a.id < b.id ? -1 : 1))
       .map((f) => {
-        // Un joueur attire : ses réserves et son or ; plus encore s'ils sont en mauvais termes.
-        let score = defenseOf(world, f);
+        // Tirage parmi les voisins qu'il domine (et non toujours le plus faible) : un seigneur IA
+        // pèse 1000, un joueur attraitJoueur, davantage s'ils sont en mauvais termes.
+        let weight = 1000;
         if (!isAi(f.ownerId!)) {
           const rel = lord.ai!.relations[f.ownerId!] ?? 0;
-          score = Math.floor((score * g.ia.attraitJoueur * (1000 + Math.min(0, rel) * 5)) / 1_000_000);
+          weight = Math.floor((g.ia.attraitJoueur * (1000 - Math.min(0, rel) * 10)) / 1000);
         }
-        return { f, score };
-      })
-      .sort((a, b) => a.score - b.score || (a.f.id < b.f.id ? -1 : 1))
-      .map((t) => t.f);
-    const target = targets[0];
+        return { f, weight };
+      });
+    const total = targets.reduce((n, t) => n + t.weight, 0);
+    if (total <= 0) continue;
+    let draw = Math.floor(rng.next() * total);
+    const target = targets.find((t) => (draw -= t.weight) < 0)?.f;
     if (!target) continue;
     const goal: WarGoal = isHomeFief(world, target) || arch.ambition < 300 ? "pillage" : "conquete";
     declare(world, lord.id, target, goal, events);

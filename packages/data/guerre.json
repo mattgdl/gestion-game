@@ -1,5 +1,5 @@
 {
-  "_doc": "Guerre et conquête (J6). Force d'une armée = soldats × forceSoldat (× armeFacteur s'il est armé) + mercenaires × forceMercenaire, × moral (‰). Le défenseur ajoute sa milice (forceMilice par foyer) et multiplie le tout par bonusDefense (‰). À chaque assaut (un par bilan, à partir de l'an qui suit la déclaration), chaque camp tire un facteur de chance entre hasardMin et hasardMax (‰). L'attaquant l'emporte si sa force dépasse celle du défenseur ; le perdant perd pertesPerdant ‰ de ses soldats, le gagnant pertesGagnant ‰. Conquête : le fief tombe après assautsConquete assauts gagnés ; pillage : un assaut gagné suffit (pillageOr ‰ de l'or, pillageReserves ‰ des réserves, pillageMorts morts). Le siège est levé après assautsPerdus assauts perdus. Seigneurs IA : soldatsParFoyer (‰) × leurs foyers × (500 + goût de la guerre) / 1000 ; les blessés reviennent à recuperation ‰ par an. Ils déclarent une guerre avec la chance declarationParAn ‰ × goût de la guerre / 1000, pas avant graceAnnees, s'ils ont au moins avantageRequis ‰ de la force du défenseur. Réputation : déclarer une guerre coûte relationCible avec la cible et relationAutres avec tous les autres. Pour choisir sa cible, un seigneur IA compare les défenses, celle d'un joueur comptée pour attraitJoueur ‰ (ses réserves et son or attirent), moins encore si leur relation est mauvaise. Un seigneur IA qui attaque loue des mercenaires avec mercenairesPartOr ‰ de son or (mercenairesMax au plus), payés à chaque assaut. Pertes d'un assaut arrondies : au moins un soldat pour le perdant qui en a. Contre un joueur, il lui suffit d'avantageJoueur ‰ de sa défense (il tente sa chance : un joueur peut repousser l'assaut).",
+  "_doc": "Guerre et conquête (J6). Force d'une armée = soldats × forceSoldat (× armeFacteur s'il est armé) + mercenaires × forceMercenaire, × moral (‰). Le défenseur ajoute sa milice (forceMilice par foyer) et multiplie le tout par bonusDefense (‰). À chaque assaut (un par bilan, à partir de l'an qui suit la déclaration), chaque camp tire un facteur de chance entre hasardMin et hasardMax (‰). L'attaquant l'emporte si sa force dépasse celle du défenseur ; le perdant perd pertesPerdant ‰ de ses soldats, le gagnant pertesGagnant ‰. Conquête : le fief tombe après assautsConquete assauts gagnés ; pillage : un assaut gagné suffit (pillageOr ‰ de l'or, pillageReserves ‰ des réserves, pillageMorts morts). Le siège est levé après assautsPerdus assauts perdus. Seigneurs IA : soldatsParFoyer (‰) × leurs foyers × (500 + goût de la guerre) / 1000 ; les blessés reviennent à recuperation ‰ par an. Ils déclarent une guerre avec la chance declarationParAn ‰ × goût de la guerre / 1000, pas avant graceAnnees, s'ils ont au moins avantageRequis ‰ de la force du défenseur. Réputation : déclarer une guerre coûte relationCible avec la cible et relationAutres avec tous les autres. Pour choisir sa cible, un seigneur IA tire au hasard parmi les voisins qu'il domine (plus seulement le plus faible) : un seigneur IA pèse 1000, un joueur attraitJoueur (davantage si leur relation est mauvaise). Trêve : un seigneur pillé ou qui perd un fief par les armes ne peut plus être attaqué pendant treveAnnees ans (réglage du 20/11 : la simulation montrait des joueurs pillés jusqu'à 19 fois). Un seigneur IA assiégé loue aussi des mercenaires pour se défendre (même part de son or). Un seigneur IA qui attaque loue des mercenaires avec mercenairesPartOr ‰ de son or (mercenairesMax au plus), payés à chaque assaut. Pertes d'un assaut arrondies : au moins un soldat pour le perdant qui en a. Contre un joueur, il lui suffit d'avantageJoueur ‰ de sa défense (il tente sa chance : un joueur peut repousser l'assaut).",
   "forceSoldat": 10,
   "armeFacteur": 2,
   "forceMercenaire": 12,
@@ -25,10 +25,11 @@
     "graceAnnees": 6,
     "avantageRequis": 1200,
     "mercenairesPartOr": 300,
-    "attraitJoueur": 600,
+    "attraitJoueur": 500,
     "mercenairesMax": 20,
-    "avantageJoueur": 900
+    "avantageJoueur": 1200
   },
   "relationCible": -60,
-  "relationAutres": -10
+  "relationAutres": -10,
+  "treveAnnees": 4
 }

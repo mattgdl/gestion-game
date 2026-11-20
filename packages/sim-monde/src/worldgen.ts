@@ -119,6 +119,7 @@ export function createWorld(seedText: string, config: WorldConfig = WORLD_CONFIG
     proposals: [],
     wars: [],
     armies: {},
+    truces: {},
   };
   setupAiLords(world);
   return world;
